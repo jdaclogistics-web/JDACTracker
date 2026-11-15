@@ -572,6 +572,23 @@ on('POST', '/api/setup/import', async (env, req) => {
   }
   return importRows(env, b)
 })
+// Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है
+on('GET', '/api/setup/import-page', async (env) => {
+  const done = await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_import_done'").first()
+  if (done) return new Response('Import window closed', { status: 403 })
+  const html = `<!doctype html><meta charset=utf-8><title>JDAC import</title><body style="font:15px system-ui;padding:24px">
+<h2>JDAC Tracker — old data import</h2><input type=file id=f accept=".json"><pre id=o></pre>
+<script>
+const o=document.getElementById('o'),log=(t)=>o.textContent+=t+'\\n'
+document.getElementById('f').onchange=async(e)=>{const d=JSON.parse(await e.target.files[0].text())
+for(const kind of ['sessions','pings','marks','leaves']){const a=d[kind]||[];let ins=0
+for(let i=0;i<a.length;i+=500){const r=await fetch('/api/setup/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,rows:a.slice(i,i+500)})});const j=await r.json();if(!r.ok){log(kind+' ERROR '+JSON.stringify(j));return}ins+=j.inserted||0}
+log(kind+': '+a.length+' rows, '+ins+' new')}
+const c=await (await fetch('/api/setup/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind:'done'})})).json()
+log('DONE — import window closed: '+JSON.stringify(c));document.title='IMPORT DONE'}
+</script>`
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+})
 on('POST', '/api/dev/import', async (env, req) => {
   const me = await authUser(env, req); needDev(me)
   return importRows(env, await body(req))
