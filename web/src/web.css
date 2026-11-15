@@ -44,3 +44,4 @@ details.card summary{list-style:none;cursor:pointer;display:flex;align-items:cen
 .sheet td{width:22px;height:24px;text-align:center;border-radius:5px;font-weight:700}
 .sheet td.p{background:#DCFCE7;color:#166534}.sheet td.l{background:#FEF3C7;color:#92400E}.sheet td.v{background:#EDE9FE;color:#5B21B6}.sheet td.a{background:#FEE2E2;color:#991B1B}.sheet td.h{background:#E0F2FE;color:#075985}.sheet td.w{background:#F1F5F9;color:#94A3B8}
 .tm{display:inline-flex;width:16px;height:16px;border-radius:5px;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;margin-right:6px}.tm.w{background:#FEF3C7;color:#B45309}.tm.o{background:#EDE9FE;color:#6D28D9}
+.pwrap{position:relative;display:block}.pwrap .inp{padding-right:44px}.pwrap .eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;padding:6px;color:var(--mut);cursor:pointer;display:flex}

@@ -2,7 +2,7 @@ import '@shared/theme.css'
 import './mobile.css'
 import { auth, login, logout, get, post, ApiError } from '@shared/api.js'
 import { esc, istDate, istShift, fmtTime, fmtDate, duration, agoText, toast, ic, initials, uuid } from '@shared/util.js'
-import { currentPosition, takeSelfie, deviceId, isNative, openAppSettings } from './native.js'
+import { currentPosition, takeSelfie, deviceId, isNative, openAppSettings, askPermissionsOnce } from './native.js'
 import { startTracking, stopTracking, setFieldMode, trackingState, onTracking } from './tracking.js'
 import { flush, queueSize, onQueueChange, lastSyncAt } from './queue.js'
 
@@ -35,7 +35,7 @@ async function syncTracking() {
 }
 
 // ── Login ───────────────────────────────────────────────────────────────
-function renderLogin(err = '') {
+function renderLogin(err = '', user = '') {
   clearInterval(tick)
   app.innerHTML = `
   <div class="login">
@@ -43,18 +43,24 @@ function renderLogin(err = '') {
     <h1>Welcome to<br>JDAC Work</h1>
     <p class="lead">Attendance, tracking and leave — one app.</p>
     <form id="lf" class="lform">
-      <label class="lf">Username<span class="lin"><input id="lm" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="जैसे rahul" required></span></label>
-      <label class="lf">Password<span class="lin">${ic('lock', 18)}<input id="lp" type="password" autocomplete="current-password" placeholder="JDAC####" required></span></label>
+      <label class="lf">Username<span class="lin"><input id="lm" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="जैसे rahul" value="${esc(user)}" required></span></label>
+      <label class="lf">Password<span class="lin">${ic('lock', 18)}<input id="lp" type="password" autocomplete="current-password" placeholder="JDAC####" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 20)}</button></span></label>
       ${err ? `<div class="err">${esc(err)}</div>` : ''}
       <button class="btn pri" id="lb" style="margin-top:6px;font-size:16px">Login</button>
     </form>
     <div class="lnote">${ic('shield', 20, '#34D399')}<span>One login for everyone. Your team — warehouse or office — is set by admin, so the app opens the right screens and tracking for you. Password comes from the office on WhatsApp.</span></div>
   </div>`
+  askPermissionsOnce()
+  document.getElementById('le').onclick = () => {
+    const p = document.getElementById('lp'), b = document.getElementById('le'), show = p.type === 'password'
+    p.type = show ? 'text' : 'password'; b.innerHTML = ic(show ? 'eyeoff' : 'eye', 20); b.setAttribute('aria-label', show ? 'Hide password' : 'Show password')
+  }
   document.getElementById('lf').onsubmit = async (e) => {
     e.preventDefault()
     const b = document.getElementById('lb'); b.disabled = true; b.textContent = 'Logging in…'
-    try { me = await login(document.getElementById('lm').value.trim(), document.getElementById('lp').value.trim(), await deviceId()); await boot() }
-    catch (er) { renderLogin(er.message) }
+    const u = document.getElementById('lm').value.trim()
+    try { me = await login(u, document.getElementById('lp').value.trim(), await deviceId()); await boot() }
+    catch (er) { renderLogin(er.message, u) }
   }
 }
 

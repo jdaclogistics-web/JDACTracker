@@ -1,6 +1,8 @@
 // JDAC Tracker — API client (mobile + web दोनों यही use करते हैं)
 // API_URL build के समय VITE_API_URL से आता है.
 export const API_URL = (import.meta.env?.VITE_API_URL || 'http://localhost:8787').replace(/\/$/, '')
+// server URL build में नहीं डाला (अभी setup बाकी) — तो 'नेट नहीं है' की जगह साफ़ message
+export const SERVER_SET = !!import.meta.env?.VITE_API_URL
 
 const TKEY = 'jdac_token'
 const MKEY = 'jdac_me'
@@ -25,6 +27,7 @@ export async function api(method, path, body, { raw = false, timeout = 20000 } =
       signal: ctl.signal,
     })
   } catch {
+    if (!SERVER_SET && !import.meta.env?.DEV) throw new ApiError(0, 'Server अभी live नहीं है — setup पूरा होते ही login चलेगा')
     throw new ApiError(0, 'नेट नहीं है — data phone में सुरक्षित है')
   } finally { clearTimeout(t) }
   if (r.status === 401 && path !== '/api/login') { auth.clear(); window.dispatchEvent(new Event('jdac-logout')) }

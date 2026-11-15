@@ -70,3 +70,12 @@ export async function deviceId() {
   return id
 }
 export function openAppSettings() { if (isNative()) BackgroundGeolocation.openSettings().catch(() => {}) }
+
+/** App पहली बार खुलने पर Location + Camera permission माँगना (Android popup). दोबारा नहीं पूछता. */
+export async function askPermissionsOnce() {
+  if (!isNative()) return
+  if (await store.get('jdac_perm_asked')) return
+  await store.set('jdac_perm_asked', '1')
+  try { await Geolocation.requestPermissions({ permissions: ['location'] }) } catch { /* user ने मना किया — Start day पर फिर पूछेंगे */ }
+  try { await Camera.requestPermissions({ permissions: ['camera'] }) } catch { /* */ }
+}

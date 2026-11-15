@@ -33,9 +33,13 @@ function renderLogin(err = '') {
   app.innerHTML = `<div class="wlogin"><form class="card" id="lf">
     <div class="row"><div class="logo">JDAC</div><div><b style="font-size:17px">JDAC Tracker</b><div class="sub">Admin panel — HR · Boss · Developer</div></div></div>
     <label class="f" style="margin-top:18px">Username<input class="inp" id="lm" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. darshan" required></label>
-    <label class="f" style="margin-top:10px">Password<input class="inp" id="lp" type="password" autocomplete="current-password" required></label>
+    <label class="f" style="margin-top:10px">Password<span class="pwrap"><input class="inp" id="lp" type="password" autocomplete="current-password" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 18)}</button></span></label>
     ${err ? `<div class="err" style="margin-top:10px">${esc(err)}</div>` : ''}
     <button class="btn pri" id="lb" style="margin-top:14px">Login</button></form></div>`
+  document.getElementById('le').onclick = () => {
+    const p = document.getElementById('lp'), b = document.getElementById('le'), show = p.type === 'password'
+    p.type = show ? 'text' : 'password'; b.innerHTML = ic(show ? 'eyeoff' : 'eye', 18)
+  }
   document.getElementById('lf').onsubmit = async (e) => {
     e.preventDefault()
     const b = document.getElementById('lb'); b.disabled = true; b.textContent = 'Logging in…'
