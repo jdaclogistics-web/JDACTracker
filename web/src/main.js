@@ -32,14 +32,14 @@ function renderLogin(err = '') {
   cleanup()
   app.innerHTML = `<div class="wlogin"><form class="card" id="lf">
     <div class="row"><div class="logo">JDAC</div><div><b style="font-size:17px">JDAC Tracker</b><div class="sub">Admin panel — HR · Boss · Developer</div></div></div>
-    <label class="f" style="margin-top:18px">Mobile number<input class="inp" id="lm" inputmode="numeric" autocomplete="username" required></label>
+    <label class="f" style="margin-top:18px">Username<input class="inp" id="lm" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. darshan" required></label>
     <label class="f" style="margin-top:10px">Password<input class="inp" id="lp" type="password" autocomplete="current-password" required></label>
     ${err ? `<div class="err" style="margin-top:10px">${esc(err)}</div>` : ''}
     <button class="btn pri" id="lb" style="margin-top:14px">Login</button></form></div>`
   document.getElementById('lf').onsubmit = async (e) => {
     e.preventDefault()
     const b = document.getElementById('lb'); b.disabled = true; b.textContent = 'Logging in…'
-    try { me = await login(document.getElementById('lm').value, document.getElementById('lp').value.trim(), 'web'); await boot() }
+    try { me = await login(document.getElementById('lm').value.trim(), document.getElementById('lp').value.trim(), 'web'); await boot() }
     catch (er) { renderLogin(er.message) }
   }
 }
@@ -227,8 +227,8 @@ async function viewStaff(v) {
     const roles = me.role === 'developer' ? ['employee', 'hr', 'boss', 'developer'] : me.role === 'boss' ? ['employee', 'hr', 'boss'] : ['employee', 'hr']
     v.innerHTML = `
       <details class="card" id="new"><summary class="h3">${ic('plus', 18)} Add employee &amp; create login</summary>
-        <form id="nf" class="cform"><label class="f">Name<input class="inp" name="name" required></label><label class="f">Mobile<input class="inp" name="phone" inputmode="numeric" required></label>
-        <label class="f">Password<input class="inp" name="password" required minlength="6" placeholder="JDAC####"></label><label class="f">Team<select class="inp" name="team"><option>Warehouse</option><option selected>Office</option></select></label>
+        <form id="nf" class="cform"><label class="f">Name<input class="inp" name="name" required></label><label class="f">Mobile (optional)<input class="inp" name="phone" inputmode="numeric"></label>
+        <label class="f">Username (blank = from name)<input class="inp" name="username" autocapitalize="none" placeholder="auto"></label><label class="f">Password<input class="inp" name="password" required minlength="6" placeholder="JDAC####"></label><label class="f">Team<select class="inp" name="team"><option>Warehouse</option><option selected>Office</option></select></label>
         <label class="f">Designation<input class="inp" name="designation"></label><label class="f">Work location<input class="inp" name="work_location" placeholder="Pune Camp / Goa / Pune HO"></label>
         <label class="f">Shift in<input class="inp" type="time" name="shift_start" value="10:00"></label><label class="f">Shift out<input class="inp" type="time" name="shift_end" value="19:00"></label>
         <label class="f">Role<select class="inp" name="role">${roles.map((r) => `<option>${r}</option>`).join('')}</select></label>
@@ -236,10 +236,10 @@ async function viewStaff(v) {
       <div class="row"><input class="inp" id="q" placeholder="Search name / designation" style="max-width:320px"><span class="sub">${employees.filter((e) => e.active).length} active</span></div>
       <section class="card" style="padding:4px 14px"><div class="list" id="sl"></div></section>`
     const paint = (q = '') => {
-      v.querySelector('#sl').innerHTML = employees.filter((e) => !q || `${e.name} ${e.designation} ${e.phone}`.toLowerCase().includes(q)).map((e) => `
-        <details class="staff ${e.active ? '' : 'off'}"><summary class="li"><div class="av" style="background:${avColor(e.id)}1A;color:${avColor(e.id)}">${esc(initials(e.name))}</div><div class="nm"><b>${esc(e.name)}${e.active ? '' : ' (inactive)'}</b><span>${esc([e.designation, e.team, e.work_location].filter(Boolean).join(' · '))}</span></div><span class="pill ${e.role === 'employee' ? 'n' : 'p'}">${e.role}</span></summary>
+      v.querySelector('#sl').innerHTML = employees.filter((e) => !q || `${e.name} ${e.username} ${e.designation} ${e.phone}`.toLowerCase().includes(q)).map((e) => `
+        <details class="staff ${e.active ? '' : 'off'}"><summary class="li"><div class="av" style="background:${avColor(e.id)}1A;color:${avColor(e.id)}">${esc(initials(e.name))}</div><div class="nm"><b>${esc(e.name)}${e.active ? '' : ' (inactive)'}</b><span>@${esc(e.username)} · ${esc([e.designation, e.team, e.work_location].filter(Boolean).join(' · '))}</span></div><span class="pill ${e.role === 'employee' ? 'n' : 'p'}">${e.role}</span></summary>
         <form class="cform" data-id="${e.id}">
-          <label class="f">Name<input class="inp" name="name" value="${esc(e.name)}"></label><label class="f">Designation<input class="inp" name="designation" value="${esc(e.designation || '')}"></label>
+          <label class="f">Name<input class="inp" name="name" value="${esc(e.name)}"></label><label class="f">Username<input class="inp" name="username" value="${esc(e.username)}" autocapitalize="none"></label><label class="f">Mobile<input class="inp" name="phone" value="${esc(e.phone || '')}" inputmode="numeric"></label><label class="f">Designation<input class="inp" name="designation" value="${esc(e.designation || '')}"></label>
           <label class="f">Team<select class="inp" name="team"><option ${e.team === 'Warehouse' ? 'selected' : ''}>Warehouse</option><option ${e.team === 'Office' ? 'selected' : ''}>Office</option></select></label><label class="f">Work location<input class="inp" name="work_location" value="${esc(e.work_location || '')}"></label>
           <label class="f">Shift in<input class="inp" type="time" name="shift_start" value="${esc(e.shift_start)}"></label><label class="f">Shift out<input class="inp" type="time" name="shift_end" value="${esc(e.shift_end)}"></label>
           ${e.id !== me.id ? `<label class="f">Role<select class="inp" name="role">${[...new Set([...roles, e.role])].map((r) => `<option ${e.role === r ? 'selected' : ''} ${roles.includes(r) ? '' : 'disabled'}>${r}</option>`).join('')}</select></label>
@@ -250,7 +250,7 @@ async function viewStaff(v) {
       v.querySelectorAll('form[data-id]').forEach((f) => (f.onsubmit = async (ev) => {
         ev.preventDefault()
         const fd = new FormData(f), b = {}
-        for (const k of ['name', 'designation', 'team', 'work_location', 'shift_start', 'shift_end', 'role']) if (fd.has(k)) b[k] = fd.get(k)
+        for (const k of ['name', 'username', 'phone', 'designation', 'team', 'work_location', 'shift_start', 'shift_end', 'role']) if (fd.has(k)) b[k] = fd.get(k)
         if (fd.get('new_password')) b.new_password = fd.get('new_password')
         if (f.querySelector('[name=active]')) b.active = !!fd.get('active')
         if (fd.get('unlink_device')) b.unlink_device = true
@@ -261,7 +261,7 @@ async function viewStaff(v) {
     v.querySelector('#q').oninput = (e) => paint(e.target.value.toLowerCase())
     v.querySelector('#nf').onsubmit = async (ev) => {
       ev.preventDefault()
-      try { await post('/api/admin/employees', Object.fromEntries(new FormData(ev.target))); toast('Login created'); viewStaff(v) } catch (er) { toast(er.message, 'bad') }
+      try { const r = await post('/api/admin/employees', Object.fromEntries(new FormData(ev.target))); toast('Login created — username: ' + r.username); viewStaff(v) } catch (er) { toast(er.message, 'bad') }
     }
   } catch (e) { fail(v, e) }
 }

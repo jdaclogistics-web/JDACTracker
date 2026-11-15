@@ -43,7 +43,7 @@ function renderLogin(err = '') {
     <h1>Welcome to<br>JDAC Work</h1>
     <p class="lead">Attendance, tracking and leave — one app.</p>
     <form id="lf" class="lform">
-      <label class="lf">Mobile number<span class="lin"><b>+91</b><input id="lm" inputmode="numeric" autocomplete="username" placeholder="98765 43210" required></span></label>
+      <label class="lf">Username<span class="lin"><input id="lm" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="जैसे rahul" required></span></label>
       <label class="lf">Password<span class="lin">${ic('lock', 18)}<input id="lp" type="password" autocomplete="current-password" placeholder="JDAC####" required></span></label>
       ${err ? `<div class="err">${esc(err)}</div>` : ''}
       <button class="btn pri" id="lb" style="margin-top:6px;font-size:16px">Login</button>
@@ -53,7 +53,7 @@ function renderLogin(err = '') {
   document.getElementById('lf').onsubmit = async (e) => {
     e.preventDefault()
     const b = document.getElementById('lb'); b.disabled = true; b.textContent = 'Logging in…'
-    try { me = await login(document.getElementById('lm').value, document.getElementById('lp').value.trim(), await deviceId()); await boot() }
+    try { me = await login(document.getElementById('lm').value.trim(), document.getElementById('lp').value.trim(), await deviceId()); await boot() }
     catch (er) { renderLogin(er.message) }
   }
 }

@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS employees (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   legacy_id     INTEGER UNIQUE,                         -- पुराने JDAC tracker का people.id
   name          TEXT NOT NULL,
-  phone         TEXT NOT NULL UNIQUE,                   -- 10 अंक, login ID
+  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,    -- login ID, जैसे JDAC1013
+  phone         TEXT UNIQUE,                            -- 10 अंक mobile (optional)
   pass_hash     TEXT NOT NULL,                          -- pbkdf2$iter$salt$hash
   role          TEXT NOT NULL DEFAULT 'employee' CHECK (role IN ('employee','hr','boss','developer')),
   team          TEXT NOT NULL DEFAULT 'Office'   CHECK (team IN ('Warehouse','Office')),
@@ -29,7 +30,8 @@ CREATE TABLE IF NOT EXISTS employees (
   device_id     TEXT,
   token_version INTEGER NOT NULL DEFAULT 0,             -- बढ़ाने पर सारे पुराने login बंद
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  CHECK (length(phone) = 10)
+  CHECK (phone IS NULL OR length(phone) = 10),
+  CHECK (length(username) BETWEEN 3 AND 30)
 );
 
 CREATE TABLE IF NOT EXISTS day_sessions (

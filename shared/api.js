@@ -38,8 +38,8 @@ export const get = (p) => api('GET', p)
 export const post = (p, b) => api('POST', p, b || {})
 export const patch = (p, b) => api('PATCH', p, b || {})
 
-export async function login(phone, password, device_id) {
-  const r = await post('/api/login', { phone, password, device_id })
+export async function login(username, password, device_id) {
+  const r = await post('/api/login', { username, password, device_id })
   auth.save(r.token, r.me)
   return r.me
 }

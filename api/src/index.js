@@ -24,7 +24,7 @@ function cors(env, req) {
 }
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...extra } })
 async function body(req) { try { return await req.json() } catch { return {} } }
-const pub = (e) => e && ({ id: e.id, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id })
+const pub = (e) => e && ({ id: e.id, username: e.username, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id })
 
 async function audit(env, actor, action, tbl, rowId, oldData, newData) {
   await env.DB.prepare('INSERT INTO audit_log (actor, action, tbl, row_id, old_data, new_data) VALUES (?,?,?,?,?,?)')
@@ -79,11 +79,19 @@ on('GET', '/api/health', async (env) => {
 // ── Login ───────────────────────────────────────────────────────────────
 on('POST', '/api/login', async (env, req) => {
   const b = await body(req)
-  const phone = phone10(b.phone)
-  if (phone.length !== 10 || !b.password) throw bad('Mobile number और password डालें')
-  const me = await env.DB.prepare('SELECT * FROM employees WHERE phone = ?').bind(phone).first()
-  if (!me || !me.active || !(await verifyPassword(String(b.password).trim(), me.pass_hash))) throw new HttpError(401, 'Mobile या password गलत है')
-  if (b.device_id && !me.device_id) await env.DB.prepare('UPDATE employees SET device_id = ? WHERE id = ?').bind(String(b.device_id).slice(0, 100), me.id).run()
+  const id = String(b.username ?? b.phone ?? '').trim()
+  if (!id || !b.password) throw bad('Username और password डालें')
+  // username (JDAC1013) से login; पुराने app के लिए 10 अंक mobile भी चलेगा
+  const ph = phone10(id)
+  const me = await env.DB.prepare('SELECT * FROM employees WHERE username = ? COLLATE NOCASE OR (? <> \'\' AND phone = ?)').bind(id, ph.length === 10 ? ph : '', ph).first()
+  if (!me || !me.active || !(await verifyPassword(String(b.password).trim(), me.pass_hash))) throw new HttpError(401, 'Username या password गलत है')
+  // Phone lock: app login पहली बार जिस phone से हुआ उसी से चलेगा (developer login पर हमेशा लागू).
+  // Web panel (device_id 'web') पर lock नहीं; दूसरा phone चाहिए तो Developer panel → Unlink phone.
+  const dev = b.device_id ? String(b.device_id).slice(0, 100) : ''
+  if (dev && dev !== 'web') {
+    if (!me.device_id) await env.DB.prepare('UPDATE employees SET device_id = ? WHERE id = ?').bind(dev, me.id).run()
+    else if (me.device_id !== dev && me.role === 'developer') throw new HttpError(403, 'यह developer login सिर्फ registered phone पर चलेगा')
+  }
   const token = await signToken({ sub: me.id, tv: me.token_version, exp: Date.now() + TOKEN_DAYS * 86400000 }, env.TOKEN_SECRET)
   return json({ token, me: pub(me) })
 })
@@ -334,16 +342,24 @@ function roleAllowed(me, role) {
 on('POST', '/api/admin/employees', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
-  const phone = phone10(b.phone)
-  if (phone.length !== 10 || !b.name || !b.password || String(b.password).length < 6) throw bad('नाम, 10 अंक mobile और कम से कम 6 अक्षर password')
+  const phone = b.phone ? phone10(b.phone) : ''
+  if ((phone && phone.length !== 10) || !b.name || !b.password || String(b.password).length < 6) throw bad('नाम और कम से कम 6 अक्षर password डालें (mobile हो तो 10 अंक)')
   const role = b.role || 'employee'
   if (!roleAllowed(me, role)) throw new HttpError(403, 'यह role आप नहीं दे सकते')
+  // username = नाम से (Atmaram Sambhaji Malik → atmaram), पहले से हो तो atmaram2, atmaram3…
+  let username = String(b.username || '').trim().toLowerCase().replace(/\s+/g, '')
+  if (!username) {
+    const base = String(b.name).trim().toLowerCase().split(/\s+/)[0].replace(/[^a-z0-9]/g, '') || 'user'
+    username = base
+    for (let i = 2; await env.DB.prepare('SELECT 1 FROM employees WHERE username = ? COLLATE NOCASE').bind(username).first(); i++) username = base + i
+  }
+  if (!/^[a-z0-9._-]{3,30}$/.test(username)) throw bad('Username में सिर्फ अंग्रेज़ी अक्षर/नंबर (बिना space)')
   try {
-    await env.DB.prepare('INSERT INTO employees (name, phone, pass_hash, role, team, designation, department, work_location, shift_start, shift_end, joining_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-      .bind(String(b.name).trim(), phone, await hashPassword(String(b.password)), role, b.team === 'Warehouse' ? 'Warehouse' : 'Office', b.designation || null, b.department || null, b.work_location || null, b.shift_start || '10:00', b.shift_end || '19:00', b.joining_date || null).run()
-  } catch (e) { if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'यह mobile पहले से है'); throw e }
-  await audit(env, me.id, 'employee_create', 'employees', phone, null, { name: b.name, role, team: b.team })
-  return json({ ok: true })
+    await env.DB.prepare('INSERT INTO employees (username, name, phone, pass_hash, role, team, designation, department, work_location, shift_start, shift_end, joining_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+      .bind(username, String(b.name).trim(), phone || null, await hashPassword(String(b.password)), role, b.team === 'Warehouse' ? 'Warehouse' : 'Office', b.designation || null, b.department || null, b.work_location || null, b.shift_start || '10:00', b.shift_end || '19:00', b.joining_date || null).run()
+  } catch (e) { if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'यह username या mobile पहले से है'); throw e }
+  await audit(env, me.id, 'employee_create', 'employees', username, null, { username, name: b.name, role, team: b.team })
+  return json({ ok: true, username })
 })
 on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   const me = await authUser(env, req); needAdmin(me)
@@ -352,6 +368,8 @@ on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   if (!e) throw new HttpError(404, 'Not found')
   if (!roleAllowed(me, e.role)) throw new HttpError(403, 'यह login आप नहीं बदल सकते')
   const patch = {}
+  if ('username' in b && b.username) { const u = String(b.username).trim().toLowerCase().replace(/\s+/g, ''); if (!/^[a-z0-9._-]{3,30}$/.test(u)) throw bad('Username में सिर्फ अंग्रेज़ी अक्षर/नंबर (बिना space)'); patch.username = u }
+  if ('phone' in b) { const ph = b.phone ? phone10(b.phone) : ''; if (ph && ph.length !== 10) throw bad('Mobile 10 अंक'); patch.phone = ph || null }
   for (const k of ['name', 'designation', 'department', 'work_location', 'shift_start', 'shift_end', 'joining_date']) if (k in b) patch[k] = b[k] === '' ? null : b[k]
   if ('team' in b) patch.team = b.team === 'Warehouse' ? 'Warehouse' : 'Office'
   if ('role' in b && b.role !== e.role) {

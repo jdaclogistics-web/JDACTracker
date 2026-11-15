@@ -12,3 +12,6 @@ mobile/ios/
 *.apk
 *.keystore
 *.jks
+seed-out/
+employees*.csv
+logins*.csv

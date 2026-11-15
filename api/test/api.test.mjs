@@ -13,15 +13,15 @@ const call = async (method, path, body, token) => {
 let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; console.log('  ✔', m) }
 
 const h = await hashPassword('JDAC1234')
-await DB.prepare("INSERT INTO employees (name, phone, pass_hash, role, team, work_location) VALUES ('Rahul','9876543210',?, 'employee','Warehouse','Pune Camp'), ('Nameera','9000000001',?, 'hr','Office','Pune HO'), ('Darshan','9000000002',?, 'developer','Office',NULL)").bind(h, h, h).run()
+await DB.prepare("INSERT INTO employees (username, name, phone, pass_hash, role, team, work_location) VALUES ('rahul','Rahul','9876543210',?, 'employee','Warehouse','Pune Camp'), ('nameera','Nameera','9000000001',?, 'hr','Office','Pune HO'), ('darshan','Darshan',NULL,?, 'developer','Office',NULL)").bind(h, h, h).run()
 
 console.log('Login')
-ok((await call('POST', '/api/login', { phone: '9876543210', password: 'wrong' })).status === 401, 'wrong password rejected')
-const L = await call('POST', '/api/login', { phone: '+91 98765 43210', password: 'JDAC1234', device_id: 'dev-1' })
+ok((await call('POST', '/api/login', { username: 'rahul', password: 'wrong' })).status === 401, 'wrong password rejected')
+const L = await call('POST', '/api/login', { username: 'Rahul', password: 'JDAC1234', device_id: 'dev-1' })
 ok(L.status === 200 && L.data.token, 'login with +91 format works')
 const T = L.data.token
 const HR = (await call('POST', '/api/login', { phone: '9000000001', password: 'JDAC1234' })).data.token
-const DEV = (await call('POST', '/api/login', { phone: '9000000002', password: 'JDAC1234' })).data.token
+const DEV = (await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234' })).data.token
 ok((await call('GET', '/api/admin/today', null, T)).status === 403, 'employee cannot open admin')
 
 console.log('Day + GPS')
@@ -75,10 +75,15 @@ ok(ph.status === 200 && Buffer.from(ph.data).toString() === 'fakejpegdata', 'HR 
 
 console.log('Roles')
 ok((await call('POST', '/api/admin/employees', { name: 'X', phone: '9111111111', password: 'abcdef', role: 'boss' }, HR)).status === 403, 'HR cannot create a boss login')
-ok((await call('POST', '/api/admin/employees', { name: 'Ashish', phone: '9111111111', password: 'abcdef', team: 'Warehouse' }, HR)).status === 200, 'HR creates employee login')
+{ const c = await call('POST', '/api/admin/employees', { name: 'Ashish', phone: '9111111111', password: 'abcdef', team: 'Warehouse' }, HR); ok(c.status === 200 && c.data.username === 'ashish', 'HR creates employee login with auto username ' + c.data.username) }
+ok((await call('POST', '/api/login', { username: 'ashish', password: 'abcdef' })).status === 200, 'new employee logs in with username')
+ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'dev-phone-A' })).status === 200, 'developer phone A links')
+ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'dev-phone-B' })).status === 403, 'developer blocked on another phone')
+ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'web' })).status === 200, 'developer web panel still works')
+{ const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'ashish2', 'duplicate name gets ashish2') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
-ok(sys.status === 200 && sys.data.employees === 4, 'developer system panel works')
+ok(sys.status === 200 && sys.data.employees === 5, 'developer system panel works')
 
 console.log('End day + correction')
 const E1 = await call('POST', '/api/day/end', { lat: 18.56, lng: 73.86, client_id: 'end1' }, T)
