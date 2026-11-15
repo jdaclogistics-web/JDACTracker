@@ -2,6 +2,7 @@ import '@shared/theme.css'
 import './mobile.css'
 import { auth, login, logout, get, post, ApiError } from '@shared/api.js'
 import { esc, istDate, istShift, fmtTime, fmtDate, duration, agoText, toast, ic, initials, uuid } from '@shared/util.js'
+import { liveUpdate, BUILD } from './liveupdate.js'
 import { currentPosition, takeSelfie, deviceId, isNative, openAppSettings, askPermissionsOnce } from './native.js'
 import { startTracking, stopTracking, setFieldMode, trackingState, onTracking } from './tracking.js'
 import { flush, queueSize, onQueueChange, lastSyncAt } from './queue.js'
@@ -268,13 +269,15 @@ function renderMe(v) {
   v.innerHTML = `
   <section class="card"><div class="row"><div class="av" style="background:#F59E0B;color:#0B1220;border-radius:50%;width:52px;height:52px;font-size:17px">${esc(initials(me.name))}</div>
     <div class="nm"><b style="font-size:17px">${esc(me.name)}</b><span>${esc(me.designation || '')}</span><span>${esc(me.team)} team${me.work_location ? ' · ' + esc(me.work_location) : ''}</span></div></div>
-    <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>+91</b><span>${esc(me.phone)}</span></div></div></section>
+    <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>@${esc(me.username || '')}</b><span>${me.phone ? '+91 ' + esc(me.phone) : 'username'}</span></div></div></section>
   ${admin ? `<section class="card tip">${ic('shield', 20, '#6D28D9')}<div><b>Admin panel</b><p>HR / Boss / Developer panels open on the web panel link shared by office.</p></div></section>` : ''}
   <section class="card" style="padding:4px 14px"><div class="list">
     ${isNative() ? `<button class="li" id="perm">${ic('battery', 20, '#3A4558')}<div class="nm"><b>Tracking settings</b><span>Battery unrestricted, location always</span></div>${ic('chev', 18, '#9AA4B5')}</button>` : ''}
     <button class="li" id="sync2">${ic('refresh', 20, '#3A4558')}<div class="nm"><b>Send pending data now</b><span>${pending} GPS points waiting${lastSyncAt ? ' · last sent ' + agoText(lastSyncAt) : ''}</span></div></button>
+    ${isNative() ? `<button class="li" id="upd">${ic('download', 20, '#3A4558')}<div class="nm"><b>Check for app update</b><span>नया version हो तो अपने आप लग जाएगा</span></div></button>` : ''}
     <button class="li" id="out" style="color:#B91C1C">${ic('logout', 20, '#B91C1C')}<div class="nm"><b>Logout</b></div></button></div></section>
-  <p class="sub" style="text-align:center">JDAC Tracker · v1.0</p>`
+  <p class="sub" style="text-align:center">JDAC Tracker · build ${esc(BUILD)}</p>`
+  v.querySelector('#upd')?.addEventListener('click', async () => { toast('Update check हो रहा है…'); await liveUpdate({ onStatus: (t) => toast(t) }); toast('App latest है') })
   v.querySelector('#perm')?.addEventListener('click', openAppSettings)
   v.querySelector('#sync2').onclick = async () => { await flush(); toast(pending ? `${pending} still waiting — no internet?` : 'All data sent'); render() }
   v.querySelector('#out').onclick = async () => {
@@ -290,3 +293,5 @@ document.addEventListener('visibilitychange', async () => {
 })
 
 boot()
+liveUpdate({ onStatus: (t) => toast(t) })
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') liveUpdate({ onStatus: (t) => toast(t) }) })
