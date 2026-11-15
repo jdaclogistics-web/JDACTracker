@@ -5,12 +5,12 @@ compatibility_date = "2025-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "jdac-tracker"
-database_id = "PUT-D1-DATABASE-ID-HERE"
+database_id = "e25d1210-9df2-40c6-a5e5-53aaedd2bac4"
 
 [triggers]
 crons = ["*/5 * * * *"]
 
 [vars]
-ALLOWED_ORIGINS = "https://jdaclogistics-web.github.io,capacitor://localhost,https://localhost,http://localhost:5173,http://localhost:5174"
+ALLOWED_ORIGINS = "*"
 SUPABASE_URL = ""
 # Secrets (never commit): wrangler secret put TOKEN_SECRET ; wrangler secret put SUPABASE_SERVICE_KEY

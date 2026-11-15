@@ -1,8 +1,9 @@
 // JDAC Tracker — API client (mobile + web दोनों यही use करते हैं)
 // API_URL build के समय VITE_API_URL से आता है.
-export const API_URL = (import.meta.env?.VITE_API_URL || 'http://localhost:8787').replace(/\/$/, '')
-// server URL build में नहीं डाला (अभी setup बाकी) — तो 'नेट नहीं है' की जगह साफ़ message
-export const SERVER_SET = !!import.meta.env?.VITE_API_URL
+// Live server (Cloudflare Worker). Local test के लिए VITE_API_URL=http://localhost:8787 रखें.
+export const LIVE_API = 'https://jdac-tracker-api.jdaclogistics.workers.dev'
+export const API_URL = (import.meta.env?.VITE_API_URL || LIVE_API).replace(/\/$/, '')
+export const SERVER_SET = true
 
 const TKEY = 'jdac_token'
 const MKEY = 'jdac_me'
