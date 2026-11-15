@@ -591,24 +591,56 @@ on('POST', '/api/setup/import-modules', async (env, req) => {
   return importRows(env, b)
 })
 
-// ── Old data (पुराने system के modules) — सिर्फ Boss / Developer ────────────────
-const needBossOrDev = (me) => { if (!['boss', 'developer'].includes(me.role)) throw new HttpError(403, 'Boss / Developer only') }
+// ── Old data (पुराने system के modules) ─────────────────────────────────────────
+// Boss/Developer: सब modules. HR: HR वाले modules (finance/P&L नहीं). दोनों नया record जोड़ और बदल सकते हैं (audit के साथ).
+const HR_TABLES = new Set(['hr_companies', 'hr_employees', 'hr_invoices', 'hr_invoice_lines', 'hr_activity_log', 'salary_records', 'notices', 'notice_reads', 'daily_reports', 'day_entries', 'tasks', 'task_checklist', 'task_events', 'task_comments', 'projects', 'project_members', 'expense_claims', 'employee_desks', 'desks', 'quiz_attempts'])
+const canTable = (me, tbl) => ['boss', 'developer'].includes(me.role) || (me.role === 'hr' && HR_TABLES.has(tbl))
 on('GET', '/api/legacy/tables', async (env, req) => {
-  const me = await authUser(env, req); needBossOrDev(me)
+  const me = await authUser(env, req); needAdmin(me)
   const { results } = await env.DB.prepare('SELECT tbl, count(*) AS n FROM legacy_records GROUP BY tbl ORDER BY tbl').all()
-  return json({ tables: results })
+  return json({ tables: results.filter((t) => canTable(me, t.tbl)) })
 })
 on('GET', '/api/legacy/rows', async (env, req, url) => {
-  const me = await authUser(env, req); needBossOrDev(me)
+  const me = await authUser(env, req); needAdmin(me)
   const tbl = url.searchParams.get('tbl') || ''
+  if (!canTable(me, tbl)) throw new HttpError(403, 'यह data आपके लिए नहीं है')
   const q = (url.searchParams.get('q') || '').trim()
   const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0)
-  const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
+  const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get('limit')) || 200))
   const where = q ? 'tbl = ? AND data LIKE ?' : 'tbl = ?'
   const args = q ? [tbl, `%${q}%`] : [tbl]
   const total = (await env.DB.prepare(`SELECT count(*) AS n FROM legacy_records WHERE ${where}`).bind(...args).first()).n
-  const { results } = await env.DB.prepare(`SELECT legacy_id, data FROM legacy_records WHERE ${where} ORDER BY CAST(legacy_id AS INTEGER) DESC, legacy_id DESC LIMIT ? OFFSET ?`).bind(...args, limit, offset).all()
-  return json({ tbl, total, offset, rows: results.map((r) => JSON.parse(r.data)) })
+  const { results } = await env.DB.prepare(`SELECT legacy_id, data FROM legacy_records WHERE ${where} ORDER BY CASE WHEN legacy_id LIKE 'n%' THEN 1 ELSE 0 END DESC, legacy_id DESC, CAST(legacy_id AS INTEGER) DESC LIMIT ? OFFSET ?`).bind(...args, limit, offset).all()
+  return json({ tbl, total, offset, rows: results.map((r) => ({ ...JSON.parse(r.data), _rid: r.legacy_id })) })
+})
+const cleanData = (d) => {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) throw bad('data?')
+  const o = {}
+  for (const [k, v] of Object.entries(d)) { if (k === '_rid' || !/^[A-Za-z0-9_]{1,40}$/.test(k)) continue; o[k] = v === '' ? null : v }
+  const t = JSON.stringify(o); if (t.length > 20000) throw bad('बहुत बड़ा record')
+  return o
+}
+on('POST', '/api/legacy/rows', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req)
+  if (!/^[a-z_]{2,40}$/.test(b.tbl || '') || !canTable(me, b.tbl)) throw new HttpError(403, 'यह data आपके लिए नहीं है')
+  const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
+  const d = { ...cleanData(b.data), id, createdAt: nowIso(), createdBy_name: me.name }
+  await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind(b.tbl, id, JSON.stringify(d)).run()
+  await audit(env, me.id, 'record_add', b.tbl, id, null, d)
+  return json({ ok: true, id })
+})
+on('PATCH', '/api/legacy/rows', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req)
+  if (!canTable(me, b.tbl || '')) throw new HttpError(403, 'यह data आपके लिए नहीं है')
+  const old = await env.DB.prepare('SELECT data FROM legacy_records WHERE tbl = ? AND legacy_id = ?').bind(b.tbl, String(b.id)).first()
+  if (!old) throw new HttpError(404, 'Record नहीं मिला')
+  const prev = JSON.parse(old.data)
+  const d = { ...prev, ...cleanData(b.data), id: prev.id, updatedAt: nowIso(), updatedBy_name: me.name }
+  await env.DB.prepare('UPDATE legacy_records SET data = ? WHERE tbl = ? AND legacy_id = ?').bind(JSON.stringify(d), b.tbl, String(b.id)).run()
+  await audit(env, me.id, 'record_edit', b.tbl, String(b.id), prev, d)
+  return json({ ok: true })
 })
 
 // Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है

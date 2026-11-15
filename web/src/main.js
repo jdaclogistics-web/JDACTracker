@@ -8,9 +8,9 @@ import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials,
 const app = document.getElementById('app')
 let me = null, tab = 'home', timer = null, map = null
 const ROLE_TABS = {
-  hr: [['home', 'Home', 'home'], ['people', 'Attendance', 'cal'], ['live', 'Live map', 'pin'], ['leaves', 'Leave', 'check'], ['staff', 'Employees', 'users'], ['report', 'Month sheet', 'download']],
-  boss: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Staff', 'user'], ['report', 'Reports', 'download'], ['old', 'Old data', 'grid'], ['audit', 'Audit', 'shield']],
-  developer: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Logins', 'lock'], ['report', 'Reports', 'download'], ['old', 'Old data', 'grid'], ['system', 'System', 'grid'], ['audit', 'Audit', 'shield']],
+  hr: [['home', 'Home', 'home'], ['people', 'Attendance', 'cal'], ['live', 'Live map', 'pin'], ['leaves', 'Leave', 'check'], ['staff', 'Employees', 'users'], ['report', 'Month sheet', 'download'], ['old', 'HR records', 'grid']],
+  boss: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Staff', 'user'], ['report', 'Reports', 'download'], ['biz', 'Business', 'chart'], ['old', 'Records', 'grid'], ['audit', 'Audit', 'shield']],
+  developer: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Logins', 'lock'], ['report', 'Reports', 'download'], ['biz', 'Business', 'chart'], ['old', 'Records', 'grid'], ['system', 'System', 'grid'], ['audit', 'Audit', 'shield']],
 }
 const ROLE_LABEL = { hr: 'HR panel', boss: 'Boss panel', developer: 'Developer · main access' }
 const ROLE_ACCENT = { hr: '#7C3AED', boss: '#059669', developer: '#0E7490' }
@@ -62,7 +62,7 @@ function render() {
   document.getElementById('out').onclick = () => { logout(); me = null; tab = 'home'; renderLogin() }
   app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render() }))
   const v = document.getElementById('view')
-  ;({ home: viewHome, people: viewPeople, live: viewLive, leaves: viewLeaves, staff: viewStaff, report: viewReport, old: viewOld, system: viewSystem, audit: viewAudit }[tab])(v)
+  ;({ home: viewHome, people: viewPeople, live: viewLive, leaves: viewLeaves, staff: viewStaff, report: viewReport, biz: viewBiz, old: viewOld, system: viewSystem, audit: viewAudit }[tab])(v)
 }
 const loading = (v) => { v.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>' }
 const fail = (v, e) => { v.innerHTML = `<div class="err">${esc(e.message)}</div>` }
@@ -141,6 +141,39 @@ function monthSummary(r) {
     <p class="sub">Working days so far: ${workDays} (Sundays off)</p></section>`
 }
 
+// ── Business (Boss): Sales, खर्च, Profit — Records → Vittiya (finance) से ────────
+const inr = (n) => '₹' + Math.round(n).toLocaleString('en-IN')
+async function viewBiz(v) {
+  loading(v)
+  try {
+    const all = async (tbl) => { const out = []; for (let o = 0; ; o += 1000) { const r = await get(`/api/legacy/rows?tbl=${tbl}&limit=1000&offset=${o}`); out.push(...r.rows); if (out.length >= r.total) return out } }
+    const [vit, bank, hrinv, ads] = await Promise.all([all('vittiya_entries'), all('bank_recon').catch(() => []), all('hr_invoices').catch(() => []), all('ad_metrics').catch(() => [])])
+    const months = [...new Set(vit.map((x) => x.month).filter(Boolean))].sort()
+    const sum = (sec, m) => vit.filter((x) => x.section === sec && (!m || x.month === m)).reduce((a, x) => a + Number(x.amount || 0), 0)
+    const rows = months.map((m) => { const sales = sum('sales', m), direct = sum('direct', m), fixed = sum('fixed', m); return { m, sales, direct, fixed, gross: sales - direct, net: sales - direct - fixed } })
+    const T = rows.reduce((a, x) => ({ sales: a.sales + x.sales, direct: a.direct + x.direct, fixed: a.fixed + x.fixed, net: a.net + x.net }), { sales: 0, direct: 0, fixed: 0, net: 0 })
+    const mlabel = (m) => fmtDate(m + '-01', { month: 'short', year: '2-digit' })
+    const max = Math.max(1, ...rows.map((x) => Math.max(x.sales, x.direct + x.fixed)))
+    const parts = (sec) => { const by = {}; vit.filter((x) => x.section === sec).forEach((x) => (by[x.particular] = (by[x.particular] || 0) + Number(x.amount || 0))); return Object.entries(by).sort((a, b) => b[1] - a[1]) }
+    const hrDue = hrinv.filter((x) => String(x.status).toLowerCase() !== 'paid').reduce((a, x) => a + Number(x.total || 0), 0)
+    const adSpend = ads.reduce((a, x) => a + Number(x.spend || 0), 0), adLeads = ads.reduce((a, x) => a + Number(x.leadsReceived || 0), 0)
+    v.innerHTML = `
+      <section class="card hero" style="background:#052e1c"><div class="hl">Net profit · ${months.length ? mlabel(months[0]) + ' – ' + mlabel(months[months.length - 1]) : '—'}</div>
+        <div class="hv">${inr(T.net)} <span>· ${T.sales ? Math.round((T.net / T.sales) * 100) : 0}% margin</span></div>
+        <div class="tiles"><div class="tile hd"><b>${inr(T.sales)}</b><span>Sales</span></div><div class="tile hd"><b>${inr(T.direct)}</b><span>Direct cost</span></div><div class="tile hd"><b>${inr(T.fixed)}</b><span>Fixed cost</span></div><div class="tile hd"><b>${inr(T.sales - T.direct)}</b><span>Gross profit</span></div></div></section>
+      <section class="card"><h2 class="h3">Month by month</h2>
+        <div class="bars">${rows.map((x) => `<div class="bm"><div class="bb"><i class="s" style="height:${(x.sales / max) * 100}%" title="Sales ${inr(x.sales)}"></i><i class="c" style="height:${((x.direct + x.fixed) / max) * 100}%" title="Cost ${inr(x.direct + x.fixed)}"></i></div><b class="${x.net >= 0 ? 'pos' : 'neg'}">${inr(x.net)}</b><span>${mlabel(x.m)}</span></div>`).join('')}</div>
+        <div class="legend"><span><i class="dot" style="background:#10B981"></i>Sales</span><span><i class="dot" style="background:#F87171"></i>Total cost</span><span>नीचे का अंक = Net profit</span></div>
+        <div class="sheet old" style="margin-top:10px"><table><thead><tr><th>Month</th><th>Sales</th><th>Direct</th><th>Gross profit</th><th>Fixed</th><th>Net profit</th><th>Margin</th></tr></thead><tbody>
+        ${rows.map((x) => `<tr><td>${mlabel(x.m)}</td><td>${inr(x.sales)}</td><td>${inr(x.direct)}</td><td>${inr(x.gross)}</td><td>${inr(x.fixed)}</td><td><b class="${x.net >= 0 ? 'pos' : 'neg'}">${inr(x.net)}</b></td><td>${x.sales ? Math.round((x.net / x.sales) * 100) : 0}%</td></tr>`).join('')}</tbody></table></div></section>
+      <div class="two" style="align-items:start">
+        <section class="card"><h2 class="h3">Sales by business</h2><div class="list">${parts('sales').map(([k, n]) => `<div class="li"><div class="nm"><b>${esc(k)}</b><span>${T.sales ? Math.round((n / T.sales) * 100) : 0}% of sales</span></div><b>${inr(n)}</b></div>`).join('')}</div></section>
+        <section class="card"><h2 class="h3">Biggest costs</h2><div class="list">${[...parts('direct'), ...parts('fixed')].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `<div class="li"><div class="nm"><b>${esc(k)}</b></div><b>${inr(n)}</b></div>`).join('')}</div></section></div>
+      <div class="tiles"><div class="tile wb"><b>${inr(hrDue)}</b><span>HR invoices unpaid</span></div><div class="tile wb"><b>${inr(adSpend)}</b><span>Ad spend</span></div><div class="tile wb"><b>${adLeads}</b><span>Ad leads</span></div><div class="tile wb"><b>${bank.length}</b><span>Bank recon months</span></div></div>
+      <p class="sub">Data: Records → Vittiya (finance). नया महीना जोड़ने के लिए Records → Vittiya (finance) → Add: section = sales / direct / fixed, particular, month (2026-09), amount.</p>`
+  } catch (e) { fail(v, e) }
+}
+
 // ── Old data: पुराने system के modules ─────────────────────────────────
 const OLD_LABEL = { tasks: 'Tasks', task_checklist: 'Task checklist', task_events: 'Task history', task_comments: 'Task comments', projects: 'Projects', project_members: 'Project members', daily_reports: 'Daily reports', day_entries: 'Day entries', notices: 'Notices', notice_reads: 'Notice replies', ad_leads: 'Ad leads', ad_campaigns: 'Ad campaigns', ad_sets: 'Ad sets', ad_metrics: 'Ad metrics', salary_records: 'Salary', expense_claims: 'Expense claims', company_expenses: 'Company expenses', invoices: 'Invoices', receivables: 'Receivables', hr_invoices: 'HR invoices', hr_invoice_lines: 'HR invoice lines', hr_companies: 'HR companies', hr_employees: 'HR employees', hr_activity_log: 'HR activity', inventory: 'Inventory', equipment_orders: 'Equipment orders', cargo_orders: 'Cargo orders', cargo_quotes: 'Cargo quotes', daily_bookings: 'Daily bookings', cse_targets: 'CSE targets', cse_call_logs: 'CSE call logs', incentive_rules: 'Incentive rules', vittiya_entries: 'Vittiya (finance)', bank_recon: 'Bank recon', social_posts: 'Social posts', chat_messages: 'Chat', desks: 'Desks', employee_desks: 'Employee desks', fmcg_products: 'FMCG products', form_defs: 'Forms', quiz_attempts: 'Quiz' }
 async function viewOld(v, tbl = null, q = '', offset = 0) {
@@ -155,10 +188,32 @@ async function viewOld(v, tbl = null, q = '', offset = 0) {
     v.innerHTML = `
       <div class="chips" style="flex-wrap:wrap">${tables.map((t) => `<button class="chip ${t.tbl === tbl ? 'on' : ''}" data-t="${esc(t.tbl)}">${esc(OLD_LABEL[t.tbl] || t.tbl)} ${t.n}</button>`).join('')}</div>
       <div class="row wrap" style="margin-top:8px"><input class="inp" id="oq" placeholder="Search…" value="${esc(q)}" style="max-width:280px"><span class="sub" style="margin:0">${r.total} records${r.total > 200 ? ` · ${offset + 1}–${Math.min(offset + 200, r.total)}` : ''}</span><span class="sp"></span>
-        ${offset > 0 ? '<button class="btn ghost sm" id="op">‹ Prev</button>' : ''}${offset + 200 < r.total ? '<button class="btn ghost sm" id="on">Next ›</button>' : ''}<button class="btn ghost sm" id="ocsv">${ic('download', 16)} CSV</button></div>
+        ${offset > 0 ? '<button class="btn ghost sm" id="op">‹ Prev</button>' : ''}${offset + 200 < r.total ? '<button class="btn ghost sm" id="on">Next ›</button>' : ''}<button class="btn pri sm" id="oadd">${ic('plus', 16, '#fff')} Add</button><button class="btn ghost sm" id="ocsv">${ic('download', 16)} CSV</button></div>
       <section class="card sheet old"><table><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>
-      ${r.rows.map((x) => `<tr>${cols.map((c) => `<td>${cell(x[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></section>
-      <p class="sub">पुराने JDAC tracker का data (सिर्फ देखने के लिए). बड़ी files/photos अलग रखी गई हैं.</p>`
+      ${r.rows.map((x, i) => `<tr class="orow" data-i="${i}">${cols.map((c) => `<td>${cell(x[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></section>
+      <p class="sub">पुराने JDAC tracker का data + नए records. किसी भी row पर click करके बदलें, या <b>Add</b> से नया जोड़ें. हर बदलाव Audit में आपके नाम से दर्ज होता है.</p>
+      <div id="oform"></div>`
+    const SKIP = new Set(['id', '_rid', 'orgKey', 'createdAt', 'updatedAt', 'createdBy_name', 'updatedBy_name'])
+    const formCols = cols.filter((c) => !SKIP.has(c) && !c.endsWith('_name'))
+    const openForm = (row) => {
+      const f = v.querySelector('#oform')
+      f.innerHTML = `<section class="card"><div class="row"><h2 class="h3">${row ? 'Edit record' : 'New record'} · ${esc(OLD_LABEL[tbl] || tbl)}</h2><span class="sp"></span><button class="link" id="ofx">Close</button></div>
+        <form class="cform" id="off">${formCols.map((c) => { const val = row?.[c]; const t = val == null ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val); return `<label class="f">${esc(c)}${t.length > 60 ? `<textarea class="inp" name="${esc(c)}" rows="3">${esc(t)}</textarea>` : `<input class="inp" name="${esc(c)}" value="${esc(t)}">`}</label>` }).join('')}
+        <button class="btn pri" style="grid-column:1/-1">${row ? 'Save changes' : 'Add record'}</button></form></section>`
+      f.scrollIntoView({ behavior: 'smooth' })
+      f.querySelector('#ofx').onclick = () => (f.innerHTML = '')
+      f.querySelector('#off').onsubmit = async (ev) => {
+        ev.preventDefault()
+        const data = {}
+        for (const [k, val] of new FormData(ev.target)) { const n = Number(val); data[k] = val === '' ? null : (val.trim() !== '' && !isNaN(n) && !/^0\d/.test(val) && typeof row?.[k] !== 'string') ? n : val }
+        try {
+          if (row) await patch('/api/legacy/rows', { tbl, id: row._rid, data }); else await post('/api/legacy/rows', { tbl, data })
+          toast(row ? 'Saved' : 'Added'); viewOld(v, tbl, q, offset)
+        } catch (er) { toast(er.message, 'bad') }
+      }
+    }
+    v.querySelector('#oadd').onclick = () => openForm(null)
+    v.querySelectorAll('.orow').forEach((tr) => (tr.onclick = () => openForm(r.rows[Number(tr.dataset.i)])))
     v.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => viewOld(v, b.dataset.t)))
     v.querySelector('#oq').onchange = (e) => viewOld(v, tbl, e.target.value)
     v.querySelector('#op')?.addEventListener('click', () => viewOld(v, tbl, q, offset - 200))
