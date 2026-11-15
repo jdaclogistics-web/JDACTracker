@@ -13,3 +13,13 @@ tasks.register('jdacBuildWeb', Exec) {
     }
 }
 tasks.named('preBuild') { dependsOn 'jdacBuildWeb' }
+
+// Android Studio वाला debug APK भी उसी key से sign हो जो GitHub वाले APK की है —
+// ताकि दोनों एक-दूसरे के ऊपर install हो सकें (uninstall की ज़रूरत नहीं).
+def jdacKey = new File(jdacMobileDir, 'keystore/jdac-app.jks')
+if (jdacKey.exists()) {
+    android.signingConfigs.debug.storeFile = jdacKey
+    android.signingConfigs.debug.storePassword = 'jdacapp123'
+    android.signingConfigs.debug.keyAlias = 'jdac'
+    android.signingConfigs.debug.keyPassword = 'jdacapp123'
+}

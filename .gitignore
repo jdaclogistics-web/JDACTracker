@@ -11,7 +11,7 @@ mobile/ios/
 *dump*.sql
 *.apk
 *.keystore
-*.jks
+!mobile/keystore/jdac-app.jks
 seed-out/
 employees*.csv
 logins*.csv
