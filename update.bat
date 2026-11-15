@@ -6,7 +6,7 @@ where git >nul 2>nul || (echo Git install nahi hai. CMD me chalao: winget instal
 if not exist .git (
   echo Pehli baar: is folder ko GitHub repo se jod rahe hain...
   git init -b main || goto err
-  git remote add origin https://github.com/jdaclogistics-web/JDACTracker-.git
+  git remote add origin https://github.com/jdaclogistics-web/JDACTracker.git
 )
 echo GitHub se naya code aa raha hai...
 git fetch origin main || goto err

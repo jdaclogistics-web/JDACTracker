@@ -275,7 +275,7 @@ function renderMe(v) {
   <section class="card" style="padding:4px 14px"><div class="list">
     ${isNative() ? `<button class="li" id="perm">${ic('battery', 20, '#3A4558')}<div class="nm"><b>Tracking settings</b><span>Battery unrestricted, location always</span></div>${ic('chev', 18, '#9AA4B5')}</button>` : ''}
     <button class="li" id="sync2">${ic('refresh', 20, '#3A4558')}<div class="nm"><b>Send pending data now</b><span>${pending} GPS points waiting${lastSyncAt ? ' · last sent ' + agoText(lastSyncAt) : ''}</span></div></button>
-    <a class="li" href="https://github.com/jdaclogistics-web/JDACTracker-/releases/download/apk-latest/JDAC-Tracker.apk" target="_blank" rel="noopener">${ic('download', 20, '#3A4558')}<div class="nm"><b>Download latest APK</b><span>नया phone या app दोबारा install करना हो तो</span></div></a>
+    <a class="li" href="https://github.com/jdaclogistics-web/JDACTracker/releases/download/apk-latest/JDAC-Tracker.apk" target="_blank" rel="noopener">${ic('download', 20, '#3A4558')}<div class="nm"><b>Download latest APK</b><span>नया phone या app दोबारा install करना हो तो</span></div></a>
     ${isNative() ? `<button class="li" id="upd">${ic('download', 20, '#3A4558')}<div class="nm"><b>Check for app update</b><span>नया version हो तो अपने आप लग जाएगा</span></div></button>` : ''}
     <button class="li" id="out" style="color:#B91C1C">${ic('logout', 20, '#B91C1C')}<div class="nm"><b>Logout</b></div></button></div></section>
   <p class="sub" style="text-align:center">JDAC Tracker · build ${esc(BUILD)}</p>`

@@ -3,7 +3,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 
 const Updater = registerPlugin('CapacitorUpdater')
-const FEED = 'https://raw.githubusercontent.com/jdaclogistics-web/JDACTracker-/live/version.json'
+const FEED = 'https://raw.githubusercontent.com/jdaclogistics-web/JDACTracker/live/version.json'
 export const BUILD = import.meta.env?.VITE_BUILD || 'dev'
 
 export async function liveUpdate({ onStatus } = {}) {

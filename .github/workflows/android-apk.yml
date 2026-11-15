@@ -1,6 +1,6 @@
 name: Android APK
 # हर बदलाव पर APK बनाकर GitHub Release "apk-latest" में डालता है —
-# phone पर सीधा link: https://github.com/jdaclogistics-web/JDACTracker-/releases/download/apk-latest/JDAC-Tracker.apk
+# phone पर सीधा link: https://github.com/jdaclogistics-web/JDACTracker/releases/download/apk-latest/JDAC-Tracker.apk
 on:
   push: { branches: [main], paths: ['mobile/**', 'shared/**', '.github/workflows/android-apk.yml'] }
   workflow_dispatch:
