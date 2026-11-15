@@ -562,11 +562,11 @@ on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
 // One-time import window: /api/setup/import बिना login चलता है जब तक 'legacy_import_done' set नहीं होता.
 // kind:'done' भेजते ही हमेशा के लिए बंद. उसके बाद सिर्फ developer login से /api/dev/import.
 on('POST', '/api/setup/import', async (env, req) => {
-  const done = await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_import_done'").first()
+  const done = await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_import2_done'").first()
   if (done) throw new HttpError(403, 'Import window closed')
   const b = await body(req)
   if (b.kind === 'done') {
-    await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('legacy_import_done', ?)").bind(nowIso()).run()
+    await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('legacy_import2_done', ?)").bind(nowIso()).run()
     await audit(env, null, 'legacy_import_done', 'app_settings', null, null, null)
     return json({ ok: true, closed: true })
   }
@@ -574,7 +574,7 @@ on('POST', '/api/setup/import', async (env, req) => {
 })
 // Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है
 on('GET', '/api/setup/import-page', async (env) => {
-  const done = await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_import_done'").first()
+  const done = await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_import2_done'").first()
   if (done) return new Response('Import window closed', { status: 403 })
   const html = `<!doctype html><meta charset=utf-8><title>JDAC import</title><body style="font:15px system-ui;padding:24px">
 <h2>JDAC Tracker — old data import</h2><input type=file id=f accept=".json"><pre id=o></pre>
