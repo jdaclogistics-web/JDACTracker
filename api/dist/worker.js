@@ -558,6 +558,48 @@ on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   return json({ ok: true })
 })
 
+// ── Developer: पुराने tracker का data import (दोबारा चलाना safe — legacy_id/client_id से duplicate नहीं) ──
+// One-time import window: /api/setup/import बिना login चलता है जब तक 'legacy_import_done' set नहीं होता.
+// kind:'done' भेजते ही हमेशा के लिए बंद. उसके बाद सिर्फ developer login से /api/dev/import.
+on('POST', '/api/setup/import', async (env, req) => {
+  const done = await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_import_done'").first()
+  if (done) throw new HttpError(403, 'Import window closed')
+  const b = await body(req)
+  if (b.kind === 'done') {
+    await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('legacy_import_done', ?)").bind(nowIso()).run()
+    await audit(env, null, 'legacy_import_done', 'app_settings', null, null, null)
+    return json({ ok: true, closed: true })
+  }
+  return importRows(env, b)
+})
+on('POST', '/api/dev/import', async (env, req) => {
+  const me = await authUser(env, req); needDev(me)
+  return importRows(env, await body(req))
+})
+async function importRows(env, b) {
+  const kind = b.kind, rows = Array.isArray(b.rows) ? b.rows : []
+  if (rows.length > 1000) throw bad('max 1000 rows per call')
+  const emps = (await env.DB.prepare('SELECT id, username FROM employees').all()).results
+  const uid = Object.fromEntries(emps.map((e) => [e.username.toLowerCase(), e.id]))
+  const data = rows.map((r) => ({ ...r, emp_id: uid[String(r.username || '').toLowerCase()] })).filter((r) => r.emp_id)
+  const J = JSON.stringify(data)
+  const q = {
+    sessions: `INSERT OR IGNORE INTO day_sessions (legacy_id, emp_id, date, start_at, start_lat, start_lng, end_at, end_lat, end_lng, total_km, manual_km, manual_km_note, auto_closed)
+      SELECT j->>'legacy_id', j->>'emp_id', j->>'date', j->>'start_at', j->>'start_lat', j->>'start_lng', j->>'end_at', j->>'end_lat', j->>'end_lng', COALESCE(j->>'total_km',0), COALESCE(j->>'manual_km',0), j->>'manual_km_note', COALESCE(j->>'auto_closed',0)
+      FROM (SELECT value AS j FROM json_each(?)) WHERE j->>'end_at' IS NULL OR j->>'end_at' >= j->>'start_at'`,
+    pings: `INSERT OR IGNORE INTO location_pings (client_id, emp_id, date, lat, lng, kind, recorded_at, created_at)
+      SELECT j->>'client_id', j->>'emp_id', j->>'date', j->>'lat', j->>'lng', CASE WHEN j->>'kind'='field' THEN 'field' ELSE 'duty' END, j->>'recorded_at', j->>'recorded_at'
+      FROM (SELECT value AS j FROM json_each(?)) WHERE (j->>'lat') BETWEEN -90 AND 90 AND (j->>'lng') BETWEEN -180 AND 180 AND NOT ((j->>'lat') = 0 AND (j->>'lng') = 0)`,
+    marks: `INSERT OR IGNORE INTO attendance_marks (emp_id, date, status, reason, legacy, set_at)
+      SELECT j->>'emp_id', j->>'date', j->>'status', 'old tracker', 1, j->>'set_at' FROM (SELECT value AS j FROM json_each(?)) WHERE j->>'status' IN ('Present','Half Day','Absent','Leave','Week Off')`,
+    leaves: `INSERT OR IGNORE INTO leave_requests (legacy_id, emp_id, date, kind, reason, status, decided_at, created_at)
+      SELECT j->>'legacy_id', j->>'emp_id', j->>'date', CASE WHEN j->>'kind'='Half day' THEN 'Half day' ELSE 'Full day' END, j->>'reason', j->>'status', j->>'decided_at', j->>'created_at' FROM (SELECT value AS j FROM json_each(?))`,
+  }[kind]
+  if (!q) throw bad('kind must be sessions | pings | marks | leaves')
+  const r = await env.DB.prepare(q).bind(J).run()
+  return json({ ok: true, kind, received: rows.length, matched: data.length, inserted: r.meta?.changes ?? 0 })
+}
+
 // ── Developer ───────────────────────────────────────────────────────────
 on('GET', '/api/dev/system', async (env, req) => {
   const me = await authUser(env, req); needDev(me)
