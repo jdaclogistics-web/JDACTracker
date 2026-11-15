@@ -596,6 +596,33 @@ on('POST', '/api/dev/import', async (env, req) => {
 async function importRows(env, b) {
   const kind = b.kind, rows = Array.isArray(b.rows) ? b.rows : []
   if (rows.length > 1000) throw bad('max 1000 rows per call')
+  if (kind === 'employees') {
+    // पुराने (छोड़ चुके) employees — inactive, random password (login नहीं होगा)
+    let ins = 0
+    for (const r of rows) {
+      const u = String(r.username || '').toLowerCase()
+      if (!/^[a-z0-9._-]{3,30}$/.test(u) || !r.name) continue
+      const pw = await hashPassword(bytesToB64(crypto.getRandomValues(new Uint8Array(18))))
+      const x = await env.DB.prepare("INSERT OR IGNORE INTO employees (username, name, pass_hash, role, team, designation, active, legacy_id) VALUES (?, ?, ?, 'employee', ?, ?, 0, ?)")
+        .bind(u, String(r.name), pw, r.team === 'Warehouse' ? 'Warehouse' : 'Office', r.designation || 'Former employee', r.legacy_id || null).run()
+      ins += x.meta?.changes || 0
+    }
+    return json({ ok: true, kind, received: rows.length, inserted: ins })
+  }
+  if (kind === 'photos') {
+    // पुरानी selfie → savePhoto (Supabase हो तो वहाँ, नहीं तो D1) → session में ref
+    if (rows.length > 40) throw bad('max 40 photos per call')
+    let ins = 0
+    for (const r of rows) {
+      const col = r.which === 'end' ? 'end_photo' : 'start_photo'
+      const s = await env.DB.prepare(`SELECT id, ${col} AS ref FROM day_sessions WHERE legacy_id = ?`).bind(r.legacy_id).first()
+      if (!s || s.ref || !r.b64) continue
+      const ref = await savePhoto(env, `legacy/${r.legacy_id}-${r.which === 'end' ? 'end' : 'start'}.jpg`, r.b64)
+      await env.DB.prepare(`UPDATE day_sessions SET ${col} = ? WHERE id = ? AND ${col} IS NULL`).bind(ref, s.id).run()
+      ins++
+    }
+    return json({ ok: true, kind, received: rows.length, inserted: ins })
+  }
   const emps = (await env.DB.prepare('SELECT id, username FROM employees').all()).results
   const uid = Object.fromEntries(emps.map((e) => [e.username.toLowerCase(), e.id]))
   const data = rows.map((r) => ({ ...r, emp_id: uid[String(r.username || '').toLowerCase()] })).filter((r) => r.emp_id)
