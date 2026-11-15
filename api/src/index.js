@@ -1,7 +1,7 @@
 // JDAC Tracker API — Cloudflare Worker + D1
 // Mobile ऐप और Web panels दोनों यही API use करते हैं.
 import { istDate, istMinutes, nowIso, hashPassword, verifyPassword, signToken, verifyToken, computeKm, phone10 } from './lib.js'
-import { savePhoto, readPhoto, flushPendingPhotos } from './photos.js'
+import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64 } from './photos.js'
 
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
 const NO_SIGNAL_MIN = 10
@@ -443,14 +443,50 @@ export async function runCron(env) {
   await flushPendingPhotos(env)
 }
 
+// TOKEN_SECRET: Cloudflare secret हो तो वही; नहीं तो पहली request पर random बनाकर D1 में रखते हैं
+// (dashboard में किसी को secret type/copy नहीं करना पड़ता).
+let cachedSecret = null
+async function tokenSecret(env) {
+  if (env.TOKEN_SECRET) return env.TOKEN_SECRET
+  if (cachedSecret) return cachedSecret
+  await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('token_secret', ?)").bind(bytesToB64(crypto.getRandomValues(new Uint8Array(48)))).run()
+  cachedSecret = (await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'token_secret'").first()).value
+  return cachedSecret
+}
+
+// ── Self-setup: पहली request पर tables खुद बनते हैं (dashboard में SQL चलाने की ज़रूरत नहीं) ──
+// SCHEMA_STATEMENTS bundle के समय api/schema.sql से भरता है; tests में schema पहले से होता है.
+let schemaReady = false
+async function ensureSchema(env) {
+  if (schemaReady || typeof SCHEMA_STATEMENTS === 'undefined') return
+  const has = await env.DB.prepare("SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='app_settings'").first()
+  if (!has) await env.DB.batch(SCHEMA_STATEMENTS.map((q) => env.DB.prepare(q)))
+  schemaReady = true
+}
+
+// पहली बार employees डालना — सिर्फ तब जब table खाली हो, और सिर्फ INSERT INTO employees
+on('POST', '/api/setup/seed', async (env, req) => {
+  const n = (await env.DB.prepare('SELECT count(*) AS n FROM employees').first()).n
+  if (n > 0) throw new HttpError(403, 'Already set up')
+  const b = await body(req)
+  const list = Array.isArray(b.statements) ? b.statements : []
+  if (!list.length || !list.every((q) => /^INSERT INTO employees \(/.test(q) && !/;\s*\S/.test(q.replace(/;\s*$/, '')))) throw bad('Only employee inserts allowed')
+  await env.DB.batch(list.map((q) => env.DB.prepare(q.replace(/;\s*$/, ''))))
+  const c = (await env.DB.prepare('SELECT count(*) AS n FROM employees').first()).n
+  await audit(env, null, 'setup_seed', 'employees', null, null, { count: c })
+  return json({ ok: true, employees: c })
+})
+
 // ── Entry ─────────────────────────────────────────────────────────────────
 export default {
-  async fetch(req, env) {
+  async fetch(req, env0) {
+    let env = env0
     const h = cors(env, req)
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h })
     const url = new URL(req.url)
     try {
-      if (!env.TOKEN_SECRET) throw new HttpError(500, 'TOKEN_SECRET not set')
+      await ensureSchema(env0)
+      if (!env.TOKEN_SECRET) env = { ...env0, TOKEN_SECRET: await tokenSecret(env0) }
       for (const r of routes) {
         if (r.method !== req.method) continue
         const m = url.pathname.match(r.re)
@@ -468,6 +504,6 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runCron(env))
+    ctx.waitUntil(ensureSchema(env).then(() => runCron(env)))
   },
 }

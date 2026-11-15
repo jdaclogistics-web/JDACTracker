@@ -15,3 +15,5 @@ mobile/ios/
 seed-out/
 employees*.csv
 logins*.csv
+!api/dist/
+!api/dist/worker.js

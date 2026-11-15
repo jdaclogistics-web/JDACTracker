@@ -166,3 +166,9 @@ BEGIN
     recorded_at = excluded.recorded_at, synced_at = excluded.synced_at
   WHERE excluded.recorded_at > last_location.recorded_at;
 END;
+
+-- App settings (auto-generated token secret वगैरह). इसे कभी delete न करें — करने पर सबको फिर login करना होगा.
+CREATE TABLE IF NOT EXISTS app_settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
