@@ -37,8 +37,11 @@ export async function currentPosition() {
   })
 }
 
-/** Front camera selfie → छोटा JPEG base64 (~25 KB) */
+/** Front camera selfie → छोटा JPEG base64 (~25 KB).
+ *  पहले app के अंदर वाला camera (हमेशा front) — कई phones system camera में back खोल देते हैं.
+ *  वो न चले तो Android camera (direction Front) fallback. */
 export async function takeSelfie() {
+  try { return await inAppSelfie() } catch (e) { if (e?.cancelled) throw new Error('Selfie नहीं ली गई') }
   let dataUrl
   if (isNative()) {
     const photo = await Camera.getPhoto({ source: CameraSource.Camera, direction: CameraDirection.Front, resultType: CameraResultType.DataUrl, quality: 60, width: 480, correctOrientation: true, saveToGallery: false })
@@ -53,6 +56,34 @@ export async function takeSelfie() {
     dataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file) })
   }
   return shrink(dataUrl)
+}
+
+async function inAppSelfie() {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('no camera api')
+  if (isNative()) { try { await Camera.requestPermissions({ permissions: ['camera'] }) } catch { /* */ } }
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' }, width: { ideal: 960 }, height: { ideal: 1280 } }, audio: false })
+  return new Promise((resolve, reject) => {
+    const ov = document.createElement('div')
+    ov.className = 'selfiecam'
+    ov.innerHTML = `<video playsinline autoplay muted></video><div class="sc-ring"></div>
+      <div class="sc-bar"><button class="sc-x" aria-label="Cancel">✕</button><button class="sc-shot" aria-label="Take selfie"></button><span></span></div>
+      <p class="sc-tip">चेहरा गोले के अंदर रखें</p>`
+    document.body.appendChild(ov)
+    const video = ov.querySelector('video')
+    video.srcObject = stream
+    const done = (fn) => { stream.getTracks().forEach((t) => t.stop()); ov.remove(); fn() }
+    ov.querySelector('.sc-x').onclick = () => done(() => reject(Object.assign(new Error('cancelled'), { cancelled: true })))
+    ov.querySelector('.sc-shot').onclick = () => {
+      const w = video.videoWidth, h = video.videoHeight
+      if (!w) return
+      const s = Math.min(1, 480 / w)
+      const c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(h * s)
+      const g = c.getContext('2d'); g.translate(c.width, 0); g.scale(-1, 1) // mirror जैसा preview में दिखा
+      g.drawImage(video, 0, 0, c.width, c.height)
+      const b64 = c.toDataURL('image/jpeg', 0.6).split(',')[1]
+      done(() => resolve(b64))
+    }
+  })
 }
 async function shrink(dataUrl, maxW = 480) {
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl })

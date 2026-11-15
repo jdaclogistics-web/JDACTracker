@@ -68,7 +68,7 @@ const loading = (v) => { v.innerHTML = '<div class="skel"></div><div class="skel
 const fail = (v, e) => { v.innerHTML = `<div class="err">${esc(e.message)}</div>` }
 
 // ── status helpers ──────────────────────────────────────────────────────
-const ST = { on_duty: ['On duty', 'g', '#10B981'], no_signal: ['No signal', 'o', '#F59E0B'], closed: ['Closed', 'b', '#3B82F6'], leave: ['Leave', 'p', '#8B5CF6'], marked: ['Marked', 'n', '#94A3B8'], absent: ['Not in', 'r', '#EF4444'] }
+const ST = { off: ['Week off', 'n', '#94A3B8'], on_duty: ['On duty', 'g', '#10B981'], no_signal: ['No signal', 'o', '#F59E0B'], closed: ['Closed', 'b', '#3B82F6'], leave: ['Leave', 'p', '#8B5CF6'], marked: ['Marked', 'n', '#94A3B8'], absent: ['Not in', 'r', '#EF4444'] }
 function personRow(r) {
   const [label, k] = ST[r.status]
   const sub = [r.emp.designation, r.emp.work_location, r.session ? `In ${fmtTime(r.session.start_at)}` : null].filter(Boolean).join(' · ')
@@ -287,13 +287,29 @@ async function viewReport(v, month = istDate().slice(0, 7)) {
       if (LV.has(k)) return ['V', 'v']
       const s = S.get(k)
       if (s) { const t = new Date(Date.parse(s.start_at) + 330 * 60000); const [sh, sm] = e.shift_start.split(':').map(Number); return t.getUTCHours() * 60 + t.getUTCMinutes() > sh * 60 + sm + 15 ? ['L', 'l'] : ['P', 'p'] }
-      return `${month}-${String(d).padStart(2, '0')}` > istDate() ? ['', 'f'] : ['A', 'a']
+      const ds = `${month}-${String(d).padStart(2, '0')}`
+      if (new Date(ds + 'T12:00:00Z').getUTCDay() === 0) return ['–', 'w'] // Sunday off
+      return ds > istDate() ? ['', 'f'] : ['A', 'a']
     }
     const emps = r.employees.filter((e) => e.active)
     v.innerHTML = `<div class="row wrap"><input class="inp" type="month" id="rm" value="${month}" style="max-width:190px"><span class="sp"></span><button class="btn ghost sm" id="csv">${ic('download', 16)} Excel (CSV)</button></div>
       <section class="card sheet"><table><thead><tr><th>Employee</th>${Array.from({ length: days }, (_, i) => `<th>${i + 1}</th>`).join('')}<th>P</th><th>KM</th></tr></thead><tbody>
-      ${emps.map((e) => { let p = 0, km = 0; const tds = Array.from({ length: days }, (_, i) => { const [t, c] = cell(e, i + 1); if (c === 'p' || c === 'l') p++; if (c === 'h') p += 0.5; const s = S.get(key(e.id, i + 1)); if (s) km += s.total_km || 0; return `<td class="${c}">${t}</td>` }).join(''); return `<tr><th><span class="tm ${e.team === 'Warehouse' ? 'w' : 'o'}">${e.team[0]}</span>${esc(e.name)}</th>${tds}<td><b>${p}</b></td><td>${Math.round(km)}</td></tr>` }).join('')}
-      </tbody></table></section><p class="sub">P present · L late · ½ half day · V leave · A absent · – week off</p>`
+      ${emps.map((e) => { let p = 0, km = 0; const tds = Array.from({ length: days }, (_, i) => { const [t, c] = cell(e, i + 1); if (c === 'p' || c === 'l') p++; if (c === 'h') p += 0.5; const s = S.get(key(e.id, i + 1)); if (s) km += s.total_km || 0; return `<td class="${c} ed" data-e="${e.id}" data-d="${i + 1}" title="Click to change">${t}</td>` }).join(''); return `<tr><th><span class="tm ${e.team === 'Warehouse' ? 'w' : 'o'}">${e.team[0]}</span>${esc(e.name)}</th>${tds}<td><b>${p}</b></td><td>${Math.round(km)}</td></tr>` }).join('')}
+      </tbody></table></section><p class="sub">P present · L late · ½ half day · V leave · A absent · – week off (Sunday) · <b>किसी भी box पर click करके attendance बदलें</b></p>
+      <div id="mk" class="mkpop" hidden></div>`
+    const pop = v.querySelector('#mk')
+    v.querySelectorAll('td.ed').forEach((td) => (td.onclick = (ev) => {
+      const e = emps.find((x) => x.id === Number(td.dataset.e)); const ds = `${month}-${String(td.dataset.d).padStart(2, '0')}`
+      if (ds > istDate()) return toast('आगे की date नहीं बदल सकते', 'bad')
+      pop.innerHTML = `<b>${esc(e.name)}</b><span class="sub" style="margin:0">${fmtDate(ds)}</span>
+        <div class="mkb">${[['Present', 'p'], ['Half Day', 'h'], ['Absent', 'a'], ['Leave', 'v'], ['Week Off', 'w']].map(([st, c]) => `<button class="${c}" data-st="${st}">${st}</button>`).join('')}</div>
+        <input class="inp" id="mkr" placeholder="कारण (जैसे: office में थे, app नहीं चला)" value="HR update"><button class="link" id="mkx">Cancel</button>`
+      const rc = td.getBoundingClientRect(); pop.style.left = Math.min(rc.left, innerWidth - 300) + 'px'; pop.style.top = (rc.bottom + 6 + scrollY) + 'px'; pop.hidden = false
+      pop.querySelector('#mkx').onclick = () => (pop.hidden = true)
+      pop.querySelectorAll('[data-st]').forEach((b) => (b.onclick = async () => {
+        try { await post('/api/admin/marks', { emp_id: e.id, date: ds, status: b.dataset.st, reason: pop.querySelector('#mkr').value }); toast(`${e.name}: ${b.dataset.st}`); viewReport(v, month) } catch (er) { toast(er.message, 'bad') }
+      }))
+    }))
     v.querySelector('#rm').onchange = (e) => viewReport(v, e.target.value)
     v.querySelector('#csv').onclick = () => {
       const rows = [['Date', 'Name', 'Mobile', 'Team', 'Designation', 'In', 'Out', 'Hours', 'KM', 'Status']]

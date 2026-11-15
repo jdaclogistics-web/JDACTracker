@@ -237,12 +237,12 @@ async function renderMonth(v, month = istDate().slice(0, 7)) {
     const days = new Date(y, mo, 0).getDate()
     const lead = (new Date(y, mo - 1, 1).getDay() + 6) % 7
     const today = istDate()
-    let late = 0
+    let late = 0, present = 0
     const [sh, sm] = (me.shift_start || '10:00').split(':').map(Number)
     const cells = Array.from({ length: days }, (_, i) => {
       const d = `${month}-${String(i + 1).padStart(2, '0')}`
       const s = sBy[d], m = mBy[d]
-      let cls = d > today ? 'f' : 'a'
+      let cls = new Date(d + 'T12:00:00Z').getUTCDay() === 0 ? 'w' : d > today ? 'f' : 'a'
       if (s) {
         const t = new Date(new Date(s.start_at).getTime() + 330 * 60000)
         const isLate = t.getUTCHours() * 60 + t.getUTCMinutes() > sh * 60 + sm + 15
@@ -250,15 +250,16 @@ async function renderMonth(v, month = istDate().slice(0, 7)) {
         cls = isLate ? 'l' : 'p'
       }
       if (m === 'Leave') cls = 'v'; else if (m === 'Week Off') cls = 'w'; else if (m === 'Absent') cls = 'a'; else if (m === 'Present') cls = 'p'
+      if (cls === 'p' || cls === 'l') present++
       return `<span class="cd ${d === today ? 'today ' : ''}${cls}">${i + 1}</span>`
     }).join('')
     const km = sessions.reduce((a, s) => a + (s.total_km || 0), 0)
     v.querySelector('#mc').innerHTML = `
-      <div class="tiles"><div class="tile wb"><b style="color:#047857">${sessions.length}</b><span>Present</span></div><div class="tile wb"><b style="color:#B45309">${late}</b><span>Late</span></div><div class="tile wb"><b style="color:#6D28D9">${Object.values(mBy).filter((x) => x === 'Leave').length}</b><span>Leave</span></div><div class="tile wb"><b>${Math.round(km)}</b><span>KM</span></div></div>
+      <div class="tiles"><div class="tile wb"><b style="color:#047857">${present}</b><span>Present</span></div><div class="tile wb"><b style="color:#B45309">${late}</b><span>Late</span></div><div class="tile wb"><b style="color:#6D28D9">${Object.values(mBy).filter((x) => x === 'Leave').length}</b><span>Leave</span></div><div class="tile wb"><b>${Math.round(km)}</b><span>KM</span></div></div>
       <section class="card" style="margin-top:12px"><h2 class="h3" style="text-align:center">${fmtDate(month + '-01', { month: 'long', year: 'numeric' })}</h2>
       <div class="cal hd">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => `<span>${d}</span>`).join('')}</div>
       <div class="cal">${'<span></span>'.repeat(lead)}${cells}</div>
-      <div class="legend"><span><i class="dot" style="background:#4ADE80"></i>Present</span><span><i class="dot" style="background:#FBBF24"></i>Late</span><span><i class="dot" style="background:#A78BFA"></i>Leave</span><span><i class="dot" style="background:#FCA5A5"></i>Absent</span></div></section>
+      <div class="legend"><span><i class="dot" style="background:#4ADE80"></i>Present</span><span><i class="dot" style="background:#FBBF24"></i>Late</span><span><i class="dot" style="background:#A78BFA"></i>Leave</span><span><i class="dot" style="background:#FCA5A5"></i>Absent</span><span><i class="dot" style="background:#CBD5E1"></i>Sunday off</span></div></section>
       <section class="card" style="padding:4px 14px"><div class="list">${sessions.map((s) => `<div class="li"><div class="nm"><b>${fmtDate(s.date)}</b><span>In ${fmtTime(s.start_at)} · Out ${fmtTime(s.end_at)}${s.auto_closed ? ' (auto)' : ''}</span></div><b style="font-size:13px">${(s.total_km || 0).toFixed(1)} km</b></div>`).join('') || '<div class="empty">No entries this month</div>'}</div></section>`
   } catch (e) { v.querySelector('#mc').innerHTML = `<div class="err">${esc(e.message)}</div>` }
 }

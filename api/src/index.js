@@ -216,6 +216,9 @@ on('POST', '/api/leaves', async (env, req) => {
   return json({ ok: true })
 })
 
+// Sunday = weekly off (JDAC rule) — session न हो तो absent नहीं गिनते
+const isSunday = (d) => new Date(d + 'T12:00:00Z').getUTCDay() === 0
+
 // ═══════════════════════════ ADMIN (HR / Boss / Developer) ═════════════════
 on('GET', '/api/admin/today', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
@@ -237,15 +240,15 @@ on('GET', '/api/admin/today', async (env, req, url) => {
     const [sh, sm] = (e.shift_start || '10:00').split(':').map(Number)
     const late = s ? istMinutes(s.start_at) > sh * 60 + sm + 15 : false
     const mins = loc ? Math.round((now - Date.parse(loc.recorded_at)) / 60000) : null
-    let status = 'absent'
-    if (mBy.get(e.id)) status = 'marked'
+    let status = isSunday(date) ? 'off' : 'absent'
+    if (mBy.get(e.id)) status = mBy.get(e.id).status === 'Week Off' ? 'off' : 'marked'
     if (lvBy.get(e.id)) status = 'leave'
     if (s && s.end_at) status = 'closed'
     if (s && !s.end_at) status = e.team === 'Warehouse' && (mins == null || mins > NO_SIGNAL_MIN) ? 'no_signal' : 'on_duty'
     return { emp: pub(e), session: s || null, last: loc && loc.recorded_at.slice(0, 10) >= date ? loc : null, last_min: mins, late, leave: lvBy.get(e.id) || null, mark: mBy.get(e.id) || null, status }
   })
   const count = (k) => rows.filter((r) => r.status === k).length
-  return json({ date, rows, summary: { total: rows.length, in: rows.filter((r) => r.session).length, late: rows.filter((r) => r.late).length, leave: count('leave'), absent: count('absent'), no_signal: count('no_signal'),
+  return json({ date, rows, summary: { total: rows.length, in: rows.filter((r) => r.session).length, late: rows.filter((r) => r.late).length, leave: count('leave'), absent: count('absent'), off: count('off'), no_signal: count('no_signal'),
     warehouse: { total: rows.filter((r) => r.emp.team === 'Warehouse').length, in: rows.filter((r) => r.emp.team === 'Warehouse' && r.session).length },
     office: { total: rows.filter((r) => r.emp.team === 'Office').length, in: rows.filter((r) => r.emp.team === 'Office' && r.session).length } } })
 })
@@ -290,9 +293,10 @@ on('POST', '/api/admin/leaves/:id/decide', async (env, req, url, params) => {
 on('POST', '/api/admin/marks', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
-  if (!['Present', 'Half Day', 'Absent', 'Leave', 'Week Off'].includes(b.status)) throw bad('status?')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || !b.emp_id) throw bad('date / employee?')
   if (!b.reason || String(b.reason).trim().length < 3) throw bad('कारण लिखें')
   const old = await env.DB.prepare('SELECT * FROM attendance_marks WHERE emp_id = ? AND date = ?').bind(b.emp_id, b.date).first()
+  if (!['Present', 'Half Day', 'Absent', 'Leave', 'Week Off'].includes(b.status)) throw bad('status?')
   await env.DB.prepare('INSERT INTO attendance_marks (emp_id, date, status, reason, set_by) VALUES (?,?,?,?,?) ON CONFLICT (emp_id, date) DO UPDATE SET status = excluded.status, reason = excluded.reason, set_by = excluded.set_by, set_at = excluded.set_at')
     .bind(b.emp_id, b.date, b.status, String(b.reason).trim(), me.id).run()
   await audit(env, me.id, 'attendance_mark', 'attendance_marks', `${b.emp_id}:${b.date}`, old, { status: b.status, reason: b.reason })
@@ -547,7 +551,24 @@ async function ensureSchema(env) {
   if (schemaReady || typeof SCHEMA_STATEMENTS === 'undefined') return
   const has = await env.DB.prepare("SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='app_settings'").first()
   if (!has) await env.DB.batch(SCHEMA_STATEMENTS.map((q) => env.DB.prepare(q)))
+  await runMigrations(env)
   schemaReady = true
+}
+
+// One-time data fixes (हर एक सिर्फ एक बार, audit के साथ)
+async function runMigrations(env) {
+  const done = async (k) => !!(await env.DB.prepare('SELECT 1 AS x FROM app_settings WHERE key = ?').bind(k).first())
+  const mark = (k) => env.DB.prepare('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)').bind(k, new Date().toISOString()).run()
+  // पुराना tracker 5–14 Nov 2026 बंद था: Himanshu के लिए Present (बाकी लोग HR/Boss panel से भरेंगे)
+  if (!(await done('mig_gap_himanshu_2026_11'))) {
+    const e = await env.DB.prepare("SELECT id FROM employees WHERE username = 'himanshu'").first()
+    if (e) {
+      const dates = ['05', '06', '07', '09', '10', '11', '12', '13', '14'].map((d) => `2026-11-${d}`)
+      await env.DB.batch(dates.map((d) => env.DB.prepare("INSERT OR IGNORE INTO attendance_marks (emp_id, date, status, reason) VALUES (?, ?, 'Present', 'पुराना system बंद था (5–14 Nov) — Present')").bind(e.id, d)))
+      await audit(env, null, 'gap_present', 'attendance_marks', String(e.id), null, { dates })
+      await mark('mig_gap_himanshu_2026_11')
+    }
+  }
 }
 
 // पहली बार employees डालना — सिर्फ तब जब table खाली हो, और सिर्फ INSERT INTO employees
