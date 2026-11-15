@@ -112,11 +112,13 @@ function phone10(s) {
 
 const BUCKET = 'selfies'
 const hasSupabase = (env) => !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY)
+// नई "sb_secret_…" key और पुरानी service_role (JWT) key — दोनों चलें
+const sbHeaders = (env) => { const k = env.SUPABASE_SERVICE_KEY; return k.startsWith('eyJ') ? { apikey: k, Authorization: `Bearer ${k}` } : { apikey: k } }
 
 async function supabasePut(env, key, bytes, mime) {
   const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${BUCKET}/${key}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`, 'Content-Type': mime, 'x-upsert': 'true' },
+    headers: { ...sbHeaders(env), 'Content-Type': mime, 'x-upsert': 'true' },
     body: bytes,
   })
   if (!r.ok) throw new Error(`supabase ${r.status}`)
@@ -140,7 +142,7 @@ async function readPhoto(env, ref) {
   const [where, ...rest] = ref.split(':')
   const key = rest.join(':')
   if (where === 'sb' && hasSupabase(env)) {
-    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${BUCKET}/${key}`, { headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}` } })
+    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${BUCKET}/${key}`, { headers: sbHeaders(env) })
     if (r.ok) return { mime: r.headers.get('content-type') || 'image/jpeg', body: await r.arrayBuffer() }
   }
   const row = await env.DB.prepare('SELECT mime, data FROM photos WHERE key = ?').bind(key).first()
