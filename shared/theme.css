@@ -1,0 +1,50 @@
+/* JDAC Tracker — design tokens (design canvas से) */
+:root{--ink:#0B1220;--ink2:#1A2335;--bg:#F3F5F8;--card:#fff;--line:#E3E8EF;--line2:#EEF1F5;--mut:#5B6678;--mut2:#6B7689;
+--pri:#059669;--pri-d:#047857;--amber:#F59E0B;--red:#DC2626;--blue:#2563EB;--purple:#7C3AED;--cyan:#0E7490}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+.bar{position:sticky;top:0;z-index:30;background:var(--ink);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:10px}
+.bar .bt{flex:1;min-width:0}.bar .bt b{display:block;font-size:14px;font-weight:700}.bar .bt span{display:block;font-size:11.5px;color:#A6B0C2;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--pri);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex:none}
+.ibtn{width:40px;height:40px;border-radius:12px;border:0;background:var(--ink2);color:#D7DEEA;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;flex:none;text-decoration:none}
+.av{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none}
+.main{padding:14px 14px 24px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+.h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.2px}
+.sub{font-size:12px;color:var(--mut);margin-top:2px}
+.row{display:flex;align-items:center;gap:10px}.sp{flex:1}
+.lbl{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+.link{font-size:12.5px;font-weight:600;color:var(--pri-d);text-decoration:none;display:inline-flex;align-items:center;gap:2px;background:none;border:0;cursor:pointer;padding:0}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:#fff;color:#3A4558;border-radius:999px;padding:8px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.seg{display:flex;background:#E9EDF3;border-radius:12px;padding:3px;gap:2px}
+.seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px 6px;font-weight:600;font-size:12.5px;color:var(--mut);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(11,18,32,.08)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.tiles.t3{grid-template-columns:repeat(3,minmax(0,1fr))}.tiles.t5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.tile{background:#F5F7FA;border-radius:12px;padding:10px 4px;text-align:center}
+.tile b{display:block;font-size:17px;font-weight:700;letter-spacing:-.3px}.tile span{display:block;font-size:10.5px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
+.list{display:flex;flex-direction:column}
+.li{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line2);text-decoration:none;color:inherit;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left;cursor:pointer}
+.li:first-child{border-top:0}
+.nm{flex:1;min-width:0}.nm b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nm span{display:block;font-size:12px;color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 9px;white-space:nowrap}
+.g{background:#DCFCE7;color:#166534}.o{background:#FEF3C7;color:#92400E}.r{background:#FEE2E2;color:#991B1B}.b{background:#DBEAFE;color:#1E40AF}.n{background:#EEF1F5;color:#3A4558}.p{background:#EDE9FE;color:#5B21B6}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.btn{border:0;border-radius:14px;font-weight:700;font-size:15px;padding:15px 16px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;cursor:pointer;text-decoration:none}
+.btn:disabled{opacity:.6}
+.pri{background:var(--pri);color:#fff}.dark{background:var(--ink);color:#fff}.ghost{background:#fff;color:var(--ink);border:1px solid #D5DCE6}.dng{background:var(--red);color:#fff}
+.sm{padding:9px 12px;font-size:13px;border-radius:11px;width:auto}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3A4558}
+.inp{border:1px solid #CBD5E1;border-radius:12px;padding:12px;background:#fff;color:var(--ink);width:100%}
+.err{color:#991B1B;background:#FEF2F2;border-radius:10px;padding:9px 11px;font-size:13px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-around;padding:6px 6px calc(10px + env(safe-area-inset-bottom))}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--mut2);background:none;border:0;padding:6px 0;cursor:pointer}
+.nav button.on{color:var(--pri-d)}
+.map{height:340px;border-radius:16px;overflow:hidden;border:1px solid var(--line);z-index:0}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;max-width:90vw;padding:11px 16px;border-radius:12px;color:#fff;background:var(--ink);font-size:14px;transition:opacity .3s;opacity:0;text-align:center;pointer-events:none}
+.toast.bad{background:var(--red)}
+.empty{text-align:center;color:var(--mut);font-size:13px;padding:18px}
+.skel{background:linear-gradient(90deg,#EEF1F5,#F8FAFC,#EEF1F5);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:12px;height:60px}
+@keyframes sk{to{background-position:-200% 0}}

@@ -1,0 +1,7 @@
+{
+  "appId": "com.jdac.tracker",
+  "appName": "JDAC Tracker",
+  "webDir": "dist",
+  "android": { "allowMixedContent": false, "useLegacyBridge": true },
+  "plugins": { "SplashScreen": { "launchShowDuration": 800, "backgroundColor": "#0f172a" } }
+}

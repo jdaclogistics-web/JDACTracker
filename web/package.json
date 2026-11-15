@@ -1,0 +1,10 @@
+{
+  "name": "jdac-tracker-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "JDAC Tracker — Boss / HR / Developer web panel",
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "dependencies": { "leaflet": "^1.9.4" },
+  "devDependencies": { "vite": "^6.0.0" }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+mobile/android/
+mobile/ios/
+.env
+.env.*
+!.env.example
+.dev.vars
+.wrangler/
+*.sql.gz
+*dump*.sql
+*.apk
+*.keystore
+*.jks
