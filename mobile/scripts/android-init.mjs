@@ -8,6 +8,14 @@ const run = (cmd, opts = {}) => { console.log('› ' + cmd); execSync(cmd, { std
 if (!existsSync('dist/index.html')) run('npx vite build')
 if (!existsSync('android')) run('npx cap add android')
 
+// ── Run दबाते ही web build (jdac-autobuild.gradle) ───────────────────────────
+{
+  const bg = 'android/app/build.gradle'
+  const line = "apply from: '../../jdac-autobuild.gradle'"
+  const g = readFileSync(bg, 'utf8')
+  if (!g.includes(line)) writeFileSync(bg, g.trimEnd() + '\n\n' + line + '\n')
+}
+
 // ── Permissions (GPS, background tracking, camera, notification) ─────────────
 const mf = 'android/app/src/main/AndroidManifest.xml'
 let xml = readFileSync(mf, 'utf8')

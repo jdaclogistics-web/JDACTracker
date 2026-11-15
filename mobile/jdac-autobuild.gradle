@@ -1,0 +1,15 @@
+// JDAC: Android Studio में ▶ Run दबाते ही web code (src/) अपने आप build होकर app में जाता है.
+// बंद करना हो तो environment variable JDAC_SKIP_WEB=1 रखें.
+def jdacMobileDir = rootProject.projectDir.parentFile
+tasks.register('jdacBuildWeb', Exec) {
+    group = 'jdac'
+    description = 'npm run build + cap copy android'
+    workingDir jdacMobileDir
+    onlyIf { System.getenv('JDAC_SKIP_WEB') == null }
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine 'cmd', '/c', 'npm run build && npx cap copy android'
+    } else {
+        commandLine 'sh', '-c', 'npm run build && npx cap copy android'
+    }
+}
+tasks.named('preBuild') { dependsOn 'jdacBuildWeb' }
