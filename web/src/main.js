@@ -9,8 +9,8 @@ const app = document.getElementById('app')
 let me = null, tab = 'home', timer = null, map = null
 const ROLE_TABS = {
   hr: [['home', 'Home', 'home'], ['people', 'Attendance', 'cal'], ['live', 'Live map', 'pin'], ['leaves', 'Leave', 'check'], ['staff', 'Employees', 'users'], ['report', 'Month sheet', 'download']],
-  boss: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Staff', 'user'], ['report', 'Reports', 'download'], ['audit', 'Audit', 'shield']],
-  developer: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Logins', 'lock'], ['report', 'Reports', 'download'], ['system', 'System', 'grid'], ['audit', 'Audit', 'shield']],
+  boss: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Staff', 'user'], ['report', 'Reports', 'download'], ['old', 'Old data', 'grid'], ['audit', 'Audit', 'shield']],
+  developer: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Logins', 'lock'], ['report', 'Reports', 'download'], ['old', 'Old data', 'grid'], ['system', 'System', 'grid'], ['audit', 'Audit', 'shield']],
 }
 const ROLE_LABEL = { hr: 'HR panel', boss: 'Boss panel', developer: 'Developer · main access' }
 const ROLE_ACCENT = { hr: '#7C3AED', boss: '#059669', developer: '#0E7490' }
@@ -62,7 +62,7 @@ function render() {
   document.getElementById('out').onclick = () => { logout(); me = null; tab = 'home'; renderLogin() }
   app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render() }))
   const v = document.getElementById('view')
-  ;({ home: viewHome, people: viewPeople, live: viewLive, leaves: viewLeaves, staff: viewStaff, report: viewReport, system: viewSystem, audit: viewAudit }[tab])(v)
+  ;({ home: viewHome, people: viewPeople, live: viewLive, leaves: viewLeaves, staff: viewStaff, report: viewReport, old: viewOld, system: viewSystem, audit: viewAudit }[tab])(v)
 }
 const loading = (v) => { v.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>' }
 const fail = (v, e) => { v.innerHTML = `<div class="err">${esc(e.message)}</div>` }
@@ -83,7 +83,7 @@ async function viewHome(v) {
   loading(v)
   const load = async () => {
     try {
-      const [t, lv, al] = await Promise.all([get('/api/admin/today'), get('/api/admin/leaves?status=Pending'), get('/api/admin/alerts')])
+      const [t, lv, al, rep] = await Promise.all([get('/api/admin/today'), get('/api/admin/leaves?status=Pending'), get('/api/admin/alerts'), me.role === 'hr' ? null : get('/api/admin/report?month=' + istDate().slice(0, 7)).catch(() => null)])
       const s = t.summary
       const live = t.rows.filter((r) => (r.emp.team === 'Warehouse' || r.emp.live_track) && r.session && !r.session.end_at)
       const pct = s.total ? Math.round((s.in / s.total) * 100) : 0
@@ -101,6 +101,7 @@ async function viewHome(v) {
       ${lv.leaves.length || al.alerts.length ? `<section class="card"><div class="row"><h2 class="h3">Waiting on you</h2><span class="sp"></span><span class="pill o">${lv.leaves.length + al.alerts.length}</span></div><div class="list" style="margin-top:4px">
         ${lv.leaves.length ? `<button class="li" data-go="leaves"><span class="dot" style="background:#7C3AED"></span><b style="width:22px">${lv.leaves.length}</b><span class="sp" style="font-size:13.5px;color:#3A4558">leave requests to approve</span>${ic('chev', 18, '#9AA4B5')}</button>` : ''}
         ${al.alerts.map((a) => `<button class="li" data-go="live"><span class="dot" style="background:#F59E0B"></span><span class="sp" style="font-size:13.5px;color:#3A4558"><b style="display:inline">${esc(a.name)}</b> — no GPS signal since ${fmtTime(a.detail?.replace('last GPS ', '')) || '—'}</span>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div></section>` : ''}
+      ${rep ? monthSummary(rep) : ''}
       <section class="card"><div class="row"><h2 class="h3">Late / not in</h2><span class="sp"></span><button class="link" data-go="people" style="color:${acc}">All ${ic('chev', 16)}</button></div>
         <div class="list" style="margin-top:4px">${t.rows.filter((r) => r.late || r.status === 'absent').slice(0, 8).map(personRow).join('') || '<div class="empty">Everyone is in on time 🎉</div>'}</div></section>`
       v.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => { tab = b.dataset.go; render() }))
@@ -109,6 +110,65 @@ async function viewHome(v) {
   }
   await load()
   timer = setInterval(load, 30_000)
+}
+
+// ── Boss: इस महीने का summary ─────────────────────────────────────────────
+function monthSummary(r) {
+  const emps = r.employees.filter((e) => e.active && e.role !== 'boss' && e.role !== 'developer')
+  const today = istDate(), month = today.slice(0, 7)
+  let workDays = 0
+  for (let d = 1; d <= Number(today.slice(8, 10)); d++) if (new Date(`${month}-${String(d).padStart(2, '0')}T12:00:00Z`).getUTCDay() !== 0) workDays++
+  const S = new Map(); for (const s of r.sessions) S.set(`${s.emp_id}|${s.date}`, s)
+  const M = new Map(); for (const x of r.marks) M.set(`${x.emp_id}|${x.date}`, x.status)
+  const stats = emps.map((e) => {
+    let p = 0, late = 0, lv = 0, km = 0
+    const [sh, sm] = (e.shift_start || '10:00').split(':').map(Number)
+    for (let d = 1; d <= Number(today.slice(8, 10)); d++) {
+      const k = `${e.id}|${month}-${String(d).padStart(2, '0')}`, s = S.get(k), mk = M.get(k)
+      if (s) { km += s.total_km || 0; const t = new Date(Date.parse(s.start_at) + 330 * 60000); if (t.getUTCHours() * 60 + t.getUTCMinutes() > sh * 60 + sm + 15) late++ }
+      if (mk === 'Present' || (!mk && s)) p++; else if (mk === 'Half Day') p += 0.5; else if (mk === 'Leave') lv++
+    }
+    return { e, p, late, lv, km, pct: workDays ? Math.round((p / workDays) * 100) : 0 }
+  })
+  const tot = stats.reduce((a, x) => ({ p: a.p + x.p, late: a.late + x.late, lv: a.lv + x.lv, km: a.km + x.km }), { p: 0, late: 0, lv: 0, km: 0 })
+  const avg = stats.length ? Math.round(stats.reduce((a, x) => a + x.pct, 0) / stats.length) : 0
+  const low = [...stats].sort((a, b) => a.pct - b.pct).slice(0, 5)
+  const topKm = [...stats].filter((x) => x.km > 0).sort((a, b) => b.km - a.km).slice(0, 5)
+  return `<section class="card"><div class="row"><h2 class="h3">This month · ${fmtDate(month + '-01', { month: 'long', year: 'numeric' })}</h2><span class="sp"></span><button class="link" data-go="report">Sheet ${ic('chev', 16)}</button></div>
+    <div class="tiles" style="margin-top:8px"><div class="tile wb"><b style="color:#047857">${avg}%</b><span>Avg attendance</span></div><div class="tile wb"><b style="color:#B45309">${tot.late}</b><span>Late days</span></div><div class="tile wb"><b style="color:#6D28D9">${tot.lv}</b><span>Leave days</span></div><div class="tile wb"><b>${Math.round(tot.km)}</b><span>Total KM</span></div></div>
+    <div class="two" style="margin-top:12px;align-items:start"><div><h3 class="lbl">Lowest attendance</h3><div class="list">${low.map((x) => `<div class="li"><div class="nm"><b>${esc(x.e.name)}</b><span>${x.p} / ${workDays} days · ${x.late} late</span></div><span class="pill ${x.pct >= 90 ? 'g' : x.pct >= 70 ? 'o' : 'r'}">${x.pct}%</span></div>`).join('')}</div></div>
+    <div><h3 class="lbl">Most KM (warehouse)</h3><div class="list">${topKm.map((x) => `<div class="li"><div class="nm"><b>${esc(x.e.name)}</b><span>${esc(x.e.work_location || '')}</span></div><b>${Math.round(x.km)} km</b></div>`).join('') || '<div class="empty">No KM yet</div>'}</div></div></div>
+    <p class="sub">Working days so far: ${workDays} (Sundays off)</p></section>`
+}
+
+// ── Old data: पुराने system के modules ─────────────────────────────────
+const OLD_LABEL = { tasks: 'Tasks', task_checklist: 'Task checklist', task_events: 'Task history', task_comments: 'Task comments', projects: 'Projects', project_members: 'Project members', daily_reports: 'Daily reports', day_entries: 'Day entries', notices: 'Notices', notice_reads: 'Notice replies', ad_leads: 'Ad leads', ad_campaigns: 'Ad campaigns', ad_sets: 'Ad sets', ad_metrics: 'Ad metrics', salary_records: 'Salary', expense_claims: 'Expense claims', company_expenses: 'Company expenses', invoices: 'Invoices', receivables: 'Receivables', hr_invoices: 'HR invoices', hr_invoice_lines: 'HR invoice lines', hr_companies: 'HR companies', hr_employees: 'HR employees', hr_activity_log: 'HR activity', inventory: 'Inventory', equipment_orders: 'Equipment orders', cargo_orders: 'Cargo orders', cargo_quotes: 'Cargo quotes', daily_bookings: 'Daily bookings', cse_targets: 'CSE targets', cse_call_logs: 'CSE call logs', incentive_rules: 'Incentive rules', vittiya_entries: 'Vittiya (finance)', bank_recon: 'Bank recon', social_posts: 'Social posts', chat_messages: 'Chat', desks: 'Desks', employee_desks: 'Employee desks', fmcg_products: 'FMCG products', form_defs: 'Forms', quiz_attempts: 'Quiz' }
+async function viewOld(v, tbl = null, q = '', offset = 0) {
+  loading(v)
+  try {
+    const { tables } = await get('/api/legacy/tables')
+    if (!tables.length) { v.innerHTML = '<section class="card empty">पुराना data अभी import नहीं हुआ</section>'; return }
+    tbl = tbl || tables[0].tbl
+    const r = await get(`/api/legacy/rows?tbl=${encodeURIComponent(tbl)}&q=${encodeURIComponent(q)}&offset=${offset}&limit=200`)
+    const cols = [...new Set(r.rows.flatMap((x) => Object.keys(x)))].filter((c) => !['orgKey'].includes(c))
+    const cell = (val) => { if (val == null) return ''; const t = typeof val === 'object' ? JSON.stringify(val) : String(val); return esc(t.length > 140 ? t.slice(0, 140) + '…' : t) }
+    v.innerHTML = `
+      <div class="chips" style="flex-wrap:wrap">${tables.map((t) => `<button class="chip ${t.tbl === tbl ? 'on' : ''}" data-t="${esc(t.tbl)}">${esc(OLD_LABEL[t.tbl] || t.tbl)} ${t.n}</button>`).join('')}</div>
+      <div class="row wrap" style="margin-top:8px"><input class="inp" id="oq" placeholder="Search…" value="${esc(q)}" style="max-width:280px"><span class="sub" style="margin:0">${r.total} records${r.total > 200 ? ` · ${offset + 1}–${Math.min(offset + 200, r.total)}` : ''}</span><span class="sp"></span>
+        ${offset > 0 ? '<button class="btn ghost sm" id="op">‹ Prev</button>' : ''}${offset + 200 < r.total ? '<button class="btn ghost sm" id="on">Next ›</button>' : ''}<button class="btn ghost sm" id="ocsv">${ic('download', 16)} CSV</button></div>
+      <section class="card sheet old"><table><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>
+      ${r.rows.map((x) => `<tr>${cols.map((c) => `<td>${cell(x[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></section>
+      <p class="sub">पुराने JDAC tracker का data (सिर्फ देखने के लिए). बड़ी files/photos अलग रखी गई हैं.</p>`
+    v.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => viewOld(v, b.dataset.t)))
+    v.querySelector('#oq').onchange = (e) => viewOld(v, tbl, e.target.value)
+    v.querySelector('#op')?.addEventListener('click', () => viewOld(v, tbl, q, offset - 200))
+    v.querySelector('#on')?.addEventListener('click', () => viewOld(v, tbl, q, offset + 200))
+    v.querySelector('#ocsv').onclick = async () => {
+      const all = []; for (let o = 0; o < r.total; o += 500) all.push(...(await get(`/api/legacy/rows?tbl=${encodeURIComponent(tbl)}&q=${encodeURIComponent(q)}&offset=${o}&limit=500`)).rows)
+      const cs = [...new Set(all.flatMap((x) => Object.keys(x)))]
+      downloadCsv(`JDAC-old-${tbl}.csv`, [cs, ...all.map((x) => cs.map((c) => (x[c] == null ? '' : typeof x[c] === 'object' ? JSON.stringify(x[c]) : x[c])))])
+    }
+  } catch (e) { fail(v, e) }
 }
 
 // ── People / attendance today ───────────────────────────────────────────

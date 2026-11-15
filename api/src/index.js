@@ -408,6 +408,39 @@ on('POST', '/api/setup/import', async (env, req) => {
   }
   return importRows(env, b)
 })
+// पुराने modules का one-time import (अलग window — 'legacy_modules_done')
+on('POST', '/api/setup/import-modules', async (env, req) => {
+  if (await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_modules_done'").first()) throw new HttpError(403, 'Import window closed')
+  const b = await body(req)
+  if (b.kind === 'done') {
+    await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('legacy_modules_done', ?)").bind(nowIso()).run()
+    await audit(env, null, 'legacy_modules_done', 'app_settings', null, null, null)
+    return json({ ok: true, closed: true })
+  }
+  if (b.kind !== 'legacy') throw bad('kind must be legacy')
+  return importRows(env, b)
+})
+
+// ── Old data (पुराने system के modules) — सिर्फ Boss / Developer ────────────────
+const needBossOrDev = (me) => { if (!['boss', 'developer'].includes(me.role)) throw new HttpError(403, 'Boss / Developer only') }
+on('GET', '/api/legacy/tables', async (env, req) => {
+  const me = await authUser(env, req); needBossOrDev(me)
+  const { results } = await env.DB.prepare('SELECT tbl, count(*) AS n FROM legacy_records GROUP BY tbl ORDER BY tbl').all()
+  return json({ tables: results })
+})
+on('GET', '/api/legacy/rows', async (env, req, url) => {
+  const me = await authUser(env, req); needBossOrDev(me)
+  const tbl = url.searchParams.get('tbl') || ''
+  const q = (url.searchParams.get('q') || '').trim()
+  const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0)
+  const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
+  const where = q ? 'tbl = ? AND data LIKE ?' : 'tbl = ?'
+  const args = q ? [tbl, `%${q}%`] : [tbl]
+  const total = (await env.DB.prepare(`SELECT count(*) AS n FROM legacy_records WHERE ${where}`).bind(...args).first()).n
+  const { results } = await env.DB.prepare(`SELECT legacy_id, data FROM legacy_records WHERE ${where} ORDER BY CAST(legacy_id AS INTEGER) DESC, legacy_id DESC LIMIT ? OFFSET ?`).bind(...args, limit, offset).all()
+  return json({ tbl, total, offset, rows: results.map((r) => JSON.parse(r.data)) })
+})
+
 // Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है
 on('GET', '/api/setup/import-page', async (env) => {
   const done = await env.DB.prepare("SELECT 1 AS x FROM app_settings WHERE key = 'legacy_import2_done'").first()
@@ -444,6 +477,13 @@ async function importRows(env, b) {
       ins += x.meta?.changes || 0
     }
     return json({ ok: true, kind, received: rows.length, inserted: ins })
+  }
+  if (kind === 'legacy') {
+    const ok = rows.filter((r) => /^[a-z_]{2,40}$/.test(r.tbl || '') && r.id != null && r.data && typeof r.data === 'object')
+    if (!ok.length) return json({ ok: true, kind, received: rows.length, inserted: 0 })
+    const J = JSON.stringify(ok.map((r) => ({ t: r.tbl, i: String(r.id), d: JSON.stringify(r.data) })))
+    const x = await env.DB.prepare("INSERT OR IGNORE INTO legacy_records (tbl, legacy_id, data) SELECT j->>'t', j->>'i', j->>'d' FROM (SELECT value AS j FROM json_each(?))").bind(J).run()
+    return json({ ok: true, kind, received: rows.length, inserted: x.meta?.changes ?? 0 })
   }
   if (kind === 'photos') {
     // पुरानी selfie → savePhoto (Supabase हो तो वहाँ, नहीं तो D1) → session में ref
@@ -561,6 +601,7 @@ async function ensureSchema(env) {
 async function runMigrations(env) {
   const done = async (k) => !!(await env.DB.prepare('SELECT 1 AS x FROM app_settings WHERE key = ?').bind(k).first())
   const mark = (k) => env.DB.prepare('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)').bind(k, new Date().toISOString()).run()
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS legacy_records (tbl TEXT NOT NULL, legacy_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tbl, legacy_id))').run()
   // Office वालों के लिए भी live GPS (जैसे घर से काम) — employees.live_track
   if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'live_track'").first())) {
     await env.DB.prepare('ALTER TABLE employees ADD COLUMN live_track INTEGER NOT NULL DEFAULT 0').run()

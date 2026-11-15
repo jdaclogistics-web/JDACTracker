@@ -173,3 +173,11 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- पुराने JDAC tracker के बाकी modules (tasks, invoices, salary, ad leads…) — सिर्फ देखने के लिए (Boss/Developer)
+CREATE TABLE IF NOT EXISTS legacy_records (
+  tbl       TEXT NOT NULL,
+  legacy_id TEXT NOT NULL,
+  data      TEXT NOT NULL,          -- JSON row
+  PRIMARY KEY (tbl, legacy_id)
+);
