@@ -9,6 +9,10 @@ Employee attendance + GPS tracking for JDAC Logistics.
 | `api/` | Server API + cron (no-signal alerts, auto-close, photo flush) | Cloudflare Worker + D1 |
 | `shared/` | API client, helpers, theme used by both apps | — |
 
+## Naya code lena (har baar)
+
+JDACTracker folder me **`update.bat`** par double-click → GitHub se latest code + build. Fir Android Studio me ▶ Run.
+
 ## सुबह PC पर शुरू करें (Android Studio)
 
 ```bash
