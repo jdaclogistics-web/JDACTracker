@@ -24,7 +24,8 @@ function cors(env, req) {
 }
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...extra } })
 async function body(req) { try { return await req.json() } catch { return {} } }
-const pub = (e) => e && ({ id: e.id, username: e.username, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id })
+const tracked = (e) => e.team === 'Warehouse' || !!e.live_track
+const pub = (e) => e && ({ id: e.id, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id })
 
 async function audit(env, actor, action, tbl, rowId, oldData, newData) {
   await env.DB.prepare('INSERT INTO audit_log (actor, action, tbl, row_id, old_data, new_data) VALUES (?,?,?,?,?,?)')
@@ -244,7 +245,7 @@ on('GET', '/api/admin/today', async (env, req, url) => {
     if (mBy.get(e.id)) status = mBy.get(e.id).status === 'Week Off' ? 'off' : 'marked'
     if (lvBy.get(e.id)) status = 'leave'
     if (s && s.end_at) status = 'closed'
-    if (s && !s.end_at) status = e.team === 'Warehouse' && (mins == null || mins > NO_SIGNAL_MIN) ? 'no_signal' : 'on_duty'
+    if (s && !s.end_at) status = tracked(e) && (mins == null || mins > NO_SIGNAL_MIN) ? 'no_signal' : 'on_duty'
     return { emp: pub(e), session: s || null, last: loc && loc.recorded_at.slice(0, 10) >= date ? loc : null, last_min: mins, late, leave: lvBy.get(e.id) || null, mark: mBy.get(e.id) || null, status }
   })
   const count = (k) => rows.filter((r) => r.status === k).length
@@ -376,6 +377,7 @@ on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   if ('phone' in b) { const ph = b.phone ? phone10(b.phone) : ''; if (ph && ph.length !== 10) throw bad('Mobile 10 अंक'); patch.phone = ph || null }
   for (const k of ['name', 'designation', 'department', 'work_location', 'shift_start', 'shift_end', 'joining_date']) if (k in b) patch[k] = b[k] === '' ? null : b[k]
   if ('team' in b) patch.team = b.team === 'Warehouse' ? 'Warehouse' : 'Office'
+  if ('live_track' in b) patch.live_track = b.live_track ? 1 : 0
   if ('role' in b && b.role !== e.role) {
     if (Number(params.id) === me.id) throw bad('अपना role खुद नहीं बदल सकते')
     if (!roleAllowed(me, b.role)) throw new HttpError(403, 'यह role आप नहीं दे सकते')
@@ -493,7 +495,7 @@ on('GET', '/api/dev/system', async (env, req) => {
   let dbBytes = null
   try { const p = await env.DB.prepare('SELECT page_count * page_size AS b FROM pragma_page_count(), pragma_page_size()').first(); dbBytes = p?.b ?? null } catch { /* D1 may block pragma */ }
   const { results: phones } = await env.DB.prepare(`SELECT e.id, e.name, e.team, e.work_location, l.recorded_at, l.synced_at, l.kind
-      FROM employees e LEFT JOIN last_location l ON l.emp_id = e.id WHERE e.active = 1 AND e.team = 'Warehouse' ORDER BY e.name`).all()
+      FROM employees e LEFT JOIN last_location l ON l.emp_id = e.id WHERE e.active = 1 AND (e.team = 'Warehouse' OR e.live_track = 1) ORDER BY e.name`).all()
   return json({ ...r, db_bytes: dbBytes, db_limit_bytes: 500 * 1024 * 1024, supabase: !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY), phones })
 })
 on('GET', '/api/dev/audit', async (env, req) => {
@@ -512,7 +514,7 @@ export async function runCron(env) {
   const today = istDate()
   const now = Date.now()
   const { results } = await env.DB.prepare(`SELECT s.emp_id, l.recorded_at FROM day_sessions s
-      JOIN employees e ON e.id = s.emp_id AND e.team = 'Warehouse' AND e.active = 1
+      JOIN employees e ON e.id = s.emp_id AND (e.team = 'Warehouse' OR e.live_track = 1) AND e.active = 1
       LEFT JOIN last_location l ON l.emp_id = s.emp_id
       WHERE s.date = ? AND s.end_at IS NULL`).bind(today).all()
   for (const r of results) {
@@ -559,6 +561,14 @@ async function ensureSchema(env) {
 async function runMigrations(env) {
   const done = async (k) => !!(await env.DB.prepare('SELECT 1 AS x FROM app_settings WHERE key = ?').bind(k).first())
   const mark = (k) => env.DB.prepare('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)').bind(k, new Date().toISOString()).run()
+  // Office वालों के लिए भी live GPS (जैसे घर से काम) — employees.live_track
+  if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'live_track'").first())) {
+    await env.DB.prepare('ALTER TABLE employees ADD COLUMN live_track INTEGER NOT NULL DEFAULT 0').run()
+  }
+  if (!(await done('mig_live_himanshu'))) {
+    const r = await env.DB.prepare("UPDATE employees SET live_track = 1 WHERE username = 'himanshu'").run()
+    if (r.meta?.changes) { await audit(env, null, 'live_track_on', 'employees', 'himanshu', null, { live_track: 1 }); await mark('mig_live_himanshu') }
+  }
   // पुराना tracker 5–14 Nov 2026 बंद था: Himanshu के लिए Present (बाकी लोग HR/Boss panel से भरेंगे)
   if (!(await done('mig_gap_himanshu_2026_11'))) {
     const e = await env.DB.prepare("SELECT id FROM employees WHERE username = 'himanshu'").first()

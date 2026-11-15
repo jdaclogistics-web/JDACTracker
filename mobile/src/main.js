@@ -31,7 +31,7 @@ async function boot() {
 }
 async function syncTracking() {
   // सिर्फ़ Warehouse team की पूरे दिन tracking; Office = सिर्फ़ check-in location
-  if (me?.team === 'Warehouse' && session && !session.end_at) await startTracking(session.date)
+  if (me && (me.team === 'Warehouse' || me.live_track) && session && !session.end_at) await startTracking(session.date)
   else await stopTracking()
 }
 
@@ -103,7 +103,7 @@ function refreshSync() { const el = document.getElementById('sync'); if (el) el.
 function renderHome(v) {
   const open = session && !session.end_at
   const t = trackingState()
-  const wh = me.team === 'Warehouse'
+  const wh = me.team === 'Warehouse' || !!me.live_track
   if (!session) {
     v.innerHTML = `
     <section class="card hero-idle">
@@ -112,7 +112,7 @@ function renderHome(v) {
       <p>Shift starts ${esc(me.shift_start || '10:00')}. A selfie and your GPS location are taken when you start.</p>
       <button class="btn pri" id="start" style="font-size:16px">${ic('play', 18, '#fff')} Start day</button>
     </section>
-    ${wh ? `<section class="card tip">${ic('battery', 20, '#B45309')}<div><b>Warehouse team — tracking</b><p>Location is recorded every minute until you end the day. Keep battery "Unrestricted" for this app.</p></div></section>` : ''}`
+    ${wh ? `<section class="card tip">${ic('battery', 20, '#B45309')}<div><b>${me.team === 'Warehouse' ? 'Warehouse team' : 'Live GPS on'} — tracking</b><p>Location is recorded every minute until you end the day. Keep battery "Unrestricted" for this app.</p></div></section>` : ''}`
     v.querySelector('#start').onclick = doStart
     return
   }

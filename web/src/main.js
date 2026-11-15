@@ -85,7 +85,7 @@ async function viewHome(v) {
     try {
       const [t, lv, al] = await Promise.all([get('/api/admin/today'), get('/api/admin/leaves?status=Pending'), get('/api/admin/alerts')])
       const s = t.summary
-      const live = t.rows.filter((r) => r.emp.team === 'Warehouse' && r.session && !r.session.end_at)
+      const live = t.rows.filter((r) => (r.emp.team === 'Warehouse' || r.emp.live_track) && r.session && !r.session.end_at)
       const pct = s.total ? Math.round((s.in / s.total) * 100) : 0
       const acc = ROLE_ACCENT[me.role]
       v.innerHTML = `
@@ -187,7 +187,7 @@ async function viewLive(v) {
   const load = async () => {
     try {
       const t = await get('/api/admin/today')
-      const rows = t.rows.filter((r) => r.emp.team === 'Warehouse' && r.session && r.last)
+      const rows = t.rows.filter((r) => (r.emp.team === 'Warehouse' || r.emp.live_track) && r.session && r.last)
       layer.clearLayers()
       for (const r of rows) {
         const c = ST[r.status]?.[2] || '#94A3B8'
@@ -196,7 +196,7 @@ async function viewLive(v) {
       }
       if (rows.length && !fitted) { map.fitBounds(L.latLngBounds(rows.map((r) => [r.last.lat, r.last.lng])).pad(0.3)); fitted = true }
       const el = v.querySelector('#ll'); if (!el) return
-      el.innerHTML = t.rows.filter((r) => r.emp.team === 'Warehouse').map(personRow).join('') || '<div class="empty">No warehouse staff</div>'
+      el.innerHTML = t.rows.filter((r) => r.emp.team === 'Warehouse' || r.emp.live_track).map(personRow).join('') || '<div class="empty">No tracked staff</div>'
       el.querySelectorAll('[data-emp]').forEach((b) => (b.onclick = () => openRoute(v, Number(b.dataset.emp), istDate())))
       v.querySelector('#upd').textContent = 'updated ' + fmtTime(new Date())
     } catch (e) { toast(e.message, 'bad') }
@@ -249,6 +249,7 @@ async function viewStaff(v) {
           ${e.id !== me.id ? `<label class="f">Role<select class="inp" name="role">${[...new Set([...roles, e.role])].map((r) => `<option ${e.role === r ? 'selected' : ''} ${roles.includes(r) ? '' : 'disabled'}>${r}</option>`).join('')}</select></label>
           <label class="f">New password<input class="inp" name="new_password" placeholder="leave blank to keep"></label>
           <label class="chk"><input type="checkbox" name="active" ${e.active ? 'checked' : ''}> Login active</label>
+          <label class="chk"><input type="checkbox" name="live_track" ${e.live_track || e.team === 'Warehouse' ? 'checked' : ''} ${e.team === 'Warehouse' ? 'disabled' : ''}> Live GPS tracking ${e.team === 'Warehouse' ? '(warehouse: हमेशा)' : '(घर/field से काम)'}</label>
           <label class="chk"><input type="checkbox" name="unlink_device"> Unlink phone ${e.device_linked ? '(linked)' : ''}</label>` : ''}
           <button class="btn dark sm" style="grid-column:1/-1;width:100%">Save</button></form></details>`).join('')
       v.querySelectorAll('form[data-id]').forEach((f) => (f.onsubmit = async (ev) => {
@@ -257,6 +258,7 @@ async function viewStaff(v) {
         for (const k of ['name', 'username', 'phone', 'designation', 'team', 'work_location', 'shift_start', 'shift_end', 'role']) if (fd.has(k)) b[k] = fd.get(k)
         if (fd.get('new_password')) b.new_password = fd.get('new_password')
         if (f.querySelector('[name=active]')) b.active = !!fd.get('active')
+        if (f.querySelector('[name=live_track]:not([disabled])')) b.live_track = !!fd.get('live_track')
         if (fd.get('unlink_device')) b.unlink_device = true
         try { await patch('/api/admin/employees/' + f.dataset.id, b); toast('Saved'); viewStaff(v) } catch (er) { toast(er.message, 'bad') }
       }))
@@ -336,7 +338,7 @@ async function viewSystem(v) {
         <div class="li"><span class="dot" style="background:${pct == null || pct < 70 ? '#10B981' : '#F59E0B'}"></span><div class="nm"><b>Database (Cloudflare D1)</b><span>${s.db_bytes ? (s.db_bytes / 1048576).toFixed(1) + ' MB of 500 MB' : 'size n/a'} · ${s.pings_total} GPS points total</span></div><span class="pill ${pct == null || pct < 70 ? 'g' : 'o'}">${pct == null ? 'OK' : pct + '%'}</span></div>
         <div class="li"><span class="dot" style="background:${s.supabase ? '#10B981' : '#F59E0B'}"></span><div class="nm"><b>Photo storage (Supabase)</b><span>${s.supabase ? 'connected' : 'not connected — photos kept safely in D1 for now'} · ${s.photos_waiting} waiting</span></div><span class="pill ${s.supabase ? 'g' : 'o'}">${s.supabase ? 'OK' : 'Setup'}</span></div>
         <div class="li"><span class="dot" style="background:${s.open_alerts ? '#F59E0B' : '#10B981'}"></span><div class="nm"><b>Open alerts</b><span>no-signal alerts right now</span></div><span class="pill ${s.open_alerts ? 'o' : 'g'}">${s.open_alerts}</span></div></div></section>
-      <section class="card"><h2 class="h3">Warehouse phones — tracking health</h2><div class="list" style="margin-top:4px">
+      <section class="card"><h2 class="h3">Tracked phones — GPS health</h2><div class="list" style="margin-top:4px">
         ${s.phones.map((p) => { const m = minsAgo(p.recorded_at); const k = m == null ? 'n' : m <= 10 ? 'g' : 'o'; return `<div class="li"><div class="nm"><b>${esc(p.name)}</b><span>${esc(p.work_location || '')} · last GPS ${p.recorded_at ? agoText(p.recorded_at) : 'never'}${p.synced_at && p.recorded_at && Date.parse(p.synced_at) - Date.parse(p.recorded_at) > 180000 ? ' · synced late (offline)' : ''}</span></div><span class="pill ${k}">${m == null ? 'No data' : m <= 10 ? 'OK' : m + ' min'}</span></div>` }).join('') || '<div class="empty">No warehouse staff</div>'}</div></section>`
     } catch (e) { fail(v, e) }
   }

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS employees (
   shift_end     TEXT NOT NULL DEFAULT '19:00',
   joining_date  TEXT,
   active        INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+  live_track    INTEGER NOT NULL DEFAULT 0,             -- 1 = Office वाले की भी पूरे दिन GPS tracking
   device_id     TEXT,
   token_version INTEGER NOT NULL DEFAULT 0,             -- बढ़ाने पर सारे पुराने login बंद
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
