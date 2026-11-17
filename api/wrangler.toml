@@ -1,6 +1,7 @@
 name = "jdac-tracker-api"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
+keep_vars = true
 
 [[d1_databases]]
 binding = "DB"
@@ -12,5 +13,5 @@ crons = ["*/5 * * * *"]
 
 [vars]
 ALLOWED_ORIGINS = "*"
-SUPABASE_URL = ""
+SUPABASE_URL = "https://aejekgdqwystuaxvljxs.supabase.co"
 # Secrets (never commit): wrangler secret put TOKEN_SECRET ; wrangler secret put SUPABASE_SERVICE_KEY
