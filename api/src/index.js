@@ -6,6 +6,7 @@ import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64 } from './photos.j
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
 const NO_SIGNAL_MIN = 10
 const TOKEN_DAYS = 90
+const AUTO_LOGOUT_HOURS = 24
 
 // ── HTTP helpers ─────────────────────────────────────────────────────────
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status } }
@@ -122,6 +123,11 @@ on('POST', '/api/login', async (env, req) => {
   if (dev && dev !== 'web') {
     if (!me.device_id) await env.DB.prepare('UPDATE employees SET device_id = ? WHERE id = ?').bind(dev, me.id).run()
     else if (me.device_id !== dev && me.role === 'developer') throw new HttpError(403, 'यह developer login सिर्फ registered phone पर चलेगा')
+  }
+  // GPS वाले staff (Warehouse / live GPS): phone login 24 घंटे बाद अपने आप logout (cron देखता है)
+  if (dev && dev !== 'web' && (me.team === 'Warehouse' || me.live_track)) {
+    await env.DB.prepare('UPDATE employees SET app_login_at = ? WHERE id = ?').bind(nowIso(), me.id).run()
+    await env.DB.prepare("UPDATE alerts SET closed_at = ? WHERE emp_id = ? AND kind = 'auto_logout' AND closed_at IS NULL").bind(nowIso(), me.id).run()
   }
   const token = await signToken({ sub: me.id, tv: me.token_version, exp: Date.now() + TOKEN_DAYS * 86400000 }, env.TOKEN_SECRET)
   return json({ token, me: pub(me) })
@@ -626,6 +632,23 @@ export async function runCron(env) {
         .bind(r.emp_id, today, r.recorded_at ? `last GPS ${r.recorded_at}` : 'no GPS yet', nowIso()).run()
     }
   }
+  // 24 घंटे वाला auto-logout (सिर्फ GPS वाले phone logins) + Boss/HR dashboard पर alert
+  const cutoff = new Date(now - AUTO_LOGOUT_HOURS * 3600000).toISOString()
+  const { results: stale } = await env.DB.prepare('SELECT id, name, app_login_at FROM employees WHERE app_login_at IS NOT NULL AND app_login_at < ?').bind(cutoff).all()
+  for (const e of stale) {
+    const s = await env.DB.prepare('SELECT id, date, start_at FROM day_sessions WHERE emp_id = ? AND end_at IS NULL ORDER BY date DESC LIMIT 1').bind(e.id).first()
+    let endAt = null
+    if (s) {
+      const last = await env.DB.prepare('SELECT max(recorded_at) t FROM location_pings WHERE emp_id = ? AND date = ?').bind(e.id, s.date).first()
+      endAt = last?.t && last.t > s.start_at ? last.t : nowIso()
+      await env.DB.prepare('UPDATE day_sessions SET end_at = ?, auto_closed = 1 WHERE id = ? AND end_at IS NULL').bind(endAt, s.id).run()
+    }
+    await env.DB.prepare('UPDATE employees SET token_version = token_version + 1, app_login_at = NULL WHERE id = ?').bind(e.id).run()
+    await env.DB.prepare("INSERT OR IGNORE INTO alerts (emp_id, date, kind, detail, opened_at) VALUES (?, ?, 'auto_logout', ?, ?)")
+      .bind(e.id, today, `logged in ${e.app_login_at}${endAt ? ' · day closed ' + endAt : ''}`, nowIso()).run()
+    await env.DB.prepare("UPDATE alerts SET closed_at = ? WHERE emp_id = ? AND kind = 'no_signal' AND closed_at IS NULL").bind(nowIso(), e.id).run()
+    await audit(env, null, 'auto_logout_24h', 'employees', e.id, null, { login_at: e.app_login_at, day_closed: endAt })
+  }
   // आधी रात: जो day close करना भूले, उन्हें auto-close (end = आखिरी GPS का समय)
   const { results: open } = await env.DB.prepare('SELECT s.id, s.emp_id, s.date, s.start_at FROM day_sessions s WHERE s.end_at IS NULL AND s.date < ?').bind(today).all()
   for (const s of open) {
@@ -663,6 +686,9 @@ async function ensureSchema(env) {
 async function runMigrations(env) {
   const done = async (k) => !!(await env.DB.prepare('SELECT 1 AS x FROM app_settings WHERE key = ?').bind(k).first())
   const mark = (k) => env.DB.prepare('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)').bind(k, new Date().toISOString()).run()
+  if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'app_login_at'").first())) {
+    await env.DB.prepare('ALTER TABLE employees ADD COLUMN app_login_at TEXT').run()
+  }
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS legacy_records (tbl TEXT NOT NULL, legacy_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tbl, legacy_id))').run()
   // Office वालों के लिए भी live GPS (जैसे घर से काम) — employees.live_track
