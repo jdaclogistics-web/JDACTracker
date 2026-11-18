@@ -67,6 +67,33 @@ function validPing(p, me) {
   return null
 }
 
+// ── Usage tracking (free plan: 1,00,000 requests/day, D1 500 MB) ─────────────
+export const USAGE_LIMITS = { requests_per_day: 100000, db_bytes: 500 * 1024 * 1024, warn_pct: 70 }
+let usagePending = 0
+async function flushUsage(env) {
+  const n = usagePending; usagePending = 0
+  if (!n) return
+  try {
+    await env.DB.prepare('INSERT INTO usage_daily (day, requests) VALUES (?, ?) ON CONFLICT (day) DO UPDATE SET requests = requests + excluded.requests').bind(istDate(), n).run()
+  } catch { usagePending += n }
+}
+async function usageSummary(env) {
+  const today = istDate()
+  const { results: days } = await env.DB.prepare('SELECT day, requests FROM usage_daily ORDER BY day DESC LIMIT 14').all()
+  let dbBytes = null
+  try { const p = await env.DB.prepare('SELECT page_count * page_size AS b FROM pragma_page_count(), pragma_page_size()').first(); dbBytes = p?.b ?? null } catch { /* pragma blocked */ }
+  const t = await env.DB.prepare('SELECT (SELECT count(*) FROM location_pings WHERE date = ?1) pings_today, (SELECT count(*) FROM photos) photos, (SELECT count(*) FROM photos WHERE moved = 0) photos_in_db').bind(today).first()
+  const reqToday = (days.find((d) => d.day === today)?.requests || 0) + usagePending
+  const L = USAGE_LIMITS
+  const req_pct = Math.round((reqToday / L.requests_per_day) * 100)
+  const db_pct = dbBytes == null ? null : Math.round((dbBytes / L.db_bytes) * 100)
+  const warnings = []
+  if (req_pct >= L.warn_pct) warnings.push(`Requests today ${reqToday.toLocaleString('en-IN')} = ${req_pct}% of free daily limit`)
+  if (db_pct != null && db_pct >= L.warn_pct) warnings.push(`Database ${(dbBytes / 1048576).toFixed(0)} MB = ${db_pct}% of 500 MB`)
+  return { ok: warnings.length === 0, at: nowIso(), today, requests_today: reqToday, requests_limit: L.requests_per_day, req_pct,
+    db_bytes: dbBytes, db_limit_bytes: L.db_bytes, db_pct, warn_pct: L.warn_pct, ...t, last_14_days: days, warnings }
+}
+
 // ═════════════════════════════ ROUTES ═════════════════════════════════════
 const routes = []
 const on = (method, path, fn) => routes.push({ method, re: new RegExp('^' + path.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), fn })
@@ -76,6 +103,9 @@ on('GET', '/api/health', async (env) => {
   const r = await env.DB.prepare('SELECT (SELECT count(*) FROM employees WHERE active=1) employees, (SELECT count(*) FROM location_pings) pings').first()
   return json({ ok: true, at: nowIso(), ...r })
 })
+
+// Usage summary (सिर्फ गिनती, कोई personal data नहीं) — GitHub usage-watch इसे हर घंटे पढ़ता है
+on('GET', '/api/usage', async (env) => json(await usageSummary(env)))
 
 // ── Login ───────────────────────────────────────────────────────────────
 on('POST', '/api/login', async (env, req) => {
@@ -568,7 +598,7 @@ on('GET', '/api/dev/system', async (env, req) => {
   try { const p = await env.DB.prepare('SELECT page_count * page_size AS b FROM pragma_page_count(), pragma_page_size()').first(); dbBytes = p?.b ?? null } catch { /* D1 may block pragma */ }
   const { results: phones } = await env.DB.prepare(`SELECT e.id, e.name, e.team, e.work_location, l.recorded_at, l.synced_at, l.kind
       FROM employees e LEFT JOIN last_location l ON l.emp_id = e.id WHERE e.active = 1 AND (e.team = 'Warehouse' OR e.live_track = 1) ORDER BY e.name`).all()
-  return json({ ...r, db_bytes: dbBytes, db_limit_bytes: 500 * 1024 * 1024, supabase: !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY), phones })
+  return json({ ...r, usage: await usageSummary(env), db_bytes: dbBytes, db_limit_bytes: 500 * 1024 * 1024, supabase: !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY), phones })
 })
 on('GET', '/api/dev/audit', async (env, req) => {
   const me = await authUser(env, req); if (!['boss', 'developer'].includes(me.role)) throw new HttpError(403, 'Not allowed')
@@ -633,6 +663,7 @@ async function ensureSchema(env) {
 async function runMigrations(env) {
   const done = async (k) => !!(await env.DB.prepare('SELECT 1 AS x FROM app_settings WHERE key = ?').bind(k).first())
   const mark = (k) => env.DB.prepare('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)').bind(k, new Date().toISOString()).run()
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS legacy_records (tbl TEXT NOT NULL, legacy_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tbl, legacy_id))').run()
   // Office वालों के लिए भी live GPS (जैसे घर से काम) — employees.live_track
   if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'live_track'").first())) {
@@ -669,8 +700,10 @@ on('POST', '/api/setup/seed', async (env, req) => {
 
 // ── Entry ─────────────────────────────────────────────────────────────────
 export default {
-  async fetch(req, env0) {
+  async fetch(req, env0, ctx) {
     let env = env0
+    usagePending++
+    if (usagePending >= 20 && ctx) ctx.waitUntil(flushUsage(env0))
     const h = cors(env, req)
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h })
     const url = new URL(req.url)
@@ -694,6 +727,6 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(ensureSchema(env).then(() => runCron(env)))
+    ctx.waitUntil(ensureSchema(env).then(() => flushUsage(env)).then(() => runCron(env)))
   },
 }

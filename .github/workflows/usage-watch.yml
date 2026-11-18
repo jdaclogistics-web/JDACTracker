@@ -1,0 +1,46 @@
+name: Server usage watch
+# हर घंटे server की usage देखता है। 70% से ऊपर गई तो GitHub Issue खोलता है,
+# जिसका email GitHub अपने आप भेजता है (हर बार एक ही email, बार-बार नहीं)। Usage नीचे आने पर Issue अपने आप बंद।
+on:
+  schedule: [{ cron: '23 * * * *' }]
+  workflow_dispatch:
+permissions: { issues: write, contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read usage
+        id: u
+        run: |
+          curl -fsS --retry 3 https://jdac-tracker-api.jdaclogistics.workers.dev/api/usage -o usage.json || echo '{"ok":false,"warnings":["Server not answering /api/usage"]}' > usage.json
+          cat usage.json
+          echo "ok=$(jq -r '.ok' usage.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo 'body<<EOF'
+            echo '**JDAC Tracker server usage alert** (limit warning at 70%)'
+            echo
+            jq -r '.warnings[] | "- ⚠️ " + .' usage.json
+            echo
+            jq -r '"Requests today: \(.requests_today // "?") / \(.requests_limit // 100000) (\(.req_pct // "?")%)\nDatabase: \(((.db_bytes // 0) / 1048576 | floor)) MB / 500 MB (\(.db_pct // "?")%)\nGPS points today: \(.pings_today // "?")\nChecked: \(.at // "now")"' usage.json
+            echo
+            echo 'Free plan की limit पार होने पर उस दिन नई requests रुक सकती हैं। ज़रूरत हो तो Cloudflare Workers Paid ($5/month) ले सकते हैं।'
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+      - name: Open or update alert issue
+        if: steps.u.outputs.ok != 'true'
+        env: { GH_TOKEN: '${{ github.token }}', BODY: '${{ steps.u.outputs.body }}' }
+        run: |
+          gh label create usage-alert --color D93F0B -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          n=$(gh issue list -R "$GITHUB_REPOSITORY" --label usage-alert --state open --json number -q '.[0].number')
+          if [ -z "$n" ]; then
+            gh issue create -R "$GITHUB_REPOSITORY" --label usage-alert --assignee jdaclogistics-web --title "⚠️ JDAC Tracker server usage high" --body "$BODY"
+          else
+            echo "Alert #$n already open — no repeat email"
+          fi
+      - name: Close alert when back to normal
+        if: steps.u.outputs.ok == 'true'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          for n in $(gh issue list -R "$GITHUB_REPOSITORY" --label usage-alert --state open --json number -q '.[].number'); do
+            gh issue close "$n" -R "$GITHUB_REPOSITORY" --comment "✅ Usage normal again."
+          done

@@ -181,3 +181,9 @@ CREATE TABLE IF NOT EXISTS legacy_records (
   data      TEXT NOT NULL,          -- JSON row
   PRIMARY KEY (tbl, legacy_id)
 );
+
+-- Server usage (रोज़ की requests) — free plan limit पर नज़र रखने के लिए
+CREATE TABLE IF NOT EXISTS usage_daily (
+  day      TEXT PRIMARY KEY,
+  requests INTEGER NOT NULL DEFAULT 0
+);
