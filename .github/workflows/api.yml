@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 jobs:
   deploy:
-    if: ${{ vars.CF_READY == 'true' }}
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: api } }
     steps:
