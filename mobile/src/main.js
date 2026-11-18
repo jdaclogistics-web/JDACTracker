@@ -39,17 +39,20 @@ async function syncTracking() {
 function renderLogin(err = '', user = '') {
   clearInterval(tick)
   app.innerHTML = `
-  <div class="login">
-    <div class="logo big">JDAC</div>
-    <h1>Welcome to<br>JDAC Work</h1>
-    <p class="lead">Attendance, tracking and leave — one app.</p>
-    <form id="lf" class="lform">
-      <label class="lf">Username<span class="lin"><input id="lm" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="जैसे rahul" value="${esc(user)}" required></span></label>
-      <label class="lf">Password<span class="lin">${ic('lock', 18)}<input id="lp" type="password" autocomplete="current-password" placeholder="JDAC####" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 20)}</button></span></label>
-      ${err ? `<div class="err">${esc(err)}</div>` : ''}
-      <button class="btn pri" id="lb" style="margin-top:6px;font-size:16px">Login</button>
-    </form>
-    <div class="lnote">${ic('shield', 20, '#34D399')}<span>One login for everyone. Your team — warehouse or office — is set by admin, so the app opens the right screens and tracking for you. Password comes from the office on WhatsApp.</span></div>
+  <div class="login"><div class="lwrap">
+    <div class="lbrand"><img src="./jdac-logo.png" alt="JDAC — The Logistics Aggregator"><span>Team App</span></div>
+    <div class="lcard">
+      <h1>Login</h1>
+      <p class="lead">Attendance, tracking और leave — एक ही app में.</p>
+      <form id="lf" class="lform">
+        <label class="lf">Username<span class="lin">${ic('user', 18)}<input id="lm" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="जैसे rahul" value="${esc(user)}" required></span></label>
+        <label class="lf">Password<span class="lin">${ic('lock', 18)}<input id="lp" type="password" autocomplete="current-password" placeholder="JDAC####" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 20)}</button></span></label>
+        ${err ? `<div class="err">${esc(err)}</div>` : ''}
+        <button class="btn lbtn" id="lb">Login</button>
+      </form>
+    </div>
+    <div class="lnote">${ic('shield', 18, '#FDBA74')}<span>Password office से WhatsApp पर मिलेगा. आपकी team (warehouse / office) admin set करता है — app उसी हिसाब से खुलेगा.</span></div>
+  </div>
   </div>`
   askPermissionsOnce()
   document.getElementById('le').onclick = () => {

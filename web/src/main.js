@@ -31,7 +31,7 @@ async function boot() {
 function renderLogin(err = '') {
   cleanup()
   app.innerHTML = `<div class="wlogin"><form class="card" id="lf">
-    <div class="row"><div class="logo">JDAC</div><div><b style="font-size:17px">JDAC Tracker</b><div class="sub">Admin panel — HR · Boss · Developer</div></div></div>
+    <div class="wbrand"><img src="./jdac-logo-color.png" alt="JDAC — The Logistics Aggregator"><div class="sub">Tracker Admin panel — HR · Boss · Developer</div></div>
     <label class="f" style="margin-top:18px">Username<input class="inp" id="lm" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. darshan" required></label>
     <label class="f" style="margin-top:10px">Password<span class="pwrap"><input class="inp" id="lp" type="password" autocomplete="current-password" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 18)}</button></span></label>
     ${err ? `<div class="err" style="margin-top:10px">${esc(err)}</div>` : ''}

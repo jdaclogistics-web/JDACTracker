@@ -1,6 +1,8 @@
 #app{min-height:100vh}
-.wlogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--ink)}
-.wlogin .card{width:100%;max-width:380px;padding:22px}
+.wlogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(120% 80% at 50% 0%,#2B4BA0 0%,#1B2F6B 45%,#0B1430 100%)}
+.wbrand{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding-bottom:4px}.wbrand img{width:200px;height:auto}
+.wlogin .btn.pri{background:linear-gradient(90deg,#F15A24,#F7782F);border:0}
+.wlogin .card{width:100%;max-width:400px;padding:26px 24px;border-radius:22px;box-shadow:0 24px 60px rgba(4,10,30,.45)}
 .shell{display:flex;align-items:flex-start}
 .shell .main{flex:1;min-width:0;max-width:1100px;margin:0 auto;padding-bottom:calc(90px + env(safe-area-inset-bottom))}
 .nav.side button span{white-space:nowrap}

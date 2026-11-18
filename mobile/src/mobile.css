@@ -1,14 +1,4 @@
 #app{min-height:100vh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
-.login{min-height:100vh;background:var(--ink);color:#fff;padding:calc(48px + env(safe-area-inset-top)) 24px 28px;display:flex;flex-direction:column}
-.logo.big{width:56px;height:56px;border-radius:16px;font-size:16px}
-.login h1{margin:22px 0 6px;font-size:28px;font-weight:800;letter-spacing:-.6px;line-height:1.15}
-.login .lead{margin:0;color:#A6B0C2;font-size:14.5px}
-.lform{margin-top:32px;display:flex;flex-direction:column;gap:14px}
-.lf{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:600;color:#D7DEEA}
-.lin{display:flex;align-items:center;background:var(--ink2);border:1px solid #2A3550;border-radius:14px;padding:0 14px;gap:10px;color:#A6B0C2}
-.lin b{font-weight:600}
-.lin input{flex:1;border:0;outline:0;background:transparent;color:#fff;font-size:16px;font-weight:600;padding:15px 0;min-width:0}
-.lnote{margin-top:auto;display:flex;gap:10px;align-items:flex-start;background:var(--ink2);border-radius:14px;padding:12px;font-size:12.5px;color:#C3CCDA;line-height:1.45}
 .hero-idle{text-align:center;padding:20px}
 .hero-idle h2,.hero-done h2{margin:12px 0 4px;font-size:20px;font-weight:800;letter-spacing:-.4px;text-align:center}
 .hero-idle p{margin:0 auto 16px;max-width:290px;font-size:13.5px;color:var(--mut);line-height:1.5}
@@ -51,3 +41,23 @@ form.stack{margin-top:0}
 .selfiecam .sc-shot:active{transform:scale(.94)}
 .selfiecam .sc-x{width:48px;height:48px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:20px}
 .selfiecam .sc-bar span{width:48px}
+
+/* ── Login (JDAC brand: blue #24408E + orange #F15A24) ── */
+.login{min-height:100vh;background:radial-gradient(120% 80% at 50% 0%,#2B4BA0 0%,#1B2F6B 45%,#0B1430 100%);display:flex;align-items:center;justify-content:center;padding:calc(28px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom))}
+.lwrap{width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px}
+.lbrand{display:flex;flex-direction:column;align-items:center;gap:8px}
+.lbrand img{width:210px;max-width:70%;height:auto;display:block}
+.lbrand span{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#FDBA74;background:rgba(241,90,36,.14);border:1px solid rgba(241,90,36,.35);padding:4px 12px;border-radius:99px}
+.lcard{background:#fff;border-radius:22px;padding:24px 20px 22px;box-shadow:0 24px 60px rgba(4,10,30,.45)}
+.lcard h1{margin:0;font-size:22px;font-weight:800;color:#0F1B3D;letter-spacing:-.3px}
+.lcard .lead{margin:4px 0 0;color:#6B7590;font-size:13.5px}
+.lform{margin-top:20px;display:flex;flex-direction:column;gap:14px}
+.lf{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:700;color:#3A4560}
+.lin{display:flex;align-items:center;background:#F4F6FB;border:1.5px solid #E1E6F0;border-radius:14px;padding:0 12px;gap:10px;color:#8A94AD;transition:border-color .15s,background .15s}
+.lin:focus-within{border-color:#24408E;background:#fff;color:#24408E}
+.lin input{flex:1;border:0;outline:0;background:transparent;color:#0F1B3D;font-size:16px;font-weight:600;padding:14px 0;min-width:0}
+.lin input::placeholder{color:#A8B0C3;font-weight:500}
+.lbtn{margin-top:6px;width:100%;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:800;color:#fff;background:linear-gradient(90deg,#F15A24,#F7782F);box-shadow:0 10px 24px rgba(241,90,36,.35);cursor:pointer}
+.lbtn:disabled{opacity:.7}
+.lnote{display:flex;gap:10px;align-items:flex-start;color:#C9D3EA;font-size:12.5px;line-height:1.5;padding:0 6px}
+.lnote svg{flex:none;margin-top:1px}
