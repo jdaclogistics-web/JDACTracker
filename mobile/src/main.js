@@ -145,6 +145,7 @@ function renderHome(v) {
     <button class="btn ghost">Save</button></form></details>
   <button class="btn dark" id="end" style="font-size:16px;padding:17px">${ic('stop', 16, '#fff')} End day</button>
   <p class="sub" style="text-align:center;margin:0">End day takes a selfie${wh ? ' and stops tracking' : ''}.</p>
+  ${!isNative() && wh ? `<p class="sub" style="text-align:center;margin:0;color:#B45309">Web version: GPS सिर्फ तब चलेगा जब यह page खुला और screen on हो. पूरे दिन tracking के लिए Android app (APK) use करें.</p>` : ''}
   ${isNative() && wh ? `<button class="link" id="perm" style="align-self:center">${ic('battery', 16)} Tracking stops? Fix battery / location settings</button>` : ''}`
   v.querySelector('#end').onclick = doEnd
   v.querySelector('#perm')?.addEventListener('click', openAppSettings)
