@@ -786,9 +786,12 @@ async function tokenSecret(env) {
 // SCHEMA_STATEMENTS bundle के समय api/schema.sql से भरता है; tests में schema पहले से होता है.
 let schemaReady = false
 async function ensureSchema(env) {
-  if (schemaReady || typeof SCHEMA_STATEMENTS === 'undefined') return
-  const has = await env.DB.prepare("SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='app_settings'").first()
-  if (!has) await env.DB.batch(SCHEMA_STATEMENTS.map((q) => env.DB.prepare(q)))
+  if (schemaReady) return
+  // GitHub (wrangler) deploy में SCHEMA_STATEMENTS नहीं होता — तब भी migrations ज़रूर चलें
+  if (typeof SCHEMA_STATEMENTS !== 'undefined') {
+    const has = await env.DB.prepare("SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='app_settings'").first()
+    if (!has) await env.DB.batch(SCHEMA_STATEMENTS.map((q) => env.DB.prepare(q)))
+  }
   await runMigrations(env)
   schemaReady = true
 }
