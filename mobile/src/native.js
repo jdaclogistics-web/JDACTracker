@@ -1,3 +1,4 @@
+import { stampedSelfie } from '@shared/selfie.js'
 // Phone features — Android में native plugins, browser में web fallback.
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { Camera, CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera'
@@ -40,7 +41,10 @@ export async function currentPosition() {
 /** Front camera selfie → छोटा JPEG base64 (~25 KB).
  *  पहले app के अंदर वाला camera (हमेशा front) — कई phones system camera में back खोल देते हैं.
  *  वो न चले तो Android camera (direction Front) fallback. */
-export async function takeSelfie() {
+export async function takeSelfie(opts = {}) {
+  // in-app camera with date / day / time / location stamp and Retake
+  if (isNative()) { try { await Camera.requestPermissions({ permissions: ['camera'] }) } catch { /* */ } }
+  try { return await stampedSelfie(opts) } catch (e) { if (e?.cancelled) throw new Error('Selfie was not taken') }
   try { return await inAppSelfie() } catch (e) { if (e?.cancelled) throw new Error('Selfie was not taken') }
   let dataUrl
   if (isNative()) {

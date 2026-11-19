@@ -170,6 +170,21 @@ on('POST', '/api/day/start', async (env, req) => {
   return json({ session: await env.DB.prepare('SELECT * FROM day_sessions WHERE emp_id = ? AND date = ?').bind(me.id, date).first() })
 })
 
+on('POST', '/api/admin/day-start', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req)
+  const emp = await env.DB.prepare('SELECT * FROM employees WHERE id = ? AND active = 1').bind(Number(b.emp_id)).first()
+  if (!emp) throw new HttpError(404, 'Employee not found')
+  const lat = Number(b.lat), lng = Number(b.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) throw bad('Location is required — turn on GPS')
+  if (!b.photo) throw bad('Take the selfie first')
+  const date = istDate()
+  if (await env.DB.prepare('SELECT 1 AS x FROM day_sessions WHERE emp_id = ? AND date = ?').bind(emp.id, date).first()) throw new HttpError(409, 'Their day has already started today')
+  const photo = await savePhoto(env, `${emp.id}/${date}-in-${Date.now()}.jpg`, b.photo)
+  await env.DB.prepare('INSERT INTO day_sessions (emp_id, date, start_at, start_lat, start_lng, start_photo) VALUES (?,?,?,?,?,?)').bind(emp.id, date, nowIso(), lat, lng, photo).run()
+  await audit(env, me.id, 'day_start_for', 'day_sessions', `${emp.id}:${date}`, null, { by: me.name, lat, lng })
+  return json({ ok: true })
+})
 on('POST', '/api/day/end', async (env, req) => {
   const me = await authUser(env, req)
   const b = await body(req)
@@ -373,6 +388,60 @@ on('GET', '/api/admin/report', async (env, req, url) => {
     env.DB.prepare('SELECT * FROM employees ORDER BY team, name').all(),
   ])
   return json({ month: m, employees: emps.results.map(pub), sessions: sess.results, marks: marks.results, leaves: leaves.results })
+})
+
+// ── Payroll (monthly sheet) ────────────────────────────────────────────────
+// Rates live on the employee (fixed = salary_inhand, da_local, da_hq, da_up, mobile_allow, ta_rate per km).
+// Month inputs are auto-filled from attendance and can be overridden; saved per employee per month.
+const PAY_KEYS = ['working_days', 'half_days', 'da_local_days', 'da_hq_days', 'da_up_days', 'km', 'incentives', 'advance', 'paid', 'note']
+on('GET', '/api/admin/payroll', async (env, req, url) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const m = /^\d{4}-\d{2}$/.test(url.searchParams.get('month') || '') ? url.searchParams.get('month') : istDate().slice(0, 7)
+  const [sess, marks, emps, saved] = await Promise.all([
+    env.DB.prepare('SELECT emp_id, date, total_km FROM day_sessions WHERE date LIKE ?').bind(`${m}-%`).all(),
+    env.DB.prepare('SELECT emp_id, date, status FROM attendance_marks WHERE date LIKE ?').bind(`${m}-%`).all(),
+    env.DB.prepare("SELECT * FROM employees WHERE role NOT IN ('developer', 'boss')").all(),
+    env.DB.prepare('SELECT * FROM payroll WHERE month = ?').bind(m).all(),
+  ])
+  const [y, mo] = m.split('-').map(Number), dim = new Date(Date.UTC(y, mo, 0)).getUTCDate(), today = istDate()
+  const S = new Map(sess.results.map((x) => [`${x.emp_id}|${x.date}`, x])), M = new Map(marks.results.map((x) => [`${x.emp_id}|${x.date}`, x.status]))
+  const P = new Map(saved.results.map((x) => [x.emp_id, x]))
+  const first = `${m}-01`, last = `${m}-${String(dim).padStart(2, '0')}`
+  const rows = emps.results.filter((e) => (!e.joining_date || e.joining_date <= last) && (!e.exit_date || e.exit_date >= first) && (e.active || P.has(e.id) || sess.results.some((x) => x.emp_id === e.id)))
+    .map((e) => {
+      let full = 0, half = 0, daLocal = 0, km = 0
+      for (let d = 1; d <= dim; d++) {
+        const ds = `${m}-${String(d).padStart(2, '0')}`
+        if (ds > today || (e.joining_date && ds < e.joining_date) || (e.exit_date && ds > e.exit_date)) continue
+        const sun = new Date(ds + 'T12:00:00Z').getUTCDay() === 0, k = `${e.id}|${ds}`, mk = M.get(k), s = S.get(k)
+        if (s) km += s.total_km || 0
+        if (mk === 'Half Day') { half++; continue }
+        if (mk === 'Absent' || mk === 'Leave') continue
+        if (mk === 'Present' || mk === 'Week Off' || s || sun) { full++; if (!sun && mk !== 'Week Off') daLocal++ }
+      }
+      const auto = { working_days: full, half_days: half, da_local_days: e.da_local ? daLocal : 0, da_hq_days: 0, da_up_days: 0, km: Math.round(km), incentives: 0, advance: 0, paid: 0, note: '' }
+      const sv = P.get(e.id); const data = sv ? { ...auto, ...JSON.parse(sv.data || '{}') } : auto
+      return { emp_id: e.id, emp_code: e.emp_code, name: e.name, designation: e.designation, department: e.department, phone: e.phone, joining_date: e.joining_date, active: !!e.active,
+        rates: { fixed: e.salary_inhand || 0, da_local: e.da_local || 0, da_hq: e.da_hq || 0, da_up: e.da_up || 0, mobile: e.mobile_allow || 0, ta: e.ta_rate || 0 },
+        auto, data, saved: !!sv, updated_at: sv?.updated_at || null }
+    }).sort((a, b) => String(a.emp_code || 'ZZ').localeCompare(String(b.emp_code || 'ZZ')) || a.name.localeCompare(b.name))
+  return json({ month: m, days_in_month: dim, rows })
+})
+on('POST', '/api/admin/payroll', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req)
+  if (!/^\d{4}-\d{2}$/.test(b.month || '') || !b.emp_id) throw bad('month / employee?')
+  const d = {}; for (const k of PAY_KEYS) if (b[k] !== undefined && b[k] !== '') d[k] = k === 'note' ? String(b[k]).slice(0, 300) : Number(b[k]) || 0
+  const old = await env.DB.prepare('SELECT data FROM payroll WHERE emp_id = ? AND month = ?').bind(Number(b.emp_id), b.month).first()
+  const merged = { ...(old ? JSON.parse(old.data) : {}), ...d }
+  await env.DB.prepare('INSERT INTO payroll (emp_id, month, data, updated_by, updated_at) VALUES (?,?,?,?,?) ON CONFLICT (emp_id, month) DO UPDATE SET data = excluded.data, updated_by = excluded.updated_by, updated_at = excluded.updated_at')
+    .bind(Number(b.emp_id), b.month, JSON.stringify(merged), me.id, nowIso()).run()
+  // rates are saved on the employee
+  const r = b.rates || {}, rp = {}
+  for (const [k, col] of [['fixed', 'salary_inhand'], ['da_local', 'da_local'], ['da_hq', 'da_hq'], ['da_up', 'da_up'], ['mobile', 'mobile_allow'], ['ta', 'ta_rate']]) if (r[k] !== undefined && r[k] !== '') rp[col] = Math.max(0, Number(r[k]) || 0)
+  if (Object.keys(rp).length) await env.DB.prepare(`UPDATE employees SET ${Object.keys(rp).map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).bind(...Object.values(rp), Number(b.emp_id)).run()
+  await audit(env, me.id, 'payroll_edit', 'payroll', `${b.emp_id}:${b.month}`, old ? JSON.parse(old.data) : null, { ...merged, rates: rp })
+  return json({ ok: true })
 })
 
 // ── Staff / logins ─────────────────────────────────────────────────────────
@@ -588,11 +657,15 @@ on('GET', '/api/cc/company', async (env, req, url) => {
   return json(companyPage(D, emps, istDate(), name, range, desks, await cargoCses(env)))
 })
 // Chat groups: 📢 Announcements (सब देखते हैं, सिर्फ admin लिखते हैं), 💬 General, हर project
+const projectIdsOf = (D, e) => new Set(D.project_members.filter((m) => (e.legacy_id != null && String(m.personId) === String(e.legacy_id)) || String(m.emp_id || '') === String(e.id)).map((m) => String(m.projectId)))
 on('GET', '/api/cc/chat', async (env, req, url) => {
   const me = await authUser(env, req)
   const D = await loadAll(env)
   const group = url.searchParams.get('group') || 'general'
-  const projects = D.projects.filter((p) => !/archiv|closed/i.test(String(p.status))).map((p) => ({ id: String(p.id), name: p.name }))
+  // employees only see project groups they are members of; Boss / HR / Developer see all
+  const mine = projectIdsOf(D, me)
+  const projects = D.projects.filter((p) => !/archiv|closed/i.test(String(p.status)) && (ADMIN_ROLES.includes(me.role) || mine.has(String(p.id)))).map((p) => ({ id: String(p.id), name: p.name }))
+  if (!['ann', 'general'].includes(group) && !projects.some((p) => p.id === group)) throw new HttpError(403, 'You are not in this project group')
   const groups = [{ id: 'ann', name: 'Announcements', icon: '📢', everyone: true }, { id: 'general', name: 'General', icon: '💬' }, ...projects.map((p) => ({ ...p, icon: '📁' }))]
   const inGroup = (m) => (group === 'ann' ? m.channel === 'ann' : group === 'general' ? m.channel !== 'ann' && !m.projectId : m.channel !== 'ann' && String(m.projectId || '') === group)
   const msgs = D.chat_messages.filter((m) => (!m.deletedAt || m.deletedAt === 'None') && inGroup(m)).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).slice(-200)
@@ -604,6 +677,7 @@ on('POST', '/api/cc/chat', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
   const group = String(b.group || 'general')
   if (group === 'ann' && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'Only Boss / HR can post in Announcements')
+  if (!['ann', 'general'].includes(group) && !ADMIN_ROLES.includes(me.role) && !projectIdsOf(await loadAll(env), me).has(group)) throw new HttpError(403, 'You are not in this project group')
   const text = String(b.body || '').replace(/\r/g, '').trim().slice(0, 4000)
   let file = null
   if (b.file && b.file.data) {
@@ -891,7 +965,7 @@ async function runMigrations(env) {
   if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'app_login_at'").first())) {
     await env.DB.prepare('ALTER TABLE employees ADD COLUMN app_login_at TEXT').run()
   }
-  for (const [col, def] of [['status', 'TEXT'], ['exit_date', 'TEXT'], ['salary_inhand', 'REAL'], ['emp_code', 'TEXT'], ['offer_letter', 'TEXT'], ['appointment_letter', 'TEXT'], ['documents', 'TEXT']]) {
+  for (const [col, def] of [['status', 'TEXT'], ['exit_date', 'TEXT'], ['salary_inhand', 'REAL'], ['emp_code', 'TEXT'], ['offer_letter', 'TEXT'], ['appointment_letter', 'TEXT'], ['documents', 'TEXT'], ['da_local', 'REAL'], ['da_hq', 'REAL'], ['da_up', 'REAL'], ['mobile_allow', 'REAL'], ['ta_rate', 'REAL']]) {
     if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = ?").bind(col).first())) await env.DB.prepare(`ALTER TABLE employees ADD COLUMN ${col} ${def}`).run()
   }
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_files (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, mime TEXT, size INTEGER, data TEXT NOT NULL, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`).run()
@@ -948,6 +1022,7 @@ async function runMigrations(env) {
     await audit(env, null, 'directory_import', 'employees', null, null, { rows: rows.length })
     await mark('mig_directory_v1')
   }
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS payroll (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER NOT NULL, month TEXT NOT NULL, data TEXT, updated_by INTEGER, updated_at TEXT, UNIQUE (emp_id, month))').run()
   if (!(await done('mig_org_v2'))) {
     // 19 Nov 2026 (Darshan): Boss = Darshan Sir; left: Rahul, Ashish, Cathrine, Priyanka; Mohin → Operation Manager; Balaji → CSE; departments for the org chart
     await env.DB.prepare("UPDATE employees SET name = 'Darshan Sir', designation = 'Director' WHERE role = 'boss'").run()

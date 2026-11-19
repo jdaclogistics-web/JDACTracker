@@ -124,4 +124,13 @@ console.log('24h auto-logout')
   await call('POST', '/api/login', { username: 'JD1001', password: 'abcdef', device_id: 'ashish-phone' })
   ok(!(await call('GET', '/api/admin/alerts', null, HR)).data.alerts.some((a) => a.kind === 'auto_logout' && a.emp_id === aid), 'alert clears when they log in again')
 }
+{ // payroll: auto from attendance, save inputs + rates
+  const m = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 7)
+  const g = await call('GET', '/api/admin/payroll?month=' + m, null, HR)
+  ok(g.status === 200 && Array.isArray(g.data.rows) && g.data.rows.length > 0, 'payroll sheet loads for HR')
+  const id = g.data.rows[0].emp_id
+  const sv = await call('POST', '/api/admin/payroll', { emp_id: id, month: m, advance: 500, incentives: 200, note: 'test', rates: { fixed: 30000, mobile: 250 } }, HR)
+  const g2 = await call('GET', '/api/admin/payroll?month=' + m, null, HR); const r = g2.data.rows.find((x) => x.emp_id === id)
+  ok(sv.status === 200 && r.data.advance === 500 && r.rates.fixed === 30000 && r.rates.mobile === 250, 'payroll inputs and rates save')
+}
 console.log(`\nALL ${pass} CHECKS PASSED`)

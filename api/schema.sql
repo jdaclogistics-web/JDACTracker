@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS employees (
   offer_letter  TEXT,
   appointment_letter TEXT,
   documents     TEXT,
+  da_local REAL, da_hq REAL, da_up REAL, mobile_allow REAL, ta_rate REAL,
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   CHECK (phone IS NULL OR length(phone) = 10),
   CHECK (length(username) BETWEEN 3 AND 30)
@@ -205,3 +206,5 @@ CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, invoi
 CREATE TABLE IF NOT EXISTS public_forms (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, icon TEXT, fields TEXT NOT NULL, project_id TEXT, project_name TEXT, becomes TEXT NOT NULL DEFAULT 'entry', status TEXT NOT NULL DEFAULT 'live', created_by INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
 CREATE TABLE IF NOT EXISTS form_answers (id INTEGER PRIMARY KEY AUTOINCREMENT, form_id INTEGER NOT NULL, data TEXT NOT NULL, result TEXT, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
 CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_docno ON legacy_records (json_extract(data, '$.company'), json_extract(data, '$.kind'), json_extract(data, '$.docNo')) WHERE tbl = 'invoices';
+
+CREATE TABLE IF NOT EXISTS payroll (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER NOT NULL, month TEXT NOT NULL, data TEXT, updated_by INTEGER, updated_at TEXT, UNIQUE (emp_id, month));

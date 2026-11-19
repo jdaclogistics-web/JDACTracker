@@ -196,7 +196,7 @@ async function doStart() {
     b.disabled = true; b.textContent = 'Getting location…'
     const pos = await currentPosition()
     b.textContent = 'Take selfie…'
-    const photo = await takeSelfie()
+    const photo = await takeSelfie({ pos, who: me.name })
     b.textContent = 'Saving…'
     const r = await post('/api/day/start', { ...pos, photo, client_id: uuid() })
     session = r.session
@@ -221,7 +221,7 @@ async function doEnd() {
     b.disabled = true; b.textContent = 'Getting location…'
     const pos = await currentPosition().catch(() => ({}))
     b.textContent = 'Take selfie…'
-    const photo = await takeSelfie()
+    const photo = await takeSelfie({ pos, who: me.name })
     b.textContent = 'Saving…'
     await flush()
     const r = await post('/api/day/end', { ...pos, photo, client_id: uuid(), date: session.date })
