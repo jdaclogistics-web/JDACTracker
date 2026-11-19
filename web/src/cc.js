@@ -897,8 +897,8 @@ const COMPANY = { name: 'JDAC SALES PVT LTD', addr: 'Shop No 1 & 2, Vida Complex
 const N0 = (x) => Number(x) || 0
 export function payCalc(r, dim) {
   const R = r.rates, d = r.data, perDay = N0(R.fixed) / dim
-  const c = { salary: perDay * N0(d.working_days), half: (perDay / 2) * N0(d.half_days), daL: N0(R.da_local) * N0(d.da_local_days), daH: N0(R.da_hq) * N0(d.da_hq_days), daU: N0(R.da_up) * N0(d.da_up_days), mobile: N0(R.mobile), kmAmt: N0(R.ta) * N0(d.km), inc: N0(d.incentives), adv: N0(d.advance) }
-  c.gross = c.salary + c.half + c.daL + c.daH + c.daU + c.mobile + c.kmAmt + c.inc
+  const c = { salary: perDay * N0(d.working_days), half: (perDay / 2) * N0(d.half_days), daL: N0(R.da_local) * N0(d.da_local_days), daH: N0(R.da_hq) * N0(d.da_hq_days), daU: N0(R.da_up) * N0(d.da_up_days), mobile: N0(R.mobile), kmAmt: N0(R.ta) * N0(d.km), inc: N0(d.incentives), last: N0(d.last_month), adv: N0(d.advance) }
+  c.gross = c.salary + c.half + c.daL + c.daH + c.daU + c.mobile + c.kmAmt + c.inc + c.last
   c.total = Math.round(c.gross - c.adv); c.paid = N0(d.paid); c.pending = c.total - c.paid
   return c
 }
@@ -916,19 +916,19 @@ async function payrollView(B, go, opts) {
     <section class="card slip-find"><b>🧾 Salary slip</b><input class="inp" id="sq" list="sqlist" placeholder="Type name, mobile or Emp ID"><datalist id="sqlist">${rows.map((r) => `<option value="${esc(r.name)} · ${esc(r.emp_code || '')} · ${esc(r.phone || '')}">`).join('')}</datalist>
       <input class="inp" type="month" id="sm" value="${m}" style="max-width:170px"><button class="btn dark sm" id="sg">Download slip</button><span class="sp"></span><button class="btn ghost sm" id="xl">⬇ Excel</button></section>
     <div class="pay-wrap" id="pw"><table class="pay"><thead>
-      <tr class="grp"><th colspan="2" class="stk">Employee</th><th colspan="6" class="g1">Rates (₹)</th><th colspan="4" class="g2">Attendance → salary</th><th colspan="6" class="g3">DA (days × rate)</th><th colspan="2" class="g4">Travel</th><th colspan="2" class="g5">Extras</th><th colspan="4" class="g6">Payable</th><th></th></tr>
+      <tr class="grp"><th colspan="2" class="stk">Employee</th><th colspan="6" class="g1">Rates (₹)</th><th colspan="4" class="g2">Attendance → salary</th><th colspan="6" class="g3">DA (days × rate)</th><th colspan="2" class="g4">Travel</th><th colspan="3" class="g5">Extras</th><th colspan="4" class="g6">Payable</th><th></th></tr>
       <tr><th class="stk">Emp ID</th><th class="stk2">Name</th><th>Fixed / month</th><th>DA local / day</th><th>DA Ex HQ / day</th><th>Up-country DA / day</th><th>Mobile</th><th>TA / km</th>
         <th>Working days</th><th>Half days</th><th>Salary</th><th>Half-day amt</th><th>DA local days</th><th>Amt</th><th>DA HQ days</th><th>Amt</th><th>Up-country days</th><th>Amt</th><th>Total km</th><th>KM amt</th>
-        <th>Incentives / expenses</th><th>Advance / deduction</th><th>Total</th><th>Paid</th><th>Pending</th><th>Note</th><th>Slip</th></tr></thead>
+        <th>Incentives / expenses</th><th>Last month salary</th><th>Advance / deduction</th><th>Total</th><th>Paid</th><th>Pending</th><th>Note</th><th>Slip</th></tr></thead>
       <tbody>${rows.map((r) => { const c = payCalc(r, dim); return `<tr data-row="${r.emp_id}">
         <td class="stk"><b class="tds-id">${esc(r.emp_code || '—')}</b></td><td class="stk2"><b>${esc(r.name)}</b><small>${esc(r.designation || '')}</small></td>
         <td>${inp(r, 'fixed', 70, true)}</td><td>${inp(r, 'da_local', 50, true)}</td><td>${inp(r, 'da_hq', 50, true)}</td><td>${inp(r, 'da_up', 50, true)}</td><td>${inp(r, 'mobile', 50, true)}</td><td>${inp(r, 'ta', 44, true)}</td>
         <td class="au">${inp(r, 'working_days', 44)}</td><td class="au">${inp(r, 'half_days', 40)}</td><td class="c" data-c="salary">${r0(c.salary)}</td><td class="c" data-c="half">${r0(c.half)}</td>
         <td class="au">${inp(r, 'da_local_days', 44)}</td><td class="c" data-c="daL">${r0(c.daL)}</td><td>${inp(r, 'da_hq_days', 40)}</td><td class="c" data-c="daH">${r0(c.daH)}</td><td>${inp(r, 'da_up_days', 40)}</td><td class="c" data-c="daU">${r0(c.daU)}</td>
-        <td class="au">${inp(r, 'km', 50)}</td><td class="c" data-c="kmAmt">${r0(c.kmAmt)}</td><td>${inp(r, 'incentives', 60)}</td><td>${inp(r, 'advance', 60)}</td>
-        <td class="c tot" data-c="total">${r0(c.total)}</td><td>${inp(r, 'paid', 64)}</td><td class="c pend" data-c="pending">${r0(c.pending)}</td><td>${inp(r, 'note', 150)}</td><td><button class="btn ghost sm" data-slip="${r.emp_id}">🧾</button></td></tr>` }).join('') || '<tr><td colspan="27" class="empty">No staff for this month</td></tr>'}</tbody>
-      <tfoot><tr><td class="stk"></td><td class="stk2"><b>TOTAL</b></td><td colspan="19"></td><td><b>${r0(S.adv)}</b></td><td><b>${r0(S.total)}</b></td><td><b>${r0(S.paid)}</b></td><td class="pend"><b>${r0(S.pending)}</b></td><td colspan="2"></td></tr></tfoot></table></div>
-    <p class="sub" style="margin:0">Blue cells are filled from attendance (working days = present days + Sundays, DA local days = present days minus Sundays, km from tracking) — change any number and it saves. Salary = Fixed ÷ ${dim} × working days. Total = salary + half-day + DA + mobile + km amount + incentives − advance.</p>`
+        <td class="au">${inp(r, 'km', 50)}</td><td class="c" data-c="kmAmt">${r0(c.kmAmt)}</td><td>${inp(r, 'incentives', 60)}</td><td>${inp(r, 'last_month', 60)}</td><td>${inp(r, 'advance', 60)}</td>
+        <td class="c tot" data-c="total">${r0(c.total)}</td><td>${inp(r, 'paid', 64)}</td><td class="c pend" data-c="pending">${r0(c.pending)}</td><td>${inp(r, 'note', 150)}</td><td><button class="btn ghost sm" data-slip="${r.emp_id}">🧾</button></td></tr>` }).join('') || '<tr><td colspan="28" class="empty">No staff for this month</td></tr>'}</tbody>
+      <tfoot><tr><td class="stk"></td><td class="stk2"><b>TOTAL</b></td><td colspan="20"></td><td><b>${r0(S.adv)}</b></td><td><b>${r0(S.total)}</b></td><td><b>${r0(S.paid)}</b></td><td class="pend"><b>${r0(S.pending)}</b></td><td colspan="2"></td></tr></tfoot></table></div>
+    <p class="sub" style="margin:0">Blue cells are filled from attendance (working days = present days + Sundays, DA local days = present days minus Sundays, km from tracking) — change any number and it saves. Salary = Fixed ÷ ${dim} × working days. Total = salary + half-day + DA + mobile + km amount + incentives + last month salary − advance.</p>`
   const pw = B.querySelector('#pw'); pw.style.maxHeight = Math.max(300, innerHeight - pw.getBoundingClientRect().top - (document.querySelector('.nav')?.getBoundingClientRect().height || 0) - 60) + 'px'
   B.querySelector('#pm').onchange = (e) => e.target.value && payrollView(B, go, { ...opts, month: e.target.value })
   const timers = {}
@@ -952,51 +952,58 @@ async function payrollView(B, go, opts) {
     if (!r) return toast('No one found for that month', 'bad')
     salarySlip(r, sm, D2.days_in_month)
   }
-  B.querySelector('#xl').onclick = () => downloadCsv(`JDAC-payroll-${m}.csv`, [['Emp ID', 'Month', 'Name', 'Fixed', 'DA local/day', 'DA Ex HQ/day', 'Up-country DA/day', 'Mobile', 'TA/km', 'Working days', 'Half days', 'Salary', 'Half-day amt', 'DA local days', 'DA local amt', 'DA HQ days', 'DA HQ amt', 'Up-country days', 'Up-country amt', 'Total km', 'KM amt', 'Incentives/expenses', 'Advance/deduction', 'Total', 'Paid', 'Pending', 'Note'],
-    ...rows.map((r) => { const c = payCalc(r, dim), d = r.data, R = r.rates; return [r.emp_code, monthLabel(m), r.name, R.fixed, R.da_local, R.da_hq, R.da_up, R.mobile, R.ta, d.working_days, d.half_days, Math.round(c.salary), Math.round(c.half), d.da_local_days, Math.round(c.daL), d.da_hq_days, Math.round(c.daH), d.da_up_days, Math.round(c.daU), d.km, Math.round(c.kmAmt), d.incentives, d.advance, c.total, c.paid, c.pending, d.note] })])
+  B.querySelector('#xl').onclick = () => downloadCsv(`JDAC-payroll-${m}.csv`, [['Emp ID', 'Month', 'Name', 'Fixed', 'DA local/day', 'DA Ex HQ/day', 'Up-country DA/day', 'Mobile', 'TA/km', 'Working days', 'Half days', 'Salary', 'Half-day amt', 'DA local days', 'DA local amt', 'DA HQ days', 'DA HQ amt', 'Up-country days', 'Up-country amt', 'Total km', 'KM amt', 'Incentives/expenses', 'Last month salary', 'Advance/deduction', 'Total', 'Paid', 'Pending', 'Note'],
+    ...rows.map((r) => { const c = payCalc(r, dim), d = r.data, R = r.rates; return [r.emp_code, monthLabel(m), r.name, R.fixed, R.da_local, R.da_hq, R.da_up, R.mobile, R.ta, d.working_days, d.half_days, Math.round(c.salary), Math.round(c.half), d.da_local_days, Math.round(c.daL), d.da_hq_days, Math.round(c.daH), d.da_up_days, Math.round(c.daU), d.km, Math.round(c.kmAmt), d.incentives, d.last_month || 0, d.advance, c.total, c.paid, c.pending, d.note] })])
 }
 function salarySlip(r, m, dim) {
   const c = payCalc(r, dim), d = r.data, R = r.rates
-  const f = (x) => '₹ ' + Math.round(x).toLocaleString('en-IN')
-  const line = (label, calc, amt) => `<tr><td>${label}</td><td class="m">${calc}</td><td class="r">${f(amt)}</td></tr>`
+  const asset = (f) => new URL('./' + f, location.href).href
+  const n = (x) => Math.round(N0(x)).toLocaleString('en-IN')
+  const perDay = N0(R.fixed) / dim
+  const mm = new Date(m + '-01T12:00:00Z').toLocaleDateString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(' ', ' / ')
+  // same inputs as the JDAC salary slip sheet: XNO = count, AMT = rate, T.AMT = total
+  const calc = [['Salary payable days', d.working_days, perDay, c.salary], ['Salary payable of half days', d.half_days, perDay / 2, c.half], ['DA local days', d.da_local_days, R.da_local, c.daL],
+    ['DA HQ days', d.da_hq_days, R.da_hq, c.daH], ['DA up days', d.da_up_days, R.da_up, c.daU], ['TA km', d.km, R.ta, c.kmAmt], ['Mobile allowance', 1, R.mobile, c.mobile], ['Incentives / exp / bonus', '', '', c.inc], ['Last month salary', '', '', N0(d.last_month)]]
+  const details = [['Basic', perDay, R.fixed], ['DA local', '', R.da_local], ['DA HQ', '', R.da_hq], ['DA up-country', '', R.da_up], ['TA (per km)', '', R.ta], ['Mobile expense', '', R.mobile]]
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Salary slip ${esc(r.name)} ${m}</title><style>
-    *{box-sizing:border-box}body{font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0F172A;margin:0;padding:24px;background:#fff}
-    .slip{max-width:760px;margin:0 auto;border:1.5px solid #0F172A;border-radius:10px;overflow:hidden}
-    .hd{background:#0B1730;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.hd h1{margin:0;font-size:19px;letter-spacing:.02em}.hd p{margin:4px 0 0;font-size:11.5px;color:#CBD5E1;max-width:440px}.hd .mo{text-align:right}.hd .mo b{display:block;font-size:16px}.hd .mo span{font-size:11px;color:#FCD34D;letter-spacing:.12em;font-weight:700}
-    .emp{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;padding:14px 20px;border-bottom:1px solid #E2E8F0}.emp div{display:flex;justify-content:space-between;border-bottom:1px dashed #E2E8F0;padding:3px 0}.emp span{color:#64748B}
-    table{width:100%;border-collapse:collapse}th{background:#F1F5F9;text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#475569;padding:7px 20px}td{padding:6px 20px;border-bottom:1px solid #F1F5F9}td.r{text-align:right;font-weight:600}td.m{color:#64748B;font-size:12px}
-    .sum td{font-weight:700;background:#F8FAFC}.net{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:#ECFDF5;border-top:1.5px solid #0F172A}.net b{font-size:20px;color:#065F46}
-    .pp{display:flex;gap:24px;padding:10px 20px;font-size:12.5px;color:#334155}.sig{display:flex;justify-content:space-between;padding:18px 20px 14px;font-size:12px;color:#475569}.sig b{color:#0F172A}
-    .foot{text-align:center;font-size:10.5px;color:#94A3B8;padding:0 20px 12px}.pbtn{display:block;margin:16px auto 0;padding:10px 22px;border:0;border-radius:10px;background:#0B1220;color:#fff;font-weight:700;cursor:pointer}
+    *{box-sizing:border-box}body{font:12.5px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0F172A;margin:0;padding:20px;background:#fff}
+    .slip{max-width:820px;margin:0 auto;border:1.5px solid #0F172A}
+    .hd{display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1.5px solid #0F172A}.hd img{height:46px}.hd .t{flex:1;text-align:center}.hd h1{margin:0;font-size:19px;letter-spacing:.03em}.hd p{margin:3px 0 0;font-size:11.5px;font-weight:600;color:#334155}
+    .mo{min-width:110px;text-align:right}.mo span{display:block;font-size:10px;letter-spacing:.14em;color:#64748B;font-weight:700}.mo b{font-size:15px}
+    .grid{display:grid;grid-template-columns:42% 58%}.grid>div+div{border-left:1.5px solid #0F172A}
+    table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #CBD5E1;padding:5px 8px;text-align:left}th{background:#F1F5F9;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#334155}
+    td.r,th.r{text-align:right}.sec{background:#0B1730;color:#fff;text-align:center;font-weight:800;font-size:11px;letter-spacing:.1em;padding:6px}
+    .tot td{font-weight:800;background:#F8FAFC;border-bottom:1.5px solid #0F172A}.k td:first-child{color:#64748B;width:45%}.k td{font-weight:600}
+    .net{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1.5px solid #0F172A;background:#ECFDF5}.net span{font-weight:800;font-size:13.5px}.net b{font-size:20px;color:#065F46}
+    .sig{display:grid;grid-template-columns:1fr 1fr;border-top:1.5px solid #0F172A}.sig>div{padding:10px 16px}.sig>div+div{border-left:1.5px solid #0F172A;text-align:right}
+    .sig img{height:62px;display:block;margin:2px 0}.sig small{color:#64748B;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+    .foot{text-align:center;font-size:10px;color:#94A3B8;padding:6px}.pbtn{display:block;margin:14px auto 0;padding:10px 22px;border:0;border-radius:10px;background:#0B1220;color:#fff;font-weight:700;cursor:pointer}
     @media print{body{padding:0}.pbtn{display:none}}</style></head><body>
-    <div class="slip"><div class="hd"><div><h1>${COMPANY.name}</h1><p>${COMPANY.addr} · ${COMPANY.email}</p></div><div class="mo"><span>SALARY SLIP</span><b>${monthLabel(m)}</b></div></div>
-      <div class="emp"><div><span>Employee name</span><b>${esc(r.name)}</b></div><div><span>Employee code</span><b>${esc(r.emp_code || '—')}</b></div>
-        <div><span>Designation</span><b>${esc(r.designation || '—')}</b></div><div><span>Department</span><b>${esc(r.department || '—')}</b></div>
-        <div><span>Days in month</span><b>${dim}</b></div><div><span>Working days / half days</span><b>${N0(d.working_days)} / ${N0(d.half_days)}</b></div></div>
-      <table><thead><tr><th>A. Earnings</th><th>Calculation</th><th style="text-align:right">Amount</th></tr></thead><tbody>
-        ${line('Basic salary (fixed)', `${f(R.fixed)} ÷ ${dim} × ${N0(d.working_days)} days`, c.salary)}
-        ${N0(d.half_days) ? line('Half days', `${N0(d.half_days)} × half day`, c.half) : ''}
-        ${c.daL ? line('DA local', `${N0(d.da_local_days)} days × ${f(R.da_local)}`, c.daL) : ''}
-        ${c.daH ? line('DA Ex HQ', `${N0(d.da_hq_days)} days × ${f(R.da_hq)}`, c.daH) : ''}
-        ${c.daU ? line('Up-country DA', `${N0(d.da_up_days)} days × ${f(R.da_up)}`, c.daU) : ''}
-        ${c.kmAmt ? line('Travel allowance (TA)', `${N0(d.km)} km × ${f(R.ta)}`, c.kmAmt) : ''}
-        ${c.mobile ? line('Mobile allowance', 'monthly', c.mobile) : ''}
-        ${c.inc ? line('Incentives / expenses / bonus', '', c.inc) : ''}
-        <tr class="sum"><td>Total earnings (A)</td><td></td><td class="r">${f(c.gross)}</td></tr></tbody>
-        <thead><tr><th>B. Deductions</th><th></th><th style="text-align:right">Amount</th></tr></thead><tbody>
-        ${line('Advance / deduction', '', c.adv)}<tr class="sum"><td>Total deductions (B)</td><td></td><td class="r">${f(c.adv)}</td></tr></tbody></table>
-      <div class="net"><span><b style="font-size:14px;color:#0F172A">Net payable salary (A − B)</b></span><b>${f(c.total)}</b></div>
-      <div class="pp"><span>Paid: <b>${f(c.paid)}</b></span><span>Pending: <b>${f(c.pending)}</b></span>${d.note ? `<span>Note: ${esc(d.note)}</span>` : ''}</div>
-      <div class="sig"><div>Checked and authorised by<br><b>${COMPANY.hr}</b>, ${COMPANY.hrRole}</div><div style="text-align:right">Employee signature<br><br>__________________</div></div>
-      <div class="foot">This is a computer-generated salary slip from JDAC Tracker.</div></div>
-    <button class="pbtn" onclick="print()">Download / Print (Save as PDF)</button></body></html>`
+  <div class="slip">
+    <div class="hd"><img src="${asset('jdac-logo-color.png')}" alt="JDAC"><div class="t"><h1>${COMPANY.name} — SALARY SLIP</h1><p>${COMPANY.addr}, Email: ${COMPANY.email}</p></div><div class="mo"><span>MONTH</span><b>${mm}</b></div></div>
+    <div class="grid">
+      <div><table class="k"><tr><td>Employee name</td><td>${esc(r.name)}</td></tr><tr><td>Designation</td><td>${esc(r.designation || '—')}</td></tr><tr><td>Employee code</td><td>${esc(r.emp_code || '—')}</td></tr><tr><td>Days in month</td><td>${dim}</td></tr></table>
+        <div class="sec">SALARY DETAILS</div>
+        <table><tr><th>Particular</th><th class="r">Per day</th><th class="r">Monthly</th></tr>${details.map(([l, pd, mo]) => `<tr><td>${l}</td><td class="r">${pd === '' ? '' : n(pd)}</td><td class="r">${n(mo)}</td></tr>`).join('')}</table>
+        <div class="sec">DETAIL OF ADVANCE</div>
+        <table><tr><td>Advance / deduction this month</td><td class="r">${n(c.adv)}</td></tr><tr><td>Paid</td><td class="r">${n(c.paid)}</td></tr><tr><td>Pending</td><td class="r">${n(c.pending)}</td></tr>${d.note ? `<tr><td colspan="2" style="color:#64748B">Note: ${esc(d.note)}</td></tr>` : ''}<tr class="tot"><td>Total</td><td class="r">${n(c.adv)}</td></tr></table></div>
+      <div><div class="sec">SALARY CALCULATIONS</div>
+        <table><tr><th>A. Particular</th><th class="r">XNO</th><th class="r">AMT</th><th class="r">T.AMT</th></tr>
+          ${calc.map(([l, x, a, t]) => `<tr><td>${l}</td><td class="r">${x === '' ? '' : n(x)}</td><td class="r">${a === '' ? '' : n(a)}</td><td class="r">${n(t)}</td></tr>`).join('')}
+          <tr class="tot"><td colspan="3">Total (A)</td><td class="r">${n(c.gross)}</td></tr></table>
+        <div class="sec">B. LESS DEDUCTIONS</div>
+        <table><tr><td>Advance / deduction</td><td class="r">${n(c.adv)}</td></tr><tr class="tot"><td>Total (B)</td><td class="r">${n(c.adv)}</td></tr></table></div>
+    </div>
+    <div class="net"><span>NET PAYABLE SALARY (A − B)</span><b>₹ ${n(c.total)}</b></div>
+    <div class="sig"><div><small>Checked and authorised by</small><img src="${asset('sign-hr.png')}" alt="Signature"><b>${COMPANY.hr}</b>, ${COMPANY.hrRole}</div><div><small>Employee signature</small><div style="height:62px"></div>${esc(r.name)}</div></div>
+    <div class="foot">Computer-generated salary slip · JDAC Tracker</div></div>
+  <button class="pbtn" onclick="print()">Download / Print (Save as PDF)</button></body></html>`
   const w = window.open('', '_blank')
   if (w) { w.document.write(html); w.document.close(); return }
-  // pop-up blocked (e.g. inside the app) → show it in the page
   const el = document.createElement('div'); el.className = 'tm-modal'
-  el.innerHTML = `<div class="tm-bg"></div><div class="tm-card" style="max-width:820px;padding:0;overflow:hidden"><iframe style="width:100%;height:80vh;border:0"></iframe></div>`
+  el.innerHTML = `<div class="tm-bg"></div><div class="tm-card" style="max-width:860px;padding:0;overflow:hidden"><iframe style="width:100%;height:82vh;border:0"></iframe></div>`
   document.body.appendChild(el); el.querySelector('.tm-bg').onclick = () => el.remove()
-  const fr = el.querySelector('iframe'); fr.srcdoc = html
+  el.querySelector('iframe').srcdoc = html
 }
 
 // ═════════════════════════ EMPLOYEE PAGE (what the employee sees) — Viewer or Editor for Boss / HR / Developer ═════════════════════════

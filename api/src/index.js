@@ -393,7 +393,7 @@ on('GET', '/api/admin/report', async (env, req, url) => {
 // ── Payroll (monthly sheet) ────────────────────────────────────────────────
 // Rates live on the employee (fixed = salary_inhand, da_local, da_hq, da_up, mobile_allow, ta_rate per km).
 // Month inputs are auto-filled from attendance and can be overridden; saved per employee per month.
-const PAY_KEYS = ['working_days', 'half_days', 'da_local_days', 'da_hq_days', 'da_up_days', 'km', 'incentives', 'advance', 'paid', 'note']
+const PAY_KEYS = ['working_days', 'half_days', 'da_local_days', 'da_hq_days', 'da_up_days', 'km', 'incentives', 'last_month', 'advance', 'paid', 'note']
 on('GET', '/api/admin/payroll', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
   const m = /^\d{4}-\d{2}$/.test(url.searchParams.get('month') || '') ? url.searchParams.get('month') : istDate().slice(0, 7)
@@ -419,7 +419,7 @@ on('GET', '/api/admin/payroll', async (env, req, url) => {
         if (mk === 'Absent' || mk === 'Leave') continue
         if (mk === 'Present' || mk === 'Week Off' || s || sun) { full++; if (!sun && mk !== 'Week Off') daLocal++ }
       }
-      const auto = { working_days: full, half_days: half, da_local_days: e.da_local ? daLocal : 0, da_hq_days: 0, da_up_days: 0, km: Math.round(km), incentives: 0, advance: 0, paid: 0, note: '' }
+      const auto = { working_days: full, half_days: half, da_local_days: e.da_local ? daLocal : 0, da_hq_days: 0, da_up_days: 0, km: Math.round(km), incentives: 0, last_month: 0, advance: 0, paid: 0, note: '' }
       const sv = P.get(e.id); const data = sv ? { ...auto, ...JSON.parse(sv.data || '{}') } : auto
       return { emp_id: e.id, emp_code: e.emp_code, name: e.name, designation: e.designation, department: e.department, phone: e.phone, joining_date: e.joining_date, active: !!e.active,
         rates: { fixed: e.salary_inhand || 0, da_local: e.da_local || 0, da_hq: e.da_hq || 0, da_up: e.da_up || 0, mobile: e.mobile_allow || 0, ta: e.ta_rate || 0 },
