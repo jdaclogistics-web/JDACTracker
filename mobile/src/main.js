@@ -9,7 +9,7 @@ import { homeBlocks, bindHome, loadMyHome, myHomeData, renderTasks, renderChat, 
 import { flush, queueSize, onQueueChange, lastSyncAt } from './queue.js'
 
 const app = document.getElementById('app')
-let me = null, session = null, tab = 'home', tabArg = null, tabArg2 = null, busy = false, tick = null, pending = 0
+let me = null, session = null, tab = 'home', tabArg = null, tabArg2 = null, tabArg3 = null, busy = false, tick = null, pending = 0
 
 window.addEventListener('jdac-logout', () => { stopTracking(); me = null; renderLogin('Session खत्म — दोबारा login करें') })
 onQueueChange((n) => { pending = n; refreshSync() })
@@ -80,13 +80,13 @@ function header() {
     <button class="ibtn" id="hout" aria-label="Logout">${ic('logout', 18)}</button></header>`
 }
 function nav() {
-  const t = (k, label, icn) => `<button data-tab="${k}" class="${tab === k || (k === 'home' && tab === 'desk') ? 'on' : ''}">${ic(icn, 22)}${label}</button>`
-  return `<nav class="nav" aria-label="Main">${t('home', 'Home', 'home')}${t('tasks', 'Tasks', 'task')}${t('chat', 'Chat', 'chat')}${t('leave', 'Leave', 'cal')}${t('me', 'Me', 'user')}</nav>`
+  const t = (k, label, icn) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${ic(icn, 22)}${label}</button>`
+  return `<nav class="nav" aria-label="Main">${t('home', 'Home', 'home')}${t('desk', 'Desk', 'grid')}${t('tasks', 'Tasks', 'task')}${t('chat', 'Chat', 'chat')}${t('me', 'Me', 'user')}</nav>`
 }
-function go(t, a = null, b = null) {
+function go(t, a = null, b = null, c = null) {
   if (t === 'start') { document.getElementById('day')?.scrollIntoView({ behavior: 'smooth' }); return }
   if (t === 'desks') { document.getElementById('desks')?.scrollIntoView({ behavior: 'smooth' }); return }
-  tab = t; tabArg = a; tabArg2 = b; render(); window.scrollTo(0, 0)
+  tab = t; tabArg = a; tabArg2 = b; tabArg3 = c; render(); window.scrollTo(0, 0)
 }
 function render() {
   clearInterval(tick)
@@ -100,7 +100,7 @@ function render() {
   if (tab === 'me') return renderMe(v)
   if (tab === 'tasks') return renderTasks(v, go)
   if (tab === 'chat') return renderChat(v, tabArg || '')
-  if (tab === 'desk') return renderDesk(v, go, tabArg, tabArg2)
+  if (tab === 'desk') return renderDesk(v, go, tabArg, tabArg2, tabArg3)
   v.innerHTML = '<div id="day" class="stack"></div><div id="wk" class="stack"></div>'
   const wk = document.getElementById('wk')
   const paint = () => { if (!document.body.contains(wk)) return; wk.innerHTML = homeBlocks(myHomeData, session, go); bindHome(wk, go) }
@@ -292,6 +292,8 @@ function renderMe(v) {
     <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>@${esc(me.username || '')}</b><span>${me.phone ? '+91 ' + esc(me.phone) : 'username'}</span></div></div></section>
   ${admin ? `<section class="card tip">${ic('shield', 20, '#6D28D9')}<div><b>Admin panel</b><p>HR / Boss / Developer panels open on the web panel link shared by office.</p></div></section>` : ''}
   <section class="card" style="padding:4px 14px"><div class="list">
+    <button class="li" id="gol">${ic('cal', 20, '#3A4558')}<div class="nm"><b>Leave</b><span>Apply for leave, see status</span></div>${ic('chev', 18, '#9AA4B5')}</button>
+    <button class="li" id="gom">${ic('clock', 20, '#3A4558')}<div class="nm"><b>My attendance</b><span>Month calendar</span></div>${ic('chev', 18, '#9AA4B5')}</button>
     ${isNative() ? `<button class="li" id="perm">${ic('battery', 20, '#3A4558')}<div class="nm"><b>Tracking settings</b><span>Battery unrestricted, location always</span></div>${ic('chev', 18, '#9AA4B5')}</button>` : ''}
     <button class="li" id="sync2">${ic('refresh', 20, '#3A4558')}<div class="nm"><b>Send pending data now</b><span>${pending} GPS points waiting${lastSyncAt ? ' · last sent ' + agoText(lastSyncAt) : ''}</span></div></button>
     <a class="li" href="https://github.com/jdaclogistics-web/JDACTracker/releases/download/apk-latest/JDAC-Tracker.apk" target="_blank" rel="noopener">${ic('download', 20, '#3A4558')}<div class="nm"><b>Download latest APK</b><span>नया phone या app दोबारा install करना हो तो</span></div></a>
@@ -300,6 +302,7 @@ function renderMe(v) {
   <p class="sub" style="text-align:center">JDAC Tracker · build ${esc(BUILD)}</p>`
   v.querySelector('#upd')?.addEventListener('click', async () => { toast('Update check हो रहा है…'); await liveUpdate({ onStatus: (t) => toast(t) }); toast('App latest है') })
   v.querySelector('#perm')?.addEventListener('click', openAppSettings)
+  v.querySelector('#gol').onclick = () => go('leave'); v.querySelector('#gom').onclick = () => go('month')
   v.querySelector('#sync2').onclick = async () => { await flush(); toast(pending ? `${pending} still waiting — no internet?` : 'All data sent'); render() }
   v.querySelector('#out').onclick = async () => {
     if (session && !session.end_at && !confirm('Day is still open — logout stops tracking. Continue?')) return

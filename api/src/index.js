@@ -2,6 +2,7 @@
 // Mobile ऐप और Web panels दोनों यही API use करते हैं.
 import { istDate, istMinutes, nowIso, hashPassword, verifyPassword, signToken, verifyToken, computeKm, phone10 } from './lib.js'
 import { loadAll, dropCache, homeSummary, companyPage, myHome, cargoDesk, COMPANIES, journeyOf } from './cc.js'
+import { DESK_TABLES, migrateDesks, registerDesks } from './desks.js'
 import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64 } from './photos.js'
 
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
@@ -512,13 +513,15 @@ on('PATCH', '/api/legacy/rows', async (env, req) => {
 
 
 // ── Command Centre (Boss / Developer) + company pages ─────────────────────────
+const cargoCses = async (env) => (await env.DB.prepare("SELECT e.id, e.name, e.legacy_id, e.team FROM desk_access a JOIN desks d ON d.id = a.desk_id JOIN employees e ON e.id = a.emp_id WHERE d.module = 'cargo' AND a.enabled = 1 AND e.active = 1 ORDER BY e.name").all()).results
+const myDesks = async (env, id) => (await env.DB.prepare('SELECT d.* FROM desk_access a JOIN desks d ON d.id = a.desk_id WHERE a.emp_id = ? AND a.enabled = 1 AND d.active = 1 ORDER BY d.company, d.id').bind(id).all()).results
 const activeEmps = async (env) => (await env.DB.prepare('SELECT id, name, team, role, designation, legacy_id, active FROM employees').all()).results
 on('GET', '/api/cc/home', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
   if (me.role === 'hr') throw new HttpError(403, 'Boss / Developer only')
   const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
   const range = ['today', 'week', 'month'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'month'
-  return json(homeSummary(D, emps, istDate(), range, url.searchParams.get('company') || 'All'))
+  return json(homeSummary(D, emps, istDate(), range, url.searchParams.get('company') || 'All', await cargoCses(env)))
 })
 on('GET', '/api/cc/company', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
@@ -526,7 +529,9 @@ on('GET', '/api/cc/company', async (env, req, url) => {
   const name = url.searchParams.get('name') || ''
   if (!COMPANIES.includes(name)) throw bad('company?')
   const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
-  return json(companyPage(D, emps, istDate(), name))
+  const range = ['today', 'week', 'month'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'month'
+  const { results: desks } = await env.DB.prepare("SELECT d.id, d.name, d.icon, d.description, d.kind, d.module, (SELECT COUNT(*) FROM desk_access a JOIN employees e ON e.id = a.emp_id WHERE a.desk_id = d.id AND a.enabled = 1 AND e.active = 1) people FROM desks d WHERE d.company = ? AND d.active = 1 ORDER BY d.kind = 'later', d.id").bind(name).all()
+  return json(companyPage(D, emps, istDate(), name, range, desks, await cargoCses(env)))
 })
 on('GET', '/api/cc/chat', async (env, req) => {
   const me = await authUser(env, req)
@@ -548,7 +553,7 @@ on('POST', '/api/cc/chat', async (env, req) => {
 // ── Employee: home, desks, Cargo Sales desk ─────────────────────────────────
 on('GET', '/api/my/home', async (env, req) => {
   const me = await authUser(env, req)
-  return json(myHome(await loadAll(env), me, istDate()))
+  return json(myHome(await loadAll(env), me, istDate(), await myDesks(env, me.id)))
 })
 on('GET', '/api/my/cargo', async (env, req, url) => {
   const me = await authUser(env, req)
@@ -556,7 +561,7 @@ on('GET', '/api/my/cargo', async (env, req, url) => {
   const as = url.searchParams.get('as')
   if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
   const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
-  return json({ for: who.name, ...cargoDesk(D, who, emps, istDate()) })
+  return json({ for: who.name, ...cargoDesk(D, who, emps, istDate(), await cargoCses(env), ADMIN_ROLES.includes(me.role)) })
 })
 const legacyPut = async (env, tbl, d) => {
   const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
@@ -595,21 +600,25 @@ on('POST', '/api/my/cargo-order', async (env, req) => {
   const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer का नाम')
   const amount = Number(b.amount) || 0; if (amount <= 0) throw bad('Amount डालें')
   const vendorCost = Number(b.vendorCost) || 0
-  const markupPct = vendorCost > 0 ? Math.round(((amount - vendorCost) / vendorCost) * 100) : null
-  const id = await legacyPut(env, 'cargo_orders', { date: istDate(), customerName: name, phone: String(b.phone || ''), mode: String(b.mode || 'Road Cargo'), kg: Number(b.kg) || 0, amount, stage: 'Booking',
+  if (vendorCost <= 0) throw bad('Vendor cost डालना ज़रूरी है')
+  const markupPct = Math.round(((amount - vendorCost) / vendorCost) * 100)
+  const needApproval = amount < vendorCost * 1.4
+  const id = await legacyPut(env, 'cargo_orders', { date: istDate(), customerName: name, phone: String(b.phone || ''), mode: String(b.mode || 'Road Cargo'), kg: Number(b.kg) || 0, amount,
     personId: me.legacy_id || null, emp_id: me.id, cseName: me.name, leadId: b.leadId || null, notes: String(b.notes || '').slice(0, 500), pickupAddress: String(b.pickupAddress || ''), consigneeName: String(b.consigneeName || ''),
-    vendorName: String(b.vendorName || ''), vendorCost, markupPct, approvalStatus: markupPct != null && markupPct < 40 ? 'pending' : '', createdAt: nowLocal() })
+    vendorName: String(b.vendorName || ''), vendorCost, markupPct, approvalStatus: needApproval ? 'pending' : '', stage: 'Booked', createdAt: nowLocal() })
   if (b.leadId) { const l = await legacyGet(env, 'ad_leads', b.leadId); if (l) await legacySet(env, 'ad_leads', b.leadId, { ...l, stage: 'Booking', converted: 1, revenue: amount, lastActivityAt: nowLocal(), stageChangedAt: nowLocal() }) }
   await audit(env, me.id, 'cargo_order', 'cargo_orders', id, null, { amount, markupPct })
-  return json({ ok: true, id, markupPct })
+  return json({ ok: true, id, markupPct, pending: needApproval, min_price: Math.ceil(vendorCost * 1.4) })
 })
 on('POST', '/api/my/task-done', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
   const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task नहीं मिला')
-  if (String(t.assigneeId) !== String(me.legacy_id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'यह आपका task नहीं है')
+  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'यह आपका task नहीं है')
   await legacySet(env, 'tasks', b.id, { ...t, status: b.done === false ? 'Open' : 'Done', closedAt: b.done === false ? null : nowLocal() })
   return json({ ok: true })
 })
+
+registerDesks(on, { authUser, needAdmin, json, body, bad, HttpError, istDate, audit, ADMIN_ROLES, loadAll, dropCache, legacyGet, legacySet, legacyPut, nowLocal })
 
 // Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है
 on('GET', '/api/setup/import-page', async (env) => {
@@ -791,6 +800,8 @@ async function runMigrations(env) {
   if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'app_login_at'").first())) {
     await env.DB.prepare('ALTER TABLE employees ADD COLUMN app_login_at TEXT').run()
   }
+  for (const q of DESK_TABLES) { try { await env.DB.prepare(q).run() } catch (e) { console.error('desk table', e?.message) } }
+  if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS legacy_records (tbl TEXT NOT NULL, legacy_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tbl, legacy_id))').run()
   // Office वालों के लिए भी live GPS (जैसे घर से काम) — employees.live_track

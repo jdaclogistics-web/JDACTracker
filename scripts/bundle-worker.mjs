@@ -15,7 +15,7 @@ for (const line of sql.split('\n')) {
 const schema = stmts.filter((s) => !/^PRAGMA/i.test(s))
 const out = ['// JDAC Tracker API — bundled from api/src (do not edit here; edit src and re-bundle)',
   `const SCHEMA_STATEMENTS = ${JSON.stringify(schema)}`,
-  strip(rd('src/lib.js')), strip(rd('src/photos.js')), strip(rd('src/index.js'))].join('\n')
+  strip(rd('src/lib.js')), strip(rd('src/photos.js')), strip(rd('src/cc.js')), strip(rd('src/desks.js')), strip(rd('src/index.js'))].join('\n')
 mkdirSync(new URL('../api/dist/', import.meta.url), { recursive: true })
 writeFileSync(new URL('../api/dist/worker.js', import.meta.url), out)
 console.log('✔ api/dist/worker.js', out.length, 'bytes,', schema.length, 'schema statements')

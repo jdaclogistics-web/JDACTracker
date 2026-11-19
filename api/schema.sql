@@ -188,3 +188,13 @@ CREATE TABLE IF NOT EXISTS usage_daily (
   day      TEXT PRIMARY KEY,
   requests INTEGER NOT NULL DEFAULT 0
 );
+
+-- Desk-first system, daily bookings, payments, public forms
+CREATE TABLE IF NOT EXISTS desks (id INTEGER PRIMARY KEY AUTOINCREMENT, company TEXT NOT NULL, name TEXT NOT NULL, icon TEXT, description TEXT, kind TEXT NOT NULL DEFAULT 'ready', module TEXT, fields TEXT, rolls_up TEXT, active INTEGER NOT NULL DEFAULT 1, legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE IF NOT EXISTS desk_access (desk_id INTEGER NOT NULL, emp_id INTEGER NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, changed_at TEXT, PRIMARY KEY (desk_id, emp_id));
+CREATE TABLE IF NOT EXISTS desk_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, desk_id INTEGER NOT NULL, emp_id INTEGER, date TEXT NOT NULL, data TEXT NOT NULL, amount REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT);
+CREATE TABLE IF NOT EXISTS daily_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER, date TEXT NOT NULL, booking_no TEXT NOT NULL UNIQUE COLLATE NOCASE, amount REAL NOT NULL CHECK (amount > 0), legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT);
+CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, invoice_id TEXT NOT NULL, company TEXT, amount REAL NOT NULL CHECK (amount > 0), date TEXT NOT NULL, mode TEXT NOT NULL, reference TEXT, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE IF NOT EXISTS public_forms (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, icon TEXT, fields TEXT NOT NULL, project_id TEXT, project_name TEXT, becomes TEXT NOT NULL DEFAULT 'entry', status TEXT NOT NULL DEFAULT 'live', created_by INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE IF NOT EXISTS form_answers (id INTEGER PRIMARY KEY AUTOINCREMENT, form_id INTEGER NOT NULL, data TEXT NOT NULL, result TEXT, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_docno ON legacy_records (json_extract(data, '$.company'), json_extract(data, '$.kind'), json_extract(data, '$.docNo')) WHERE tbl = 'invoices';

@@ -1,5 +1,5 @@
 // JDAC Tracker API — bundled from api/src (do not edit here; edit src and re-bundle)
-const SCHEMA_STATEMENTS = ["CREATE TABLE IF NOT EXISTS employees (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  legacy_id     INTEGER UNIQUE,                         \n  name          TEXT NOT NULL,\n  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,    \n  phone         TEXT UNIQUE,                            \n  pass_hash     TEXT NOT NULL,                          \n  role          TEXT NOT NULL DEFAULT 'employee' CHECK (role IN ('employee','hr','boss','developer')),\n  team          TEXT NOT NULL DEFAULT 'Office'   CHECK (team IN ('Warehouse','Office')),\n  designation   TEXT,\n  department    TEXT,\n  work_location TEXT,                                   \n  shift_start   TEXT NOT NULL DEFAULT '10:00',\n  shift_end     TEXT NOT NULL DEFAULT '19:00',\n  joining_date  TEXT,\n  active        INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),\n  live_track    INTEGER NOT NULL DEFAULT 0,             \n  device_id     TEXT,\n  token_version INTEGER NOT NULL DEFAULT 0,             \n  app_login_at  TEXT,                                   \n  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  CHECK (phone IS NULL OR length(phone) = 10),\n  CHECK (length(username) BETWEEN 3 AND 30)\n)","CREATE TABLE IF NOT EXISTS day_sessions (\n  id             INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id         INTEGER NOT NULL REFERENCES employees(id),\n  date           TEXT NOT NULL,                         \n  start_at       TEXT NOT NULL,\n  start_lat      REAL, start_lng REAL,\n  start_photo    TEXT,                                  \n  end_at         TEXT,\n  end_lat        REAL, end_lng REAL,\n  end_photo      TEXT,\n  total_km       REAL NOT NULL DEFAULT 0,\n  manual_km      REAL NOT NULL DEFAULT 0 CHECK (manual_km BETWEEN 0 AND 1000),\n  manual_km_note TEXT,\n  auto_closed    INTEGER NOT NULL DEFAULT 0,\n  legacy_id      INTEGER UNIQUE,\n  UNIQUE (emp_id, date),\n  CHECK (end_at IS NULL OR end_at >= start_at)\n)","CREATE TABLE IF NOT EXISTS location_pings (\n  id          INTEGER PRIMARY KEY AUTOINCREMENT,\n  client_id   TEXT NOT NULL UNIQUE,                     \n  emp_id      INTEGER NOT NULL REFERENCES employees(id),\n  date        TEXT NOT NULL,\n  lat         REAL NOT NULL CHECK (lat BETWEEN -90 AND 90),\n  lng         REAL NOT NULL CHECK (lng BETWEEN -180 AND 180),\n  accuracy    REAL,\n  kind        TEXT NOT NULL DEFAULT 'duty' CHECK (kind IN ('duty','field')),\n  recorded_at TEXT NOT NULL,                            \n  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  CHECK (NOT (lat = 0 AND lng = 0))\n)","CREATE INDEX IF NOT EXISTS pings_emp_date ON location_pings (emp_id, date, recorded_at)","CREATE INDEX IF NOT EXISTS pings_date ON location_pings (date)","CREATE TABLE IF NOT EXISTS last_location (\n  emp_id      INTEGER PRIMARY KEY REFERENCES employees(id),\n  lat         REAL NOT NULL,\n  lng         REAL NOT NULL,\n  accuracy    REAL,\n  kind        TEXT,\n  recorded_at TEXT NOT NULL,\n  synced_at   TEXT NOT NULL\n)","CREATE TABLE IF NOT EXISTS leave_requests (\n  id          INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id      INTEGER NOT NULL REFERENCES employees(id),\n  date        TEXT NOT NULL,\n  kind        TEXT NOT NULL DEFAULT 'Full day' CHECK (kind IN ('Full day','Half day')),\n  reason      TEXT NOT NULL CHECK (length(trim(reason)) >= 3),\n  status      TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Approved','Rejected','Cancelled')),\n  decided_by  INTEGER REFERENCES employees(id),\n  decided_at  TEXT,\n  legacy_id   INTEGER UNIQUE,\n  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))\n)","CREATE UNIQUE INDEX IF NOT EXISTS leave_one_active ON leave_requests (emp_id, date) WHERE status IN ('Pending','Approved')","CREATE TABLE IF NOT EXISTS attendance_marks (\n  id      INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id  INTEGER NOT NULL REFERENCES employees(id),\n  date    TEXT NOT NULL,\n  status  TEXT NOT NULL CHECK (status IN ('Present','Half Day','Absent','Leave','Week Off')),\n  reason  TEXT,\n  set_by  INTEGER REFERENCES employees(id),\n  set_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  legacy  INTEGER NOT NULL DEFAULT 0,\n  UNIQUE (emp_id, date)\n)","CREATE TABLE IF NOT EXISTS photos (\n  key        TEXT PRIMARY KEY,\n  mime       TEXT NOT NULL DEFAULT 'image/jpeg',\n  data       BLOB NOT NULL,\n  moved      INTEGER NOT NULL DEFAULT 0,               \n  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))\n)","CREATE TABLE IF NOT EXISTS audit_log (\n  id       INTEGER PRIMARY KEY AUTOINCREMENT,\n  at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  actor    INTEGER,\n  action   TEXT NOT NULL,\n  tbl      TEXT NOT NULL,\n  row_id   TEXT,\n  old_data TEXT,\n  new_data TEXT\n)","CREATE INDEX IF NOT EXISTS audit_at ON audit_log (at)","CREATE TABLE IF NOT EXISTS alerts (\n  id         INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id     INTEGER NOT NULL REFERENCES employees(id),\n  date       TEXT NOT NULL,\n  kind       TEXT NOT NULL,                             \n  detail     TEXT,\n  opened_at  TEXT NOT NULL,\n  closed_at  TEXT\n)","CREATE UNIQUE INDEX IF NOT EXISTS alerts_open ON alerts (emp_id, kind) WHERE closed_at IS NULL","CREATE TRIGGER IF NOT EXISTS no_delete_employees      BEFORE DELETE ON employees      BEGIN SELECT RAISE(ABORT, 'delete not allowed — deactivate instead'); END","CREATE TRIGGER IF NOT EXISTS no_delete_sessions       BEFORE DELETE ON day_sessions   BEGIN SELECT RAISE(ABORT, 'delete not allowed'); END","CREATE TRIGGER IF NOT EXISTS no_delete_pings          BEFORE DELETE ON location_pings BEGIN SELECT RAISE(ABORT, 'delete not allowed'); END","CREATE TRIGGER IF NOT EXISTS no_delete_leaves         BEFORE DELETE ON leave_requests BEGIN SELECT RAISE(ABORT, 'delete not allowed — cancel instead'); END","CREATE TRIGGER IF NOT EXISTS no_delete_marks          BEFORE DELETE ON attendance_marks BEGIN SELECT RAISE(ABORT, 'delete not allowed'); END","CREATE TRIGGER IF NOT EXISTS no_delete_audit          BEFORE DELETE ON audit_log      BEGIN SELECT RAISE(ABORT, 'audit log is permanent'); END","CREATE TRIGGER IF NOT EXISTS no_update_audit          BEFORE UPDATE ON audit_log      BEGIN SELECT RAISE(ABORT, 'audit log is permanent'); END","CREATE TRIGGER IF NOT EXISTS no_update_pings          BEFORE UPDATE ON location_pings BEGIN SELECT RAISE(ABORT, 'GPS points are permanent'); END","CREATE TRIGGER IF NOT EXISTS session_identity_fixed   BEFORE UPDATE OF emp_id, date ON day_sessions\n  WHEN NEW.emp_id <> OLD.emp_id OR NEW.date <> OLD.date\n  BEGIN SELECT RAISE(ABORT, 'session employee/date cannot change'); END","CREATE TRIGGER IF NOT EXISTS ping_last_location AFTER INSERT ON location_pings\nBEGIN\n  INSERT INTO last_location (emp_id, lat, lng, accuracy, kind, recorded_at, synced_at)\n  VALUES (NEW.emp_id, NEW.lat, NEW.lng, NEW.accuracy, NEW.kind, NEW.recorded_at, NEW.created_at)\n  ON CONFLICT (emp_id) DO UPDATE SET\n    lat = excluded.lat, lng = excluded.lng, accuracy = excluded.accuracy, kind = excluded.kind,\n    recorded_at = excluded.recorded_at, synced_at = excluded.synced_at\n  WHERE excluded.recorded_at > last_location.recorded_at;\nEND","CREATE TABLE IF NOT EXISTS app_settings (\n  key   TEXT PRIMARY KEY,\n  value TEXT NOT NULL\n)","CREATE TABLE IF NOT EXISTS legacy_records (\n  tbl       TEXT NOT NULL,\n  legacy_id TEXT NOT NULL,\n  data      TEXT NOT NULL,          \n  PRIMARY KEY (tbl, legacy_id)\n)","CREATE TABLE IF NOT EXISTS usage_daily (\n  day      TEXT PRIMARY KEY,\n  requests INTEGER NOT NULL DEFAULT 0\n)"]
+const SCHEMA_STATEMENTS = ["CREATE TABLE IF NOT EXISTS employees (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  legacy_id     INTEGER UNIQUE,                         \n  name          TEXT NOT NULL,\n  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,    \n  phone         TEXT UNIQUE,                            \n  pass_hash     TEXT NOT NULL,                          \n  role          TEXT NOT NULL DEFAULT 'employee' CHECK (role IN ('employee','hr','boss','developer')),\n  team          TEXT NOT NULL DEFAULT 'Office'   CHECK (team IN ('Warehouse','Office')),\n  designation   TEXT,\n  department    TEXT,\n  work_location TEXT,                                   \n  shift_start   TEXT NOT NULL DEFAULT '10:00',\n  shift_end     TEXT NOT NULL DEFAULT '19:00',\n  joining_date  TEXT,\n  active        INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),\n  live_track    INTEGER NOT NULL DEFAULT 0,             \n  device_id     TEXT,\n  token_version INTEGER NOT NULL DEFAULT 0,             \n  app_login_at  TEXT,                                   \n  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  CHECK (phone IS NULL OR length(phone) = 10),\n  CHECK (length(username) BETWEEN 3 AND 30)\n)","CREATE TABLE IF NOT EXISTS day_sessions (\n  id             INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id         INTEGER NOT NULL REFERENCES employees(id),\n  date           TEXT NOT NULL,                         \n  start_at       TEXT NOT NULL,\n  start_lat      REAL, start_lng REAL,\n  start_photo    TEXT,                                  \n  end_at         TEXT,\n  end_lat        REAL, end_lng REAL,\n  end_photo      TEXT,\n  total_km       REAL NOT NULL DEFAULT 0,\n  manual_km      REAL NOT NULL DEFAULT 0 CHECK (manual_km BETWEEN 0 AND 1000),\n  manual_km_note TEXT,\n  auto_closed    INTEGER NOT NULL DEFAULT 0,\n  legacy_id      INTEGER UNIQUE,\n  UNIQUE (emp_id, date),\n  CHECK (end_at IS NULL OR end_at >= start_at)\n)","CREATE TABLE IF NOT EXISTS location_pings (\n  id          INTEGER PRIMARY KEY AUTOINCREMENT,\n  client_id   TEXT NOT NULL UNIQUE,                     \n  emp_id      INTEGER NOT NULL REFERENCES employees(id),\n  date        TEXT NOT NULL,\n  lat         REAL NOT NULL CHECK (lat BETWEEN -90 AND 90),\n  lng         REAL NOT NULL CHECK (lng BETWEEN -180 AND 180),\n  accuracy    REAL,\n  kind        TEXT NOT NULL DEFAULT 'duty' CHECK (kind IN ('duty','field')),\n  recorded_at TEXT NOT NULL,                            \n  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  CHECK (NOT (lat = 0 AND lng = 0))\n)","CREATE INDEX IF NOT EXISTS pings_emp_date ON location_pings (emp_id, date, recorded_at)","CREATE INDEX IF NOT EXISTS pings_date ON location_pings (date)","CREATE TABLE IF NOT EXISTS last_location (\n  emp_id      INTEGER PRIMARY KEY REFERENCES employees(id),\n  lat         REAL NOT NULL,\n  lng         REAL NOT NULL,\n  accuracy    REAL,\n  kind        TEXT,\n  recorded_at TEXT NOT NULL,\n  synced_at   TEXT NOT NULL\n)","CREATE TABLE IF NOT EXISTS leave_requests (\n  id          INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id      INTEGER NOT NULL REFERENCES employees(id),\n  date        TEXT NOT NULL,\n  kind        TEXT NOT NULL DEFAULT 'Full day' CHECK (kind IN ('Full day','Half day')),\n  reason      TEXT NOT NULL CHECK (length(trim(reason)) >= 3),\n  status      TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Approved','Rejected','Cancelled')),\n  decided_by  INTEGER REFERENCES employees(id),\n  decided_at  TEXT,\n  legacy_id   INTEGER UNIQUE,\n  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))\n)","CREATE UNIQUE INDEX IF NOT EXISTS leave_one_active ON leave_requests (emp_id, date) WHERE status IN ('Pending','Approved')","CREATE TABLE IF NOT EXISTS attendance_marks (\n  id      INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id  INTEGER NOT NULL REFERENCES employees(id),\n  date    TEXT NOT NULL,\n  status  TEXT NOT NULL CHECK (status IN ('Present','Half Day','Absent','Leave','Week Off')),\n  reason  TEXT,\n  set_by  INTEGER REFERENCES employees(id),\n  set_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  legacy  INTEGER NOT NULL DEFAULT 0,\n  UNIQUE (emp_id, date)\n)","CREATE TABLE IF NOT EXISTS photos (\n  key        TEXT PRIMARY KEY,\n  mime       TEXT NOT NULL DEFAULT 'image/jpeg',\n  data       BLOB NOT NULL,\n  moved      INTEGER NOT NULL DEFAULT 0,               \n  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))\n)","CREATE TABLE IF NOT EXISTS audit_log (\n  id       INTEGER PRIMARY KEY AUTOINCREMENT,\n  at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  actor    INTEGER,\n  action   TEXT NOT NULL,\n  tbl      TEXT NOT NULL,\n  row_id   TEXT,\n  old_data TEXT,\n  new_data TEXT\n)","CREATE INDEX IF NOT EXISTS audit_at ON audit_log (at)","CREATE TABLE IF NOT EXISTS alerts (\n  id         INTEGER PRIMARY KEY AUTOINCREMENT,\n  emp_id     INTEGER NOT NULL REFERENCES employees(id),\n  date       TEXT NOT NULL,\n  kind       TEXT NOT NULL,                             \n  detail     TEXT,\n  opened_at  TEXT NOT NULL,\n  closed_at  TEXT\n)","CREATE UNIQUE INDEX IF NOT EXISTS alerts_open ON alerts (emp_id, kind) WHERE closed_at IS NULL","CREATE TRIGGER IF NOT EXISTS no_delete_employees      BEFORE DELETE ON employees      BEGIN SELECT RAISE(ABORT, 'delete not allowed — deactivate instead'); END","CREATE TRIGGER IF NOT EXISTS no_delete_sessions       BEFORE DELETE ON day_sessions   BEGIN SELECT RAISE(ABORT, 'delete not allowed'); END","CREATE TRIGGER IF NOT EXISTS no_delete_pings          BEFORE DELETE ON location_pings BEGIN SELECT RAISE(ABORT, 'delete not allowed'); END","CREATE TRIGGER IF NOT EXISTS no_delete_leaves         BEFORE DELETE ON leave_requests BEGIN SELECT RAISE(ABORT, 'delete not allowed — cancel instead'); END","CREATE TRIGGER IF NOT EXISTS no_delete_marks          BEFORE DELETE ON attendance_marks BEGIN SELECT RAISE(ABORT, 'delete not allowed'); END","CREATE TRIGGER IF NOT EXISTS no_delete_audit          BEFORE DELETE ON audit_log      BEGIN SELECT RAISE(ABORT, 'audit log is permanent'); END","CREATE TRIGGER IF NOT EXISTS no_update_audit          BEFORE UPDATE ON audit_log      BEGIN SELECT RAISE(ABORT, 'audit log is permanent'); END","CREATE TRIGGER IF NOT EXISTS no_update_pings          BEFORE UPDATE ON location_pings BEGIN SELECT RAISE(ABORT, 'GPS points are permanent'); END","CREATE TRIGGER IF NOT EXISTS session_identity_fixed   BEFORE UPDATE OF emp_id, date ON day_sessions\n  WHEN NEW.emp_id <> OLD.emp_id OR NEW.date <> OLD.date\n  BEGIN SELECT RAISE(ABORT, 'session employee/date cannot change'); END","CREATE TRIGGER IF NOT EXISTS ping_last_location AFTER INSERT ON location_pings\nBEGIN\n  INSERT INTO last_location (emp_id, lat, lng, accuracy, kind, recorded_at, synced_at)\n  VALUES (NEW.emp_id, NEW.lat, NEW.lng, NEW.accuracy, NEW.kind, NEW.recorded_at, NEW.created_at)\n  ON CONFLICT (emp_id) DO UPDATE SET\n    lat = excluded.lat, lng = excluded.lng, accuracy = excluded.accuracy, kind = excluded.kind,\n    recorded_at = excluded.recorded_at, synced_at = excluded.synced_at\n  WHERE excluded.recorded_at > last_location.recorded_at;\nEND","CREATE TABLE IF NOT EXISTS app_settings (\n  key   TEXT PRIMARY KEY,\n  value TEXT NOT NULL\n)","CREATE TABLE IF NOT EXISTS legacy_records (\n  tbl       TEXT NOT NULL,\n  legacy_id TEXT NOT NULL,\n  data      TEXT NOT NULL,          \n  PRIMARY KEY (tbl, legacy_id)\n)","CREATE TABLE IF NOT EXISTS usage_daily (\n  day      TEXT PRIMARY KEY,\n  requests INTEGER NOT NULL DEFAULT 0\n)","CREATE TABLE IF NOT EXISTS desks (id INTEGER PRIMARY KEY AUTOINCREMENT, company TEXT NOT NULL, name TEXT NOT NULL, icon TEXT, description TEXT, kind TEXT NOT NULL DEFAULT 'ready', module TEXT, fields TEXT, rolls_up TEXT, active INTEGER NOT NULL DEFAULT 1, legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))","CREATE TABLE IF NOT EXISTS desk_access (desk_id INTEGER NOT NULL, emp_id INTEGER NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, changed_at TEXT, PRIMARY KEY (desk_id, emp_id))","CREATE TABLE IF NOT EXISTS desk_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, desk_id INTEGER NOT NULL, emp_id INTEGER, date TEXT NOT NULL, data TEXT NOT NULL, amount REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT)","CREATE TABLE IF NOT EXISTS daily_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER, date TEXT NOT NULL, booking_no TEXT NOT NULL UNIQUE COLLATE NOCASE, amount REAL NOT NULL CHECK (amount > 0), legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT)","CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, invoice_id TEXT NOT NULL, company TEXT, amount REAL NOT NULL CHECK (amount > 0), date TEXT NOT NULL, mode TEXT NOT NULL, reference TEXT, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))","CREATE TABLE IF NOT EXISTS public_forms (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, icon TEXT, fields TEXT NOT NULL, project_id TEXT, project_name TEXT, becomes TEXT NOT NULL DEFAULT 'entry', status TEXT NOT NULL DEFAULT 'live', created_by INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))","CREATE TABLE IF NOT EXISTS form_answers (id INTEGER PRIMARY KEY AUTOINCREMENT, form_id INTEGER NOT NULL, data TEXT NOT NULL, result TEXT, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))","CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_docno ON legacy_records (json_extract(data, '$.company'), json_extract(data, '$.kind'), json_extract(data, '$.docNo')) WHERE tbl = 'invoices'"]
 // Shared helpers: IST time, password hashing, signed tokens, km calculation.
 const enc = new TextEncoder()
 
@@ -170,8 +170,636 @@ async function flushPendingPhotos(env, limit = 20) {
 }
 
 
+// Command Centre (Boss home), company pages, employee home + Cargo Sales desk.
+// सारा पुराना business data legacy_records में है — यहाँ उसी से summary बनती है.
+// नया entry (call log, order, quotation, task done) भी legacy_records में ही जाता है.
+
+const COMPANIES = ['JDAC Logistics', 'Jupiter Equipment', 'GovaaBazaar', 'JDAC Studios']
+const N = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
+const d10 = (v) => (v == null || v === 'None' ? '' : String(v).slice(0, 10))
+const s = (v) => (v == null || v === 'None' ? '' : String(v))
+const LOST = /^(LS|IR)|not interested|irrelevant|cancel|^NC$/i
+const WON = /booking|pickup|invoiced|completed|out for delivery|sale closed|payment pending|order placed/i
+
+function journeyOf(stage) {
+  const st = s(stage).trim()
+  if (!st || /new/i.test(st)) return 'New'
+  if (WON.test(st)) return 'Order Placed'
+  if (LOST.test(st)) return 'Lost'
+  if (/future/i.test(st)) return 'Future'
+  if (/quotation/i.test(st)) return 'Quotation'
+  if (/follow|awaiting/i.test(st)) return 'Follow-up'
+  return 'Contacted'
+}
+
+// ── per-isolate cache (60 sec) ─────────────────────────────────────────────
+let cache = { at: 0, data: null }
+const TABLES = ['cargo_orders', 'cargo_quotes', 'cse_call_logs', 'ad_leads', 'ad_metrics', 'ad_campaigns', 'equipment_orders', 'fmcg_sales', 'fmcg_purchases', 'fmcg_products', 'inventory',
+  'company_expenses', 'company_purchases', 'company_suppliers', 'expense_claims', 'invoices', 'receivables', 'vittiya_entries', 'desks', 'employee_desks', 'tasks', 'task_checklist',
+  'projects', 'project_members', 'day_entries', 'social_posts', 'daily_reports', 'chat_messages', 'cse_targets', 'incentive_rules']
+async function loadAll(env, fresh = false) {
+  if (!fresh && cache.data && Date.now() - cache.at < 60000) return cache.data
+  const { results } = await env.DB.prepare(`SELECT tbl, legacy_id, data FROM legacy_records WHERE tbl IN (${TABLES.map(() => '?').join(',')})`).bind(...TABLES).all()
+  const data = Object.fromEntries(TABLES.map((t) => [t, []]))
+  for (const r of results) { try { data[r.tbl].push({ ...JSON.parse(r.data), _rid: r.legacy_id }) } catch { /* bad row */ } }
+  try { data.payments = (await env.DB.prepare('SELECT * FROM payments').all()).results } catch { data.payments = [] }
+  try { data.bookings = (await env.DB.prepare('SELECT b.*, e.name FROM daily_bookings b LEFT JOIN employees e ON e.id = b.emp_id').all()).results } catch { data.bookings = [] }
+  try { data.deskEntries = (await env.DB.prepare('SELECT x.amount, x.date, d.company FROM desk_entries x JOIN desks d ON d.id = x.desk_id WHERE x.amount > 0').all()).results } catch { data.deskEntries = [] }
+  cache = { at: Date.now(), data }
+  return data
+}
+const dropCache = () => { cache = { at: 0, data: null } }
+
+function rangeOf(range, today) {
+  const t = new Date(today + 'T00:00:00Z')
+  if (range === 'today') return [today, today]
+  if (range === 'week') { const dow = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dow); return [t.toISOString().slice(0, 10), today] }
+  return [today.slice(0, 8) + '01', today]
+}
+const inR = (d, [a, b]) => d && d >= a && d <= b
+
+// ── पैसे का हिसाब — हर company के लिए ─────────────────────────────────────────
+function money(D, company, R) {
+  const m = { booked: 0, collected: 0, costs: 0, purchases: 0, expenses: 0, to_collect: 0, to_pay: 0, orders: 0, markup: null }
+  const live = (x) => !/cancel|reject/i.test(s(x.stage) + s(x.status))
+  if (company === 'JDAC Logistics') {
+    let sale = 0, cost = 0
+    m.cse_bookings = (D.bookings || []).filter((b) => inR(b.date, R)).reduce((a, b) => a + N(b.amount), 0)
+    for (const o of D.cargo_orders) if (orderCounts(o) && inR(d10(o.date || o.createdAt), R)) {
+      m.booked += N(o.amount); m.orders++
+      if (N(o.vendorCost) > 0) { sale += N(o.amount); cost += N(o.vendorCost) }
+      m.costs += N(o.vendorCost)
+    }
+    m.markup = cost > 0 ? Math.round(((sale - cost) / cost) * 100) : null
+  }
+  if (company === 'Jupiter Equipment') {
+    for (const o of D.equipment_orders) if (live(o) && inR(d10(o.createdAt), R)) { m.booked += N(o.rentAmount) + N(o.transport); m.orders++ }
+  }
+  if (company === 'GovaaBazaar') {
+    for (const o of D.fmcg_sales) if (inR(d10(o.date || o.createdAt), R)) { m.booked += N(o.total); m.orders++ }
+    for (const p of D.fmcg_purchases) if (inR(d10(p.date || p.createdAt), R)) { m.purchases += N(p.total); m.costs += N(p.total) }
+    for (const r of D.receivables) if (/fmcg/i.test(s(r.business)) && inR(d10(r.invoiceDate), R)) m.booked += N(r.amount)
+  }
+  // Simple entry desks के money fields → company Booked
+  for (const x of D.deskEntries || []) if (x.company === company && inR(x.date, R)) m.booked += N(x.amount)
+  const pays = D.payments || []
+  for (const i of D.invoices) {
+    if (s(i.company) !== company || !live(i)) continue
+    const d = d10(i.date || i.createdAt)
+    if (company !== 'JDAC Logistics' && inR(d, R)) { m.booked += N(i.total); m.orders++ }
+    const p = pays.filter((x) => x.invoice_id === String(i._rid))
+    // Collected = दर्ज payments; पुराने invoices जो पहले से "Paid" थे (बिना payment record) — उनका total
+    if (p.length) { for (const x of p) if (inR(x.date, R)) m.collected += N(x.amount) }
+    else if (/^paid$/i.test(s(i.status)) && inR(d, R)) m.collected += N(i.total)
+    const due = N(i.total) - p.reduce((a, x) => a + N(x.amount), 0)
+    if (!/^paid$/i.test(s(i.status)) && due > 0.5) m.to_collect += due
+  }
+  for (const r of D.receivables) {
+    const co = /fmcg/i.test(s(r.business)) ? 'GovaaBazaar' : s(r.business)
+    if (co !== company) continue
+    if (/collect|paid/i.test(s(r.status))) { if (inR(d10(r.collectedAt || r.invoiceDate), R)) m.collected += N(r.amount) } else m.to_collect += N(r.amount)
+  }
+  for (const p of D.company_purchases) if (s(p.company) === company && live(p)) {
+    if (inR(d10(p.date), R)) { m.purchases += N(p.amount); m.costs += N(p.amount) }
+    if (/pending|unpaid|due/i.test(s(p.status))) m.to_pay += N(p.amount)
+  }
+  for (const e of D.company_expenses) if (s(e.company) === company && live(e) && inR(d10(e.date), R)) { m.expenses += N(e.amount); m.costs += N(e.amount) }
+  m.profit = m.booked - m.costs
+  m.money_in = m.collected || m.booked
+  m.net = m.money_in - m.purchases - m.expenses
+  return m
+}
+
+// Order Booked में तभी गिना जाए: cancel/reject नहीं, और markup approval pending नहीं
+const orderCounts = (o) => !/cancel/i.test(s(o.stage)) && !/pending|rejected/i.test(s(o.approvalStatus))
+const markupOf = (o) => (N(o.vendorCost) > 0 ? Math.round(((N(o.amount) - N(o.vendorCost)) / N(o.vendorCost)) * 100) : null)
+const nameKey = (n) => s(n).trim().split(/\s+/)[0].toLowerCase()
+function cseList(D, emps) {
+  // Cargo desk वाले लोग (पुराना desk assignment) + जिनके नाम पर leads हैं
+  const cargoDesk = new Set(D.desks.filter((d) => s(d.module_key) === 'cargo').map((d) => String(d.id)))
+  const pids = new Set(D.employee_desks.filter((x) => cargoDesk.has(String(x.desk_id)) && (!x.revoked_at || x.revoked_at === 'None')).map((x) => String(x.person_id)))
+  return emps.filter((e) => e.active && (pids.has(String(e.legacy_id)) || D.cargo_orders.some((o) => String(o.personId) === String(e.legacy_id) && e.legacy_id)))
+}
+const leadsOf = (D, emp) => D.ad_leads.filter((l) => nameKey(l.cseName) === nameKey(emp.name))
+const isMine = (r, e) => (e.legacy_id && String(r.personId) === String(e.legacy_id)) || String(r.emp_id || '') === String(e.id) || (r.cseName && nameKey(r.cseName) === nameKey(e.name))
+const mine = (rows, emp, field = 'personId') => rows.filter((r) => (emp.legacy_id && String(r[field]) === String(emp.legacy_id)) || String(r.emp_id || '') === String(emp.id))
+
+function homeSummary(D, emps, today, range, company, cses) {
+  const R = rangeOf(range, today)
+  const cos = company && company !== 'All' ? [company] : COMPANIES
+  const per = Object.fromEntries(COMPANIES.map((c) => [c, money(D, c, R)]))
+  const perMonth = range === 'month' ? per : Object.fromEntries(COMPANIES.map((c) => [c, money(D, c, rangeOf('month', today))]))
+  const group = { booked: 0, collected: 0, costs: 0, profit: 0, to_collect: 0, to_pay: 0, cse_bookings: 0 }
+  for (const c of cos) for (const k of Object.keys(group)) group[k] += per[c][k] || 0
+  const logi = cos.includes('JDAC Logistics')
+  // Waiting on you (0 वाली rows client में छुपती हैं)
+  const pendingApproval = logi ? D.cargo_orders.filter((o) => /pending/i.test(s(o.approvalStatus)) && !/cancel/i.test(s(o.stage))) : []
+  const claims = D.expense_claims.filter((c) => /pending|submitted/i.test(s(c.status)))
+  const old30 = new Date(Date.parse(today) - 30 * 864e5).toISOString().slice(0, 10)
+  const pays = D.payments || []
+  const unpaid = D.invoices.filter((i) => cos.includes(s(i.company)) && s(i.kind || 'Invoice') === 'Invoice' && !/^paid$|cancel/i.test(s(i.status)) && d10(i.date || i.createdAt) <= old30)
+    .map((i) => ({ i, due: N(i.total) - pays.filter((p) => p.invoice_id === String(i._rid)).reduce((a, p) => a + N(p.amount), 0) })).filter((x) => x.due > 0.5)
+  const called = new Set(D.cse_call_logs.map((c) => String(c.leadId)))
+  const cutoff = Date.now() - 72 * 36e5
+  const uncalled = logi ? D.ad_leads.filter((l) => journeyOf(l.stage) === 'New' && !called.has(String(l.id)) && !s(l.lastActivityAt) && Date.parse((s(l.createdAt) || s(l.date)).replace(' ', 'T') + '+05:30') < cutoff) : []
+  // Logistics sales today (हमेशा today) — markup = उस CSE के आज के orders का average
+  const T = [today, today]
+  const sales = (cses || cseList(D, emps)).map((e) => {
+    const ord = D.cargo_orders.filter((o) => isMine(o, e) && orderCounts(o) && inR(d10(o.date || o.createdAt), T))
+    const mk = ord.map(markupOf).filter((x) => x != null)
+    return { emp_id: e.id, name: e.name, calls: D.cse_call_logs.filter((c) => isMine(c, e) && inR(d10(c.createdAt), T)).length,
+      quotes: D.cargo_quotes.filter((q) => isMine(q, e) && inR(d10(q.date || q.createdAt), T)).length, orders: ord.length,
+      markup: mk.length ? Math.round(mk.reduce((a, x) => a + x, 0) / mk.length) : null }
+  })
+  // Logistics ops today
+  const ops = { pickup: 0, transit: 0, delivered: 0 }
+  for (const o of D.cargo_orders) {
+    if (/cancel/i.test(s(o.stage)) || /pending|rejected/i.test(s(o.approvalStatus))) continue
+    const st = s(o.stage)
+    if (/^booked$|^booking$|pickup due|^new$/i.test(st)) ops.pickup++
+    else if (/picked up|transit|out for/i.test(st)) ops.transit++
+    else if (/deliver/i.test(st) && d10(o.updatedAt || o.date) === today) ops.delivered++
+  }
+  // Leads & ads today
+  const spend = D.ad_metrics.filter((m) => d10(m.date) === today).reduce((a, m) => a + N(m.spend), 0)
+  const leads = D.ad_leads.filter((l) => d10(l.date || l.createdAt) === today).length
+  // Companies table (this month) — Logistics markup = average of month orders with vendor cost
+  const mo = rangeOf('month', today)
+  const mk = D.cargo_orders.filter((o) => orderCounts(o) && inR(d10(o.date), mo)).map(markupOf).filter((x) => x != null)
+  return { range, from: R[0], to: R[1], company: company || 'All', group,
+    companies: COMPANIES.map((c) => ({ name: c, booked: perMonth[c].booked, profit: perMonth[c].profit, markup: c === 'JDAC Logistics' && mk.length ? Math.round(mk.reduce((a, x) => a + x, 0) / mk.length) : null })),
+    waiting: { pending_approval: pendingApproval.length, pending_amount: pendingApproval.reduce((a, o) => a + N(o.amount), 0),
+      claims: claims.length, claims_amount: claims.reduce((a, c) => a + N(c.amount), 0),
+      unpaid_30: unpaid.length, unpaid_30_amount: unpaid.reduce((a, x) => a + x.due, 0), uncalled_72h: uncalled.length },
+      // weight_diff: Om के Ops panel के बाद यहाँ आएगा
+    sales, ops, ads: { spend, leads, cpl: leads && spend ? Math.round(spend / leads) : null } }
+}
+
+function companyPage(D, emps, today, name, range = 'month', desks = [], cses = []) {
+  const R = rangeOf(range, today)
+  const m = money(D, name, R)
+  const kpis = [], sell = [], buy = [], spend = []
+  let manager = null
+  if (name === 'JDAC Logistics') {
+    const open = D.cargo_orders.filter((o) => orderCounts(o) && !/deliver|completed|invoiced/i.test(s(o.stage)))
+    const openLeads = D.ad_leads.filter((l) => !['Lost', 'Order Placed'].includes(journeyOf(l.stage)))
+    kpis.push(['Cargo orders', m.orders], ['CSE bookings', m.cse_bookings, 'money'], ['Open consignments', open.length], ['Open leads', openLeads.length])
+    const j = { New: 0, Contacted: 0, Quotation: 0, 'Follow-up': 0, Future: 0, 'Order Placed': 0, Lost: 0 }
+    for (const l of D.ad_leads) j[journeyOf(l.stage)]++
+    const pool = D.ad_leads.filter((l) => !s(l.cseName).trim() && !['Lost', 'Order Placed'].includes(journeyOf(l.stage)))
+    const mo = rangeOf('month', today)
+    manager = {
+      sales_team: cses.map((e) => {
+        const o = D.cargo_orders.filter((x) => orderCounts(x) && inR(d10(x.date), mo) && isMine(x, e))
+        return { id: e.id, name: e.name, leads: leadsOf(D, e).filter((l) => !['Lost', 'Order Placed'].includes(journeyOf(l.stage))).length, calls: D.cse_call_logs.filter((c) => isMine(c, e) && inR(d10(c.createdAt), mo)).length,
+          orders: o.length, amount: o.reduce((a, x) => a + N(x.amount), 0), profit: o.reduce((a, x) => a + (N(x.vendorCost) > 0 ? N(x.amount) - N(x.vendorCost) : 0), 0) }
+      }).sort((a, b) => b.profit - a.profit),
+      pipeline: j, pool: pool.length, pool_leads: pool.slice(0, 200).map((l) => ({ id: l._rid, name: s(l.name), phone: s(l.phone), date: d10(l.date) })),
+      ops: D.cargo_orders.slice().sort((a, b) => d10(b.date).localeCompare(d10(a.date))).map((o) => ({ id: o._rid, date: d10(o.date), customer: s(o.customerName), cse: s(o.cseName), mode: s(o.mode), kg: N(o.kg),
+        amount: N(o.amount), vendor_cost: N(o.vendorCost), markup: markupOf(o), approval: s(o.approvalStatus), stage: s(o.stage) || 'Booked', invoice: s(o.invoiceNo), reason: s(o.rejectReason || o.cancelReason) })),
+    }
+  } else if (name === 'Jupiter Equipment') {
+    const withCust = D.equipment_orders.filter((o) => /with customer|delivered/i.test(s(o.stage)))
+    kpis.push(['Orders', m.orders], ['With customer', withCust.length], ['All orders', D.equipment_orders.length], ['To collect', m.to_collect, 'money'])
+    for (const o of D.equipment_orders) sell.push({ date: d10(o.createdAt), title: `${s(o.orderNo)} · ${s(o.customerName)} · ${s(o.equipment)}`, who: s(o.leadSource), amount: N(o.rentAmount) + N(o.transport), status: s(o.stage) })
+  } else if (name === 'GovaaBazaar') {
+    const stock = D.inventory.reduce((a, i) => a + N(i.totalQty), 0)
+    kpis.push(['Sales entries', m.orders], ['Products', D.fmcg_products.length + D.inventory.length], ['Stock (qty)', stock], ['To collect', m.to_collect, 'money'])
+    for (const o of D.fmcg_sales) sell.push({ date: d10(o.date), title: `${s(o.productName)} × ${N(o.qty)}`, who: s(o.channel), amount: N(o.total), status: '' })
+    for (const r of D.receivables) if (/fmcg/i.test(s(r.business))) sell.push({ date: d10(r.invoiceDate), title: `${s(r.storeName)} (receivable)`, who: s(r.channel), amount: N(r.amount), status: s(r.status) })
+    for (const p of D.fmcg_purchases) buy.push({ date: d10(p.date), title: `${s(p.productName)} × ${N(p.qty)}`, who: s(p.supplier), amount: N(p.total), status: '' })
+  } else if (name === 'JDAC Studios') {
+    const spendR = D.ad_metrics.filter((x) => inR(d10(x.date), R)).reduce((a, x) => a + N(x.spend), 0)
+    const leadsR = D.ad_leads.filter((l) => inR(d10(l.date), R)).length
+    kpis.push(['Ad spend', spendR, 'money'], ['Leads', leadsR], ['Active campaigns', D.ad_campaigns.filter((c) => /active/i.test(s(c.status))).length], ['Social posts', D.social_posts.length])
+    manager = { campaigns: D.ad_campaigns.map((c) => {
+      const met = D.ad_metrics.filter((x) => String(x.campaignId) === String(c.id)), ld = D.ad_leads.filter((l) => String(l.campaignId) === String(c.id)).length
+      const sp = met.reduce((a, x) => a + N(x.spend), 0)
+      return { id: c._rid, name: s(c.name), brand: s(c.company), platform: s(c.platform), status: s(c.status), cse: s(c.cse), spend: sp, leads: ld, cpl: ld && sp ? Math.round(sp / ld) : null }
+    }) }
+  }
+  for (const p of D.company_purchases) if (s(p.company) === name) buy.push({ date: d10(p.date), title: s(p.description), who: s(p.supplierName), amount: N(p.amount), status: s(p.status) })
+  for (const e of D.company_expenses) if (s(e.company) === name) spend.push({ date: d10(e.date), title: `${s(e.category)} · ${s(e.description)}`, who: s(e.paymentMode), amount: N(e.amount), status: s(e.status) })
+  const byDate = (a, b) => (b.date || '').localeCompare(a.date || '')
+  return { name, range, money: m, kpis, sell: sell.sort(byDate), buy: buy.sort(byDate), spend: spend.sort(byDate), desks, manager }
+}
+
+// ── Employee ───────────────────────────────────────────────────────────────
+function myHome(D, emp, today, myDesks = []) {
+  const isMine = (t) => (emp.legacy_id && String(t.assigneeId) === String(emp.legacy_id)) || String(t.assignee_emp || '') === String(emp.id)
+  const tasks = D.tasks.filter(isMine)
+  const open = tasks.filter((t) => !/done|closed|complete/i.test(s(t.status)))
+  const doneToday = tasks.filter((t) => /done|closed|complete/i.test(s(t.status)) && d10(t.closedAt) === today).length
+  const overdue = open.filter((t) => d10(t.due) && d10(t.due) < today).length
+  const desks = myDesks.map((d) => ({ id: String(d.id), name: d.name, icon: d.icon, description: d.description || (d.kind === 'later' ? 'coming later' : ''), module: d.kind === 'simple' ? 'simple' : d.module, kind: d.kind, company: d.company }))
+  const projIds = new Set(D.project_members.filter((m) => String(m.personId) === String(emp.legacy_id)).map((m) => String(m.projectId)))
+  const projects = D.projects.filter((p) => projIds.has(String(p.id))).map((p) => ({ id: String(p.id), name: s(p.name),
+    open: D.tasks.filter((t) => String(t.projectId || '') === String(p.id) && !/done|closed/i.test(s(t.status))).length,
+    members: D.project_members.filter((m) => String(m.projectId) === String(p.id)).length }))
+  const entries = D.day_entries.filter((e) => String(e.personId) === String(emp.legacy_id) && d10(e.date) === today).length
+  const checklist = (id) => D.task_checklist.filter((c) => String(c.taskId) === String(id))
+  return { name: emp.name, designation: emp.designation || emp.team, tasks_total: tasks.filter((t) => !/done|closed|complete/i.test(s(t.status)) || d10(t.closedAt) === today).length, tasks_done: doneToday, overdue, entries, desks, projects,
+    up_next: open.sort((a, b) => (d10(a.due) || '9').localeCompare(d10(b.due) || '9')).slice(0, 30).map((t) => ({ id: t._rid, title: s(t.title), due: d10(t.due), priority: s(t.priority), status: s(t.status), notes: s(t.notes),
+      checklist: checklist(t.id).map((c) => ({ id: c._rid, title: s(c.title), done: String(c.done) === '1' || c.done === true })) })) }
+}
+
+function cargoDesk(D, emp, emps, today, cses, showAll = false) {
+  const leads = leadsOf(D, emp)
+  const myOrders = D.cargo_orders.filter((o) => (emp.legacy_id && String(o.personId) === String(emp.legacy_id)) || nameKey(o.cseName) === nameKey(emp.name))
+  const live = myOrders.filter(orderCounts)
+  const calls = D.cse_call_logs.filter((c) => (emp.legacy_id && String(c.personId) === String(emp.legacy_id)) || String(c.emp_id || '') === String(emp.id))
+  const day = (n) => new Date(Date.parse(today) - n * 864e5).toISOString().slice(0, 10)
+  const block = (from, to) => { const o = live.filter((x) => inR(d10(x.date), [from, to])); return { orders: o.length, amount: o.reduce((a, x) => a + N(x.amount), 0), calls: calls.filter((c) => inR(d10(c.createdAt), [from, to])).length } }
+  const j = { New: 0, Contacted: 0, Quotation: 0, 'Follow-up': 0, Future: 0, 'Order Placed': 0 }
+  for (const l of leads) { const k = journeyOf(l.stage); if (k in j) j[k]++ }
+  const now = Date.now()
+  const waitH = (l) => Math.max(0, Math.round((now - Date.parse((s(l.lastActivityAt) || s(l.updatedAt) || s(l.createdAt) || today).replace(' ', 'T') + (s(l.lastActivityAt || l.updatedAt || l.createdAt).includes('T') ? '' : '+05:30'))) / 36e5))
+  const due = leads.filter((l) => { const k = journeyOf(l.stage); return k === 'New' || ((k === 'Follow-up' || k === 'Quotation') && (!d10(l.nextFollowUp) || d10(l.nextFollowUp) <= today)) })
+  const doNow = due.map((l) => ({ id: l._rid, name: s(l.name), phone: s(l.phone), stage: s(l.stage), journey: journeyOf(l.stage), city: s(l.city), wait_h: waitH(l) })).sort((a, b) => b.wait_h - a.wait_h)
+  const month = today.slice(0, 8) + '01'
+  // Leaderboard: इस महीने का profit (Amount − Vendor cost; approved, cancel नहीं). दूसरों का profit CSE को नहीं दिखता.
+  const pool = (cses || []).concat([emp]).filter((e, i, a) => a.findIndex((x) => x.id === e.id) === i)
+  const board = pool.map((e) => {
+    const o = D.cargo_orders.filter((x) => orderCounts(x) && inR(d10(x.date), [month, today]) && isMine(x, e))
+    const mk = o.map(markupOf).filter((x) => x != null)
+    return { id: e.id, name: e.name, orders: o.length, profit: o.reduce((a, x) => a + (N(x.vendorCost) > 0 ? N(x.amount) - N(x.vendorCost) : 0), 0), avg_markup: mk.length ? Math.round(mk.reduce((a, x) => a + x, 0) / mk.length) : null }
+  }).sort((a, b) => b.profit - a.profit || b.orders - a.orders).map((x, i) => ({ ...x, rank: i + 1 }))
+  const leaderboard = board.map((x) => (x.id === emp.id || showAll ? x : { id: x.id, name: x.name, orders: x.orders, rank: x.rank }))
+  const customers = {}
+  for (const o of myOrders) { const k = s(o.phone) || s(o.customerName); customers[k] = customers[k] || { name: s(o.customerName), phone: s(o.phone), orders: 0, amount: 0 }; customers[k].orders++; customers[k].amount += N(o.amount) }
+  const target = D.cse_targets.filter((t) => String(t.personId) === String(emp.legacy_id)).sort((a, b) => d10(b.date).localeCompare(d10(a.date)))[0]
+  return {
+    counts: { new: j.New, followups: due.filter((l) => journeyOf(l.stage) === 'Follow-up').length, quotes: j.Quotation, orders_today: block(today, today).orders },
+    today: block(today, today), yesterday: block(day(1), day(1)), last7: block(day(6), today),
+    pipeline: leads.filter((l) => !['Lost', 'Order Placed'].includes(journeyOf(l.stage))).length, new_today: leads.filter((l) => d10(l.date || l.createdAt) === today).length,
+    month_amount: live.filter((x) => inR(d10(x.date), [month, today])).reduce((a, x) => a + N(x.amount), 0),
+    do_now: doNow.slice(0, 20), do_now_total: doNow.length, journey: j, leaderboard, target: target ? { orders: N(target.targetOrders), incentive: N(target.incentive) } : null,
+    orders: myOrders.sort((a, b) => d10(b.date).localeCompare(d10(a.date))).slice(0, 100).map((o) => ({ id: o._rid, date: d10(o.date), customer: s(o.customerName), phone: s(o.phone), mode: s(o.mode), kg: N(o.kg), amount: N(o.amount), vendor_cost: N(o.vendorCost), markup: markupOf(o), approval: s(o.approvalStatus), stage: s(o.stage), invoice: s(o.invoiceNo) })),
+    customers: Object.values(customers).sort((a, b) => b.amount - a.amount),
+    leads: leads.map((l) => ({ id: l._rid, name: s(l.name), phone: s(l.phone), stage: s(l.stage), journey: journeyOf(l.stage), date: d10(l.date), next: d10(l.nextFollowUp) })).sort((a, b) => b.date.localeCompare(a.date)),
+  }
+}
+
+// Desk-first system (Desk-First Step 1–4), Daily Bookings, money rules (Tasks 1–5), public Forms.
+// नए tables यहाँ बनते हैं (CREATE IF NOT EXISTS) — पुराना data legacy_records से एक बार copy होता है.
+
+const DESK_TABLES = [
+  `CREATE TABLE IF NOT EXISTS desks (id INTEGER PRIMARY KEY AUTOINCREMENT, company TEXT NOT NULL, name TEXT NOT NULL, icon TEXT, description TEXT,
+    kind TEXT NOT NULL DEFAULT 'ready', module TEXT, fields TEXT, rolls_up TEXT, active INTEGER NOT NULL DEFAULT 1, legacy_id TEXT UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`,
+  `CREATE TABLE IF NOT EXISTS desk_access (desk_id INTEGER NOT NULL, emp_id INTEGER NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, changed_at TEXT, PRIMARY KEY (desk_id, emp_id))`,
+  `CREATE TABLE IF NOT EXISTS desk_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, desk_id INTEGER NOT NULL, emp_id INTEGER, date TEXT NOT NULL, data TEXT NOT NULL,
+    amount REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT)`,
+  `CREATE TABLE IF NOT EXISTS daily_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER, date TEXT NOT NULL, booking_no TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    amount REAL NOT NULL CHECK (amount > 0), legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT)`,
+  `CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, invoice_id TEXT NOT NULL, company TEXT, amount REAL NOT NULL CHECK (amount > 0), date TEXT NOT NULL,
+    mode TEXT NOT NULL, reference TEXT, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`,
+  `CREATE TABLE IF NOT EXISTS public_forms (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, icon TEXT, fields TEXT NOT NULL,
+    project_id TEXT, project_name TEXT, becomes TEXT NOT NULL DEFAULT 'entry', status TEXT NOT NULL DEFAULT 'live', created_by INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`,
+  `CREATE TABLE IF NOT EXISTS form_answers (id INTEGER PRIMARY KEY AUTOINCREMENT, form_id INTEGER NOT NULL, data TEXT NOT NULL, result TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`,
+  // Invoice नंबर कभी दोबारा न हो (company + kind + docNo)
+  `CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_docno ON legacy_records (json_extract(data, '$.company'), json_extract(data, '$.kind'), json_extract(data, '$.docNo')) WHERE tbl = 'invoices'`,
+]
+
+// Ready desks = app में बनी screens. "rolls" = group panel में क्या जुड़ता है.
+const MODULES = {
+  cargo: { name: 'Cargo Sales & Leads', company: 'JDAC Logistics', icon: '📦', rolls: 'Calls, quotes, orders, markup → Home "Logistics sales today"' },
+  punch: { name: 'Order Punch', company: 'JDAC Logistics', icon: '🧾', rolls: 'Orders with vendor cost → Booked, Costs, Profit' },
+  bookings: { name: 'Daily Bookings', company: 'JDAC Logistics', icon: '📒', rolls: 'Daily total → "CSE bookings" on Logistics Overview and Home' },
+  collections: { name: 'Bills & Collections', company: 'JDAC Logistics', icon: '💰', rolls: 'Payments → Collected, To collect' },
+  'accounts-entry': { name: 'Accounts Entry', company: 'JDAC Logistics', icon: '📒', rolls: 'Expenses and purchases → Costs, To pay vendors' },
+  'ops-later': { name: 'Ops · pickup to delivery', company: 'JDAC Logistics', icon: '🚚', rolls: 'Pickup due, in transit, delivered → Home "Logistics ops" (coming later, owner Om)' },
+  perf: { name: 'Performance Marketing', company: 'JDAC Studios', icon: '📈', rolls: 'Spend, leads, cost per lead → Home "Leads & ads"' },
+  social: { name: 'Social Media', company: 'JDAC Studios', icon: '📣', rolls: 'Posts and content calendar → Studios Overview' },
+  'jupiter-orders': { name: 'Equipment Orders', company: 'Jupiter Equipment', icon: '🏥', rolls: 'Rent booked → Jupiter Booked' },
+  fmcg: { name: 'FMCG Orders', company: 'GovaaBazaar', icon: '🛒', rolls: 'Sales → GovaaBazaar Booked' },
+}
+
+const dN = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
+const r2 = (n) => Math.round(n * 100) / 100
+const MARKUP_MIN = 40
+const gstSplit = (total) => { const taxable = r2(total / 1.18); return { taxable, gst: r2(total - taxable) } }
+function fyOf(date) { const y = Number(date.slice(0, 4)), m = Number(date.slice(5, 7)); const s = m >= 4 ? y : y - 1; return `${String(s).slice(2)}-${String(s + 1).slice(2)}` }
+const PREFIX = { 'JDAC Logistics': 'JL', 'Jupiter Equipment': 'JE', GovaaBazaar: 'GB', 'JDAC Studios': 'JS' }
+
+async function migrateDesks(env, emps) {
+  // 1) पुराने desks (legacy) → नए desks; Warehouse/Delivery → "Ops" placeholder में (records वैसे ही रहते हैं)
+  const { results: L } = await env.DB.prepare("SELECT legacy_id, data FROM legacy_records WHERE tbl IN ('desks')").all()
+  const old = L.map((r) => ({ ...JSON.parse(r.data), _rid: r.legacy_id }))
+  const byLegacyPerson = new Map(emps.filter((e) => e.legacy_id).map((e) => [String(e.legacy_id), e.id]))
+  const modOf = (d) => ({ 'campaign-cse': 'cargo', 'order-punch': 'punch', 'logistics-collections': 'collections', accounts: 'accounts-entry', 'perf-marketing': 'perf', 'social-media': 'social', warehouse: 'ops-later', delivery: 'ops-later' }[d.module_key] || d.module_key)
+  const idFor = new Map()
+  for (const d of old) {
+    const mod = modOf(d)
+    const ex = await env.DB.prepare('SELECT id FROM desks WHERE module = ? AND company = ?').bind(mod, d.company).first()
+    if (ex) { idFor.set(String(d.id), ex.id); continue }
+    if (String(d.active) === '0' && MODULES[mod] && mod !== 'ops-later') continue
+    const m = MODULES[mod] || {}
+    const r = await env.DB.prepare('INSERT INTO desks (company, name, icon, description, kind, module, rolls_up, active, legacy_id) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id')
+      .bind(d.company, m.name || d.name, m.icon || d.icon, d.description || '', mod === 'ops-later' ? 'later' : 'ready', mod, m.rolls || null, 1, String(d.id)).first()
+    idFor.set(String(d.id), r.id)
+  }
+  // हर module का desk ज़रूर हो
+  for (const [mod, m] of Object.entries(MODULES)) {
+    if (!(await env.DB.prepare('SELECT 1 x FROM desks WHERE module = ?').bind(mod).first()))
+      await env.DB.prepare('INSERT INTO desks (company, name, icon, description, kind, module, rolls_up) VALUES (?,?,?,?,?,?,?)').bind(m.company, m.name, m.icon, '', mod === 'ops-later' ? 'later' : 'ready', mod, m.rolls).run()
+  }
+  const cargoDesk0 = await env.DB.prepare("SELECT id FROM desks WHERE module = 'cargo'").first()
+  // 2) पुराने assignments → desk_access (revoked = Off)
+  const { results: A } = await env.DB.prepare("SELECT data FROM legacy_records WHERE tbl = 'employee_desks'").all()
+  for (const a of A.map((r) => JSON.parse(r.data))) {
+    const did = idFor.get(String(a.desk_id)), eid = byLegacyPerson.get(String(a.person_id))
+    if (!did || !eid) continue
+    const on = !a.revoked_at || a.revoked_at === 'None' ? 1 : 0
+    await env.DB.prepare('INSERT INTO desk_access (desk_id, emp_id, enabled, changed_at) VALUES (?,?,?,?) ON CONFLICT (desk_id, emp_id) DO UPDATE SET enabled = MAX(enabled, excluded.enabled)').bind(did, eid, on, new Date().toISOString()).run()
+  }
+  // Neetu और Mohin = Cargo Sales CSE (Daily Bookings prompt में तय)
+  if (cargoDesk0) for (const lp of ['6', '16552025']) { const eid = byLegacyPerson.get(lp); if (eid) await env.DB.prepare('INSERT INTO desk_access (desk_id, emp_id, enabled, changed_at) VALUES (?,?,1,?) ON CONFLICT (desk_id, emp_id) DO UPDATE SET enabled = 1').bind(cargoDesk0.id, eid, new Date().toISOString()).run() }
+  // Daily Bookings: Cargo Sales वाले सभी CSE के लिए On (default)
+  const cargo = await env.DB.prepare("SELECT id FROM desks WHERE module = 'cargo'").first(), bk = await env.DB.prepare("SELECT id FROM desks WHERE module = 'bookings'").first()
+  if (cargo && bk) await env.DB.prepare('INSERT OR IGNORE INTO desk_access (desk_id, emp_id, enabled, changed_at) SELECT ?, emp_id, 1, ? FROM desk_access WHERE desk_id = ? AND enabled = 1').bind(bk.id, new Date().toISOString(), cargo.id).run()
+  // 3) पुरानी daily bookings → नई table (booking no. दोहराए हों तो "(old #id)" जोड़कर)
+  const { results: B } = await env.DB.prepare("SELECT legacy_id, data FROM legacy_records WHERE tbl = 'daily_bookings'").all()
+  for (const r of B) {
+    const b = JSON.parse(r.data)
+    if (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE legacy_id = ?').bind(r.legacy_id).first()) continue
+    let no = String(b.bookingNo || r.legacy_id)
+    if (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) no = `${no} (old #${r.legacy_id})`
+    if (dN(b.amount) > 0) await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount, legacy_id, created_at) VALUES (?,?,?,?,?,?)')
+      .bind(byLegacyPerson.get(String(b.personId)) || null, String(b.date).slice(0, 10), no, dN(b.amount), r.legacy_id, String(b.createdAt || b.date)).run()
+  }
+}
+
+function registerDesks(on, X) {
+  const { authUser, needAdmin, json, body, bad, HttpError, istDate, audit, ADMIN_ROLES, loadAll, dropCache, legacyGet, legacySet, legacyPut, nowLocal } = X
+  const isAdmin = (me) => ADMIN_ROLES.includes(me.role)
+  const needBoss = (me) => { if (!['boss', 'developer'].includes(me.role)) throw new HttpError(403, 'Boss / Developer only') }
+
+  // ── Desks (admin) ────────────────────────────────────────────────────────
+  on('GET', '/api/desks', async (env, req, url) => {
+    const me = await authUser(env, req); needAdmin(me)
+    const co = url.searchParams.get('company')
+    const { results: desks } = await env.DB.prepare(`SELECT * FROM desks WHERE active = 1 ${co && co !== 'All' ? 'AND company = ?' : ''} ORDER BY company, kind = 'later', id`).bind(...(co && co !== 'All' ? [co] : [])).all()
+    const { results: acc } = await env.DB.prepare('SELECT a.desk_id, a.enabled, e.id, e.name, e.designation, e.team FROM desk_access a JOIN employees e ON e.id = a.emp_id WHERE e.active = 1').all()
+    const { results: emps } = await env.DB.prepare("SELECT id, name, designation, team, role FROM employees WHERE active = 1 ORDER BY name").all()
+    return json({ desks: desks.map((d) => ({ ...d, fields: d.fields ? JSON.parse(d.fields) : null, rolls_up: d.rolls_up || MODULES[d.module]?.rolls || 'Entries and money fields → company Overview and group Home',
+      people: acc.filter((a) => a.desk_id === d.id && a.enabled).map((a) => ({ id: a.id, name: a.name })) })), employees: emps, access: acc.map((a) => ({ desk_id: a.desk_id, emp_id: a.id, enabled: !!a.enabled })) })
+  })
+  on('POST', '/api/desks/access', async (env, req) => {
+    const me = await authUser(env, req); needAdmin(me); const b = await body(req)
+    const d = await env.DB.prepare('SELECT id, name FROM desks WHERE id = ?').bind(Number(b.desk_id)).first(); if (!d) throw new HttpError(404, 'Desk नहीं मिला')
+    const e = await env.DB.prepare('SELECT id, name FROM employees WHERE id = ?').bind(Number(b.emp_id)).first(); if (!e) throw new HttpError(404, 'Employee नहीं मिला')
+    await env.DB.prepare('INSERT INTO desk_access (desk_id, emp_id, enabled, changed_at) VALUES (?,?,?,?) ON CONFLICT (desk_id, emp_id) DO UPDATE SET enabled = excluded.enabled, changed_at = excluded.changed_at').bind(d.id, e.id, b.enabled ? 1 : 0, new Date().toISOString()).run()
+    await audit(env, me.id, b.enabled ? 'desk_on' : 'desk_off', 'desk_access', `${d.id}:${e.id}`, null, { desk: d.name, emp: e.name })
+    return json({ ok: true })
+  })
+  on('POST', '/api/desks', async (env, req) => {
+    const me = await authUser(env, req); needBoss(me); const b = await body(req)
+    const name = String(b.name || '').trim().slice(0, 60); if (!name) throw bad('Desk का नाम')
+    const company = String(b.company || ''); if (!['JDAC Logistics', 'Jupiter Equipment', 'GovaaBazaar', 'JDAC Studios'].includes(company)) throw bad('Company चुनें')
+    let fields = null, module = null, kind = b.kind === 'simple' ? 'simple' : 'ready'
+    if (kind === 'ready') { module = String(b.module || ''); if (!MODULES[module]) throw bad('Built screen चुनें') }
+    else {
+      fields = (Array.isArray(b.fields) ? b.fields : []).map((f, i) => ({ key: 'f' + (i + 1), label: String(f.label || '').trim().slice(0, 60), type: ['text', 'number', 'money', 'date', 'choice', 'photo'].includes(f.type) ? f.type : 'text',
+        options: f.type === 'choice' ? String(f.options || '').split('/').map((x) => x.trim()).filter(Boolean).slice(0, 12) : undefined })).filter((f) => f.label)
+      if (!fields.length) throw bad('कम से कम एक field डालें')
+    }
+    const r = await env.DB.prepare('INSERT INTO desks (company, name, icon, description, kind, module, fields, rolls_up) VALUES (?,?,?,?,?,?,?,?) RETURNING id')
+      .bind(company, name, String(b.icon || (kind === 'simple' ? '✍️' : MODULES[module].icon)), String(b.description || '').slice(0, 120), kind, module, fields ? JSON.stringify(fields) : null, kind === 'simple' ? 'Money fields add up on the company Overview and group Home' : MODULES[module].rolls).first()
+    await audit(env, me.id, 'desk_create', 'desks', r.id, null, { name, company, kind })
+    return json({ ok: true, id: r.id })
+  })
+  on('GET', '/api/desks/:id/entries', async (env, req, url, p) => {
+    const me = await authUser(env, req)
+    const d = await env.DB.prepare('SELECT * FROM desks WHERE id = ?').bind(Number(p.id)).first(); if (!d) throw new HttpError(404, 'Desk नहीं मिला')
+    const all = isAdmin(me) && url.searchParams.get('all') === '1'
+    if (!all && !(await env.DB.prepare('SELECT 1 x FROM desk_access WHERE desk_id = ? AND emp_id = ? AND enabled = 1').bind(d.id, me.id).first()) && !isAdmin(me)) throw new HttpError(403, 'यह desk आपके लिए on नहीं है')
+    const { results } = await env.DB.prepare(`SELECT x.*, e.name FROM desk_entries x LEFT JOIN employees e ON e.id = x.emp_id WHERE x.desk_id = ? ${all ? '' : 'AND x.emp_id = ?'} ORDER BY x.date DESC, x.id DESC LIMIT 500`).bind(...(all ? [d.id] : [d.id, me.id])).all()
+    return json({ desk: { ...d, fields: JSON.parse(d.fields || '[]') }, entries: results.map((r) => ({ ...r, data: JSON.parse(r.data) })) })
+  })
+  on('POST', '/api/desks/:id/entries', async (env, req, url, p) => {
+    const me = await authUser(env, req); const b = await body(req)
+    const d = await env.DB.prepare("SELECT * FROM desks WHERE id = ? AND kind = 'simple'").bind(Number(p.id)).first(); if (!d) throw new HttpError(404, 'Desk नहीं मिला')
+    if (!isAdmin(me) && !(await env.DB.prepare('SELECT 1 x FROM desk_access WHERE desk_id = ? AND emp_id = ? AND enabled = 1').bind(d.id, me.id).first())) throw new HttpError(403, 'यह desk आपके लिए on नहीं है')
+    const fields = JSON.parse(d.fields || '[]'), data = {}
+    let amount = 0
+    for (const f of fields) {
+      let v = b.data?.[f.key]
+      if (f.type === 'number' || f.type === 'money') { v = v === '' || v == null ? null : dN(v); if (f.type === 'money' && v) amount += v }
+      else if (f.type === 'photo') v = typeof v === 'string' && v.length < 300000 ? v : null
+      else v = v == null ? '' : String(v).slice(0, 500)
+      data[f.key] = v
+    }
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
+    await env.DB.prepare('INSERT INTO desk_entries (desk_id, emp_id, date, data, amount) VALUES (?,?,?,?,?)').bind(d.id, me.id, date, JSON.stringify(data), amount).run()
+    return json({ ok: true })
+  })
+
+  // ── Daily Bookings ─────────────────────────────────────────────────────────
+    on('GET', '/api/bookings', async (env, req, url) => {
+    const me = await authUser(env, req)
+    const today = istDate(), t = new Date(today + 'T00:00:00Z'); const dow = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dow)
+    const week = t.toISOString().slice(0, 10), month = today.slice(0, 8) + '01'
+    const adminAll = isAdmin(me) && url.searchParams.get('all') === '1'
+    const from = url.searchParams.get('from') || (adminAll ? week : month), to = url.searchParams.get('to') || today
+    const emp = adminAll ? (url.searchParams.get('emp') ? Number(url.searchParams.get('emp')) : null) : me.id
+    const where = `date BETWEEN ? AND ?${emp ? ' AND emp_id = ?' : ''}`, args = [from, to, ...(emp ? [emp] : [])]
+    const { results } = await env.DB.prepare(`SELECT b.*, e.name FROM daily_bookings b LEFT JOIN employees e ON e.id = b.emp_id WHERE ${where} ORDER BY date DESC, b.id DESC LIMIT 2000`).bind(...args).all()
+    const sum = async (f) => (await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM daily_bookings WHERE date BETWEEN ? AND ?${adminAll ? '' : ' AND emp_id = ?'}`).bind(f, today, ...(adminAll ? [] : [me.id])).first())
+    const [st, sw, sm] = await Promise.all([sum(today), sum(week), sum(month)])
+    const per = {}
+    for (const r of results) { const k = r.emp_id || 0; per[k] = per[k] || { emp_id: r.emp_id, name: r.name || '—', bookings: 0, amount: 0, today: 0 }; per[k].bookings++; per[k].amount += r.amount; if (r.date === today) per[k].today += r.amount }
+    return json({ today, from, to, totals: { today: st.s, week: sw.s, month: sm.s, today_n: st.n }, rows: results, per_cse: Object.values(per).sort((a, b) => b.amount - a.amount) })
+  })
+  on('POST', '/api/bookings', async (env, req) => {
+    const me = await authUser(env, req); const b = await body(req)
+    const no = String(b.booking_no || '').trim().slice(0, 40); if (!no) throw bad('Booking number डालें')
+    const amount = dN(b.amount); if (amount <= 0) throw bad('Amount डालें')
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
+    if (date > istDate()) throw bad('आगे की तारीख नहीं')
+    if (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
+    await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount) VALUES (?,?,?,?)').bind(me.id, date, no, amount).run()
+    return json({ ok: true })
+  })
+  on('PATCH', '/api/bookings/:id', async (env, req, url, p) => {
+    const me = await authUser(env, req); const b = await body(req)
+    const r = await env.DB.prepare('SELECT * FROM daily_bookings WHERE id = ?').bind(Number(p.id)).first(); if (!r) throw new HttpError(404, 'Booking नहीं मिली')
+    if (!isAdmin(me) && (r.emp_id !== me.id || String(r.created_at).slice(0, 10) !== new Date().toISOString().slice(0, 10) && r.date !== istDate())) throw new HttpError(403, 'Edit या delete सिर्फ उसी दिन — उसके बाद admin')
+    if (b.delete) { await env.DB.prepare('DELETE FROM daily_bookings WHERE id = ?').bind(r.id).run(); await audit(env, me.id, 'booking_delete', 'daily_bookings', r.id, r, null); return json({ ok: true }) }
+    const no = String(b.booking_no ?? r.booking_no).trim(), amount = b.amount != null ? dN(b.amount) : r.amount
+    if (amount <= 0 || !no) throw bad('Booking number और amount')
+    if (no.toLowerCase() !== r.booking_no.toLowerCase() && await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
+    await env.DB.prepare('UPDATE daily_bookings SET booking_no = ?, amount = ?, date = ?, updated_at = ? WHERE id = ?').bind(no, amount, /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : r.date, new Date().toISOString(), r.id).run()
+    await audit(env, me.id, 'booking_edit', 'daily_bookings', r.id, r, { no, amount })
+    return json({ ok: true })
+  })
+
+  // ── Orders: approval + stages (Ops board) → invoice on Delivered ─────────────
+  on('POST', '/api/cc/order-approve', async (env, req) => {
+    const me = await authUser(env, req); needBoss(me); const b = await body(req)
+    const o = await legacyGet(env, 'cargo_orders', b.id); if (!o) throw new HttpError(404, 'Order नहीं मिला')
+    const reason = String(b.reason || '').trim()
+    if (!b.approve && reason.length < 3) throw bad('Reject का कारण लिखें')
+    const upd = { ...o, approvalStatus: b.approve ? 'approved' : 'rejected', rejectReason: b.approve ? null : reason, approvedBy: me.name, approvedAt: nowLocal(), ...(b.approve ? {} : { stage: 'Cancelled', cancelReason: reason }) }
+    await legacySet(env, 'cargo_orders', b.id, upd)
+    await audit(env, me.id, b.approve ? 'order_approve' : 'order_reject', 'cargo_orders', String(b.id), { approvalStatus: o.approvalStatus }, { approvalStatus: upd.approvalStatus, reason })
+    return json({ ok: true })
+  })
+  const STAGES = ['Booked', 'Picked Up', 'In Transit', 'Delivered', 'Cancelled']
+  on('POST', '/api/cc/order-stage', async (env, req) => {
+    const me = await authUser(env, req); needBoss(me); const b = await body(req)
+    const stage = STAGES.find((s) => s === b.stage); if (!stage) throw bad('Stage?')
+    const o = await legacyGet(env, 'cargo_orders', b.id); if (!o) throw new HttpError(404, 'Order नहीं मिला')
+    if (/pending/i.test(o.approvalStatus || '') && stage !== 'Cancelled') throw bad('पहले markup approve करें')
+    if (stage === 'Cancelled' && String(b.reason || '').trim().length < 3) throw bad('Cancel का कारण लिखें')
+    const amount = b.amount != null && dN(b.amount) > 0 ? dN(b.amount) : dN(o.amount)
+    const upd = { ...o, stage, amount, updatedAt: nowLocal(), ...(stage === 'Cancelled' ? { cancelReason: String(b.reason).trim() } : {}), ...(dN(b.kg) > 0 ? { kg: dN(b.kg) } : {}) }
+    let invoice = null
+    if (stage === 'Delivered' && !o.invoiceRid) invoice = await makeInvoice(env, 'JDAC Logistics', { clientName: o.customerName, clientPhone: o.phone, total: amount, items: [{ desc: `${o.mode || 'Cargo'} · ${dN(upd.kg)} kg`, amount }], notes: `cargo_order:${o.id}` })
+    if (invoice) { upd.invoiceRid = invoice.rid; upd.invoiceNo = invoice.docNo }
+    await legacySet(env, 'cargo_orders', b.id, upd)
+    await audit(env, me.id, 'order_stage', 'cargo_orders', String(b.id), { stage: o.stage }, { stage, invoice: invoice?.docNo })
+    return json({ ok: true, invoice })
+  })
+  async function makeInvoice(env, company, { clientName, clientPhone, total, items, notes }) {
+    const date = istDate(), fy = fyOf(date), pre = `${PREFIX[company]}/${fy}/`
+    const { taxable, gst } = gstSplit(total)
+    for (let tryN = 0; tryN < 5; tryN++) {
+      const last = await env.DB.prepare("SELECT MAX(CAST(substr(json_extract(data,'$.docNo'), ?) AS INTEGER)) n FROM legacy_records WHERE tbl = 'invoices' AND json_extract(data,'$.company') = ? AND json_extract(data,'$.kind') = 'Invoice' AND json_extract(data,'$.docNo') LIKE ?")
+        .bind(pre.length + 1, company, pre + '%').first()
+      const docNo = pre + String((last?.n || 0) + 1 + tryN).padStart(4, '0')
+      try {
+        const rid = await legacyPut(env, 'invoices', { orgKey: 'jdac', company, kind: 'Invoice', docNo, clientName, clientPhone, items: JSON.stringify(items), subtotal: taxable, gstPct: 18, gstAmount: gst, total, status: 'Unpaid', date, notes, createdAt: nowLocal(), gstInclusive: true })
+        return { rid, docNo, total, taxable, gst }
+      } catch (e) { if (!/UNIQUE/i.test(String(e?.message))) throw e }
+    }
+    throw new HttpError(409, 'Invoice number नहीं बन पाया — दोबारा कोशिश करें')
+  }
+  on('GET', '/api/cc/invoice-dupes', async (env, req) => {
+    const me = await authUser(env, req); needBoss(me)
+    const { results } = await env.DB.prepare("SELECT json_extract(data,'$.company') company, json_extract(data,'$.kind') kind, json_extract(data,'$.docNo') docNo, COUNT(*) n FROM legacy_records WHERE tbl = 'invoices' GROUP BY 1,2,3 HAVING n > 1").all()
+    return json({ duplicates: results })
+  })
+
+  // ── Payments (part payments) ────────────────────────────────────────────────
+  on('GET', '/api/cc/invoices', async (env, req, url) => {
+    const me = await authUser(env, req); needBoss(me)
+    const co = url.searchParams.get('company')
+    const D = await loadAll(env)
+    const { results: pays } = await env.DB.prepare('SELECT * FROM payments ORDER BY date DESC, id DESC').all()
+    const inv = D.invoices.filter((i) => !co || i.company === co).map((i) => {
+      const p = pays.filter((x) => x.invoice_id === String(i._rid)), paid = p.reduce((a, x) => a + x.amount, 0)
+      const legacyPaid = /^paid$/i.test(String(i.status)) && !p.length
+      const status = legacyPaid ? 'Paid' : paid <= 0 ? (/cancel/i.test(i.status) ? 'Cancelled' : 'Unpaid') : paid + 0.5 >= dN(i.total) ? 'Paid' : 'Part paid'
+      return { id: i._rid, docNo: i.docNo, company: i.company, kind: i.kind, date: String(i.date || i.createdAt || '').slice(0, 10), client: i.clientName, total: dN(i.total), taxable: dN(i.subtotal), gst: dN(i.gstAmount), paid: legacyPaid ? dN(i.total) : paid, status, payments: p }
+    }).sort((a, b) => b.date.localeCompare(a.date))
+    return json({ invoices: inv })
+  })
+  on('POST', '/api/cc/payments', async (env, req) => {
+    const me = await authUser(env, req); needBoss(me); const b = await body(req)
+    const inv = await legacyGet(env, 'invoices', b.invoice_id); if (!inv) throw new HttpError(404, 'Invoice नहीं मिला')
+    const amount = dN(b.amount); if (amount <= 0) throw bad('Amount डालें')
+    const mode = ['UPI', 'NEFT', 'Cash', 'Cheque'].includes(b.mode) ? b.mode : null; if (!mode) throw bad('Mode चुनें')
+    const paid = (await env.DB.prepare('SELECT COALESCE(SUM(amount),0) s FROM payments WHERE invoice_id = ?').bind(String(b.invoice_id)).first()).s
+    if (paid + amount > dN(inv.total) + 0.5) throw bad(`बाकी सिर्फ ₹${Math.round(dN(inv.total) - paid)} है`)
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
+    await env.DB.prepare('INSERT INTO payments (invoice_id, company, amount, date, mode, reference, by_emp) VALUES (?,?,?,?,?,?,?)').bind(String(b.invoice_id), inv.company, amount, date, mode, String(b.reference || '').slice(0, 80), me.id).run()
+    const now = paid + amount
+    await legacySet(env, 'invoices', b.invoice_id, { ...inv, status: now + 0.5 >= dN(inv.total) ? 'Paid' : 'Part paid' })
+    await audit(env, me.id, 'payment_add', 'payments', String(b.invoice_id), null, { amount, mode })
+    return json({ ok: true })
+  })
+
+  // ── Public Forms (for people outside the company) ───────────────────────────
+  const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'form'
+  on('GET', '/api/forms', async (env, req) => {
+    const me = await authUser(env, req); needAdmin(me)
+    const { results } = await env.DB.prepare('SELECT f.*, (SELECT COUNT(*) FROM form_answers a WHERE a.form_id = f.id) answers FROM public_forms f ORDER BY f.id DESC').all()
+    return json({ forms: results.map((f) => ({ ...f, fields: JSON.parse(f.fields) })) })
+  })
+  on('POST', '/api/forms', async (env, req) => {
+    const me = await authUser(env, req); needAdmin(me); const b = await body(req)
+    const title = String(b.title || '').trim().slice(0, 60); if (!title) throw bad('Form का नाम')
+    const fields = (Array.isArray(b.fields) ? b.fields : []).map((f, i) => ({ key: 'q' + (i + 1), label: String(f.label || '').trim().slice(0, 80), type: ['text', 'phone', 'number', 'date', 'choice', 'long'].includes(f.type) ? f.type : 'text', required: !!f.required,
+      options: f.type === 'choice' ? String(f.options || '').split('/').map((x) => x.trim()).filter(Boolean) : undefined })).filter((f) => f.label)
+    if (!fields.length) throw bad('कम से कम एक सवाल')
+    const becomes = ['lead', 'task', 'entry'].includes(b.becomes) ? b.becomes : 'entry'
+    let slug = slugify(b.slug || title)
+    while (await env.DB.prepare('SELECT 1 x FROM public_forms WHERE slug = ?').bind(slug).first()) slug = slug.replace(/-\d+$/, '') + '-' + Math.floor(Math.random() * 90 + 10)
+    await env.DB.prepare('INSERT INTO public_forms (slug, title, icon, fields, project_id, project_name, becomes, status, created_by) VALUES (?,?,?,?,?,?,?,?,?)')
+      .bind(slug, title, String(b.icon || '📝'), JSON.stringify(fields), b.project_id ? String(b.project_id) : null, String(b.project_name || ''), becomes, b.status === 'draft' ? 'draft' : 'live', me.id).run()
+    return json({ ok: true, slug })
+  })
+  on('PATCH', '/api/forms/:id', async (env, req, url, p) => {
+    const me = await authUser(env, req); needAdmin(me); const b = await body(req)
+    await env.DB.prepare('UPDATE public_forms SET status = ? WHERE id = ?').bind(b.status === 'draft' ? 'draft' : 'live', Number(p.id)).run()
+    return json({ ok: true })
+  })
+  on('GET', '/api/forms/:id/answers', async (env, req, url, p) => {
+    const me = await authUser(env, req); needAdmin(me)
+    const { results } = await env.DB.prepare('SELECT * FROM form_answers WHERE form_id = ? ORDER BY id DESC LIMIT 500').bind(Number(p.id)).all()
+    return json({ answers: results.map((a) => ({ ...a, data: JSON.parse(a.data) })) })
+  })
+  // बिना login — public
+  on('GET', '/api/public/form/:slug', async (env, req, url, p) => {
+    const f = await env.DB.prepare("SELECT slug, title, icon, fields FROM public_forms WHERE slug = ? AND status = 'live'").bind(p.slug).first()
+    if (!f) throw new HttpError(404, 'यह form बंद है या मौजूद नहीं')
+    return json({ ...f, fields: JSON.parse(f.fields) })
+  })
+  on('POST', '/api/public/form/:slug', async (env, req, url, p) => {
+    const f = await env.DB.prepare("SELECT * FROM public_forms WHERE slug = ? AND status = 'live'").bind(p.slug).first()
+    if (!f) throw new HttpError(404, 'यह form बंद है या मौजूद नहीं')
+    const b = await body(req), fields = JSON.parse(f.fields), data = {}
+    for (const q of fields) {
+      const v = String(b[q.key] ?? '').trim().slice(0, q.type === 'long' ? 2000 : 300)
+      if (q.required && !v) throw bad(`${q.label} भरें`)
+      data[q.label] = v
+    }
+    const recent = await env.DB.prepare("SELECT COUNT(*) n FROM form_answers WHERE form_id = ? AND created_at > strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 minute')").bind(f.id).first()
+    if (recent.n > 20) throw new HttpError(429, 'थोड़ी देर बाद भेजें')
+    let result = null
+    const phone = fields.find((q) => q.type === 'phone'), nameQ = fields.find((q) => /name/i.test(q.label))
+    const summary = Object.entries(data).map(([k, v]) => `${k}: ${v}`).join(' · ').slice(0, 500)
+    if (f.becomes === 'lead') result = 'lead:' + await legacyPut(env, 'ad_leads', { orgKey: 'jdac', date: istDate(), name: nameQ ? data[nameQ.label] : '', phone: phone ? data[phone.label] : '', stage: '🆕 New Inquiry', source: 'form:' + f.slug, notes: summary, cseName: '', createdAt: nowLocal() })
+    else if (f.becomes === 'task') result = 'task:' + await legacyPut(env, 'tasks', { title: `${f.title}: ${nameQ ? data[nameQ.label] : 'new answer'}`, notes: summary, status: 'Open', priority: 'Normal', projectId: f.project_id, type: 'One-time', createdAt: nowLocal() })
+    await env.DB.prepare('INSERT INTO form_answers (form_id, data, result) VALUES (?,?,?)').bind(f.id, JSON.stringify(data), result).run()
+    dropCache()
+    return json({ ok: true })
+  })
+
+  // ── Old forms (Sections) backup — delete only after "OK delete" ────────────────
+  on('GET', '/api/cc/old-forms', async (env, req) => {
+    const me = await authUser(env, req); needBoss(me)
+    const { results: defs } = await env.DB.prepare("SELECT legacy_id, data FROM legacy_records WHERE tbl = 'form_defs'").all()
+    const { results: ents } = await env.DB.prepare("SELECT legacy_id, data FROM legacy_records WHERE tbl = 'day_entries'").all()
+    const E = ents.map((r) => ({ ...JSON.parse(r.data), _rid: r.legacy_id }))
+    const keys = new Set([...defs.map((d) => JSON.parse(d.data).key), ...E.map((e) => e.formKey)])
+    const forms = [...keys].map((k) => { const d = defs.map((x) => JSON.parse(x.data)).find((x) => x.key === k); return { key: k, label: d?.label || k, entries: E.filter((e) => e.formKey === k).length } }).sort((a, b) => b.entries - a.entries)
+    return json({ forms, entries: E })
+  })
+
+  // ── People: mark leave for someone ─────────────────────────────────────────────
+  on('POST', '/api/admin/mark-leave', async (env, req) => {
+    const me = await authUser(env, req); needAdmin(me); const b = await body(req)
+    const e = await env.DB.prepare('SELECT id FROM employees WHERE id = ?').bind(Number(b.emp_id)).first(); if (!e) throw new HttpError(404, 'Employee?')
+    const from = b.from, to = b.to || b.from
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) throw bad('तारीख?')
+    const reason = String(b.reason || 'Marked by admin').slice(0, 200)
+    let n = 0
+    for (let d = new Date(from + 'T00:00:00Z'); d.toISOString().slice(0, 10) <= to && n < 31; d.setUTCDate(d.getUTCDate() + 1), n++) {
+      const day = d.toISOString().slice(0, 10)
+      await env.DB.prepare("INSERT OR IGNORE INTO leave_requests (emp_id, date, kind, reason, status, decided_by, decided_at) VALUES (?,?,?,?, 'Approved', ?, ?)").bind(e.id, day, b.kind === 'Half day' ? 'Half day' : 'Full day', reason.length >= 3 ? reason : 'Marked by admin', me.id, new Date().toISOString()).run()
+    }
+    await audit(env, me.id, 'leave_mark', 'leave_requests', e.id, null, { from, to, reason })
+    return json({ ok: true, days: n })
+  })
+}
+
 // JDAC Tracker API — Cloudflare Worker + D1
 // Mobile ऐप और Web panels दोनों यही API use करते हैं.
+
 
 
 
@@ -684,13 +1312,15 @@ on('PATCH', '/api/legacy/rows', async (env, req) => {
 
 
 // ── Command Centre (Boss / Developer) + company pages ─────────────────────────
+const cargoCses = async (env) => (await env.DB.prepare("SELECT e.id, e.name, e.legacy_id, e.team FROM desk_access a JOIN desks d ON d.id = a.desk_id JOIN employees e ON e.id = a.emp_id WHERE d.module = 'cargo' AND a.enabled = 1 AND e.active = 1 ORDER BY e.name").all()).results
+const myDesks = async (env, id) => (await env.DB.prepare('SELECT d.* FROM desk_access a JOIN desks d ON d.id = a.desk_id WHERE a.emp_id = ? AND a.enabled = 1 AND d.active = 1 ORDER BY d.company, d.id').bind(id).all()).results
 const activeEmps = async (env) => (await env.DB.prepare('SELECT id, name, team, role, designation, legacy_id, active FROM employees').all()).results
 on('GET', '/api/cc/home', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
   if (me.role === 'hr') throw new HttpError(403, 'Boss / Developer only')
   const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
   const range = ['today', 'week', 'month'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'month'
-  return json(homeSummary(D, emps, istDate(), range, url.searchParams.get('company') || 'All'))
+  return json(homeSummary(D, emps, istDate(), range, url.searchParams.get('company') || 'All', await cargoCses(env)))
 })
 on('GET', '/api/cc/company', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
@@ -698,7 +1328,9 @@ on('GET', '/api/cc/company', async (env, req, url) => {
   const name = url.searchParams.get('name') || ''
   if (!COMPANIES.includes(name)) throw bad('company?')
   const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
-  return json(companyPage(D, emps, istDate(), name))
+  const range = ['today', 'week', 'month'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'month'
+  const { results: desks } = await env.DB.prepare("SELECT d.id, d.name, d.icon, d.description, d.kind, d.module, (SELECT COUNT(*) FROM desk_access a JOIN employees e ON e.id = a.emp_id WHERE a.desk_id = d.id AND a.enabled = 1 AND e.active = 1) people FROM desks d WHERE d.company = ? AND d.active = 1 ORDER BY d.kind = 'later', d.id").bind(name).all()
+  return json(companyPage(D, emps, istDate(), name, range, desks, await cargoCses(env)))
 })
 on('GET', '/api/cc/chat', async (env, req) => {
   const me = await authUser(env, req)
@@ -720,7 +1352,7 @@ on('POST', '/api/cc/chat', async (env, req) => {
 // ── Employee: home, desks, Cargo Sales desk ─────────────────────────────────
 on('GET', '/api/my/home', async (env, req) => {
   const me = await authUser(env, req)
-  return json(myHome(await loadAll(env), me, istDate()))
+  return json(myHome(await loadAll(env), me, istDate(), await myDesks(env, me.id)))
 })
 on('GET', '/api/my/cargo', async (env, req, url) => {
   const me = await authUser(env, req)
@@ -728,7 +1360,7 @@ on('GET', '/api/my/cargo', async (env, req, url) => {
   const as = url.searchParams.get('as')
   if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
   const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
-  return json({ for: who.name, ...cargoDesk(D, who, emps, istDate()) })
+  return json({ for: who.name, ...cargoDesk(D, who, emps, istDate(), await cargoCses(env), ADMIN_ROLES.includes(me.role)) })
 })
 const legacyPut = async (env, tbl, d) => {
   const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
@@ -767,21 +1399,25 @@ on('POST', '/api/my/cargo-order', async (env, req) => {
   const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer का नाम')
   const amount = Number(b.amount) || 0; if (amount <= 0) throw bad('Amount डालें')
   const vendorCost = Number(b.vendorCost) || 0
-  const markupPct = vendorCost > 0 ? Math.round(((amount - vendorCost) / vendorCost) * 100) : null
-  const id = await legacyPut(env, 'cargo_orders', { date: istDate(), customerName: name, phone: String(b.phone || ''), mode: String(b.mode || 'Road Cargo'), kg: Number(b.kg) || 0, amount, stage: 'Booking',
+  if (vendorCost <= 0) throw bad('Vendor cost डालना ज़रूरी है')
+  const markupPct = Math.round(((amount - vendorCost) / vendorCost) * 100)
+  const needApproval = amount < vendorCost * 1.4
+  const id = await legacyPut(env, 'cargo_orders', { date: istDate(), customerName: name, phone: String(b.phone || ''), mode: String(b.mode || 'Road Cargo'), kg: Number(b.kg) || 0, amount,
     personId: me.legacy_id || null, emp_id: me.id, cseName: me.name, leadId: b.leadId || null, notes: String(b.notes || '').slice(0, 500), pickupAddress: String(b.pickupAddress || ''), consigneeName: String(b.consigneeName || ''),
-    vendorName: String(b.vendorName || ''), vendorCost, markupPct, approvalStatus: markupPct != null && markupPct < 40 ? 'pending' : '', createdAt: nowLocal() })
+    vendorName: String(b.vendorName || ''), vendorCost, markupPct, approvalStatus: needApproval ? 'pending' : '', stage: 'Booked', createdAt: nowLocal() })
   if (b.leadId) { const l = await legacyGet(env, 'ad_leads', b.leadId); if (l) await legacySet(env, 'ad_leads', b.leadId, { ...l, stage: 'Booking', converted: 1, revenue: amount, lastActivityAt: nowLocal(), stageChangedAt: nowLocal() }) }
   await audit(env, me.id, 'cargo_order', 'cargo_orders', id, null, { amount, markupPct })
-  return json({ ok: true, id, markupPct })
+  return json({ ok: true, id, markupPct, pending: needApproval, min_price: Math.ceil(vendorCost * 1.4) })
 })
 on('POST', '/api/my/task-done', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
   const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task नहीं मिला')
-  if (String(t.assigneeId) !== String(me.legacy_id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'यह आपका task नहीं है')
+  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'यह आपका task नहीं है')
   await legacySet(env, 'tasks', b.id, { ...t, status: b.done === false ? 'Open' : 'Done', closedAt: b.done === false ? null : nowLocal() })
   return json({ ok: true })
 })
+
+registerDesks(on, { authUser, needAdmin, json, body, bad, HttpError, istDate, audit, ADMIN_ROLES, loadAll, dropCache, legacyGet, legacySet, legacyPut, nowLocal })
 
 // Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है
 on('GET', '/api/setup/import-page', async (env) => {
@@ -963,6 +1599,8 @@ async function runMigrations(env) {
   if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'app_login_at'").first())) {
     await env.DB.prepare('ALTER TABLE employees ADD COLUMN app_login_at TEXT').run()
   }
+  for (const q of DESK_TABLES) { try { await env.DB.prepare(q).run() } catch (e) { console.error('desk table', e?.message) } }
+  if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS legacy_records (tbl TEXT NOT NULL, legacy_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tbl, legacy_id))').run()
   // Office वालों के लिए भी live GPS (जैसे घर से काम) — employees.live_track

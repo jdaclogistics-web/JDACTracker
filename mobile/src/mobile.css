@@ -95,3 +95,8 @@ form.stack{margin-top:0}
 .wk-msg{max-width:84%;background:#F1F5F9;border-radius:14px;padding:8px 12px;align-self:flex-start}.wk-msg.me{background:#DCFCE7;align-self:flex-end}.wk-msg span{font-size:11px;color:var(--mut)}.wk-msg p{margin:2px 0 0;font-size:14px;white-space:pre-wrap}
 .wk-hero .tile{background:rgba(255,255,255,.08)}.wk-hero .tile b{color:#fff}.wk-hero .tile span{color:#CBD5E1}
 .tile.wb{background:#fff;border:1px solid var(--line)}
+
+.wk-bk{display:grid;grid-template-columns:repeat(3,1fr);background:linear-gradient(120deg,#F43F5E,#DC2626);color:#fff;border-radius:18px;padding:16px 6px;text-align:center}.wk-bk b{display:block;font-size:19px;font-weight:800}.wk-bk span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.85}
+.wk-y{background:#FFFBEB;color:#92400E;border-radius:10px;padding:8px 10px;font-size:12.5px;margin-top:8px}
+.wk-ed{border:0;cursor:pointer;flex:none}
+.btn.wide{grid-column:1/-1}
