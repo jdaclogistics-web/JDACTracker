@@ -485,7 +485,7 @@ export async function viewTasks2(v, go, opts = {}) {
   try {
     if (sub === 'forms') return formsView(B, re, opts, all)
     const [tasks, projects, E] = await Promise.all([all('tasks'), all('projects'), get('/api/admin/employees')])
-    const nameOf = (t) => { const e = E.employees.find((x) => String(x.legacy_id) === String(t.assigneeId) || String(x.id) === String(t.assignee_emp)); return e ? e.name : '—' }
+    const nameOf = (t) => { const e = E.employees.find((x) => (t.assignee_emp != null && String(x.id) === String(t.assignee_emp)) || (x.legacy_id != null && t.assigneeId != null && String(x.legacy_id) === String(t.assigneeId))); return e ? e.name : '—' }
     const today = istDate()
     if (sub === 'projects') {
       const live = projects.filter((p) => !/archiv|closed/i.test(String(p.status)))
@@ -553,7 +553,7 @@ const kbCard = (t, nameOf, today, proj) => { const od = stageOf(t) !== 'Complete
 function taskEditor(t, emps, projects, tagLib, again, pid = '') {
   const isNew = !t; t = t || { title: '', status: 'To do', projectId: pid, due: istDate(), priority: 'Normal', tags: [] }
   let tags = (Array.isArray(t.tags) ? t.tags : []).map((g) => ({ ...g }))
-  const assignee = emps.find((e) => String(e.legacy_id) === String(t.assigneeId) || String(e.id) === String(t.assignee_emp))
+  const assignee = emps.find((e) => (t.assignee_emp != null && String(e.id) === String(t.assignee_emp)) || (e.legacy_id != null && t.assigneeId != null && String(e.legacy_id) === String(t.assigneeId)))
   const el = document.createElement('div'); el.className = 'tm-modal'
   el.innerHTML = `<div class="tm-bg"></div><form class="tm-card cform"><div class="row" style="grid-column:1/-1"><h2 class="h3">${isNew ? 'New task' : 'Edit task'}</h2><span class="sp"></span><button type="button" class="link" data-x>Close</button></div>
     <label class="f" style="grid-column:1/-1">Title<input class="inp" name="title" value="${esc(t.title)}" required maxlength="120"></label>
@@ -911,7 +911,7 @@ export async function viewEmpPage(v, id) {
     v.innerHTML = `<div class="ep-view">
       <div class="ep-note">👁 Viewing ${esc(h.name)}'s page (read-only) — this is what they see in their app${h.emp_code ? ' · ' + esc(h.emp_code) : ''}</div>
       <section class="ep-hero"><div class="ep-top"><span class="av">${esc(initials(h.name))}</span><div><b>${greet}, ${esc(h.name.split(' ')[0])} 👋</b><span>${esc(h.designation || h.team || '')}</span></div><span class="ep-st">${dayTxt}</span></div>
-        <div class="ep-prog">🏆 ${pct}%<span class="bar"><i style="width:${pct}%"></i></span>${h.tasks_done}/${h.tasks_total} tasks</div>
+        <div class="ep-prog">🏆 ${pct}%<span class="ep-bar"><i style="width:${pct}%"></i></span>${h.tasks_done}/${h.tasks_total} tasks</div>
         <div class="ep-stats"><div><b>${h.entries}</b><span>entries</span></div><div><b>${h.day ? (h.day.total_km || 0).toFixed(1) : '0'}</b><span>km</span></div><div><b>${h.overdue}</b><span>overdue</span></div></div></section>
       <section class="ep-card"><h3>Your work, in order</h3><p class="sub">Start the day, finish tasks, fill your section, then submit.</p>
         <div class="ep-steps"><div><i>▶️</i>1. Start day</div><div><i>📋</i>2. Tasks</div><div><i>🗂️</i>3. Sections</div><div><i>📅</i>4. Calendar</div></div></section>
