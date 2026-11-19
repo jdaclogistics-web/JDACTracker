@@ -28,7 +28,7 @@ function cors(env, req) {
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...extra } })
 async function body(req) { try { return await req.json() } catch { return {} } }
 const tracked = (e) => e.team === 'Warehouse' || !!e.live_track
-const pub = (e) => e && ({ id: e.id, legacy_id: e.legacy_id ?? null, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id, status: e.status || (e.active ? 'Active' : 'Inactive'), exit_date: e.exit_date || null, salary_inhand: e.salary_inhand ?? null })
+const pub = (e) => e && ({ id: e.id, legacy_id: e.legacy_id ?? null, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id, status: e.status || (e.active ? 'Active' : 'Inactive'), exit_date: e.exit_date || null, salary_inhand: e.salary_inhand ?? null, emp_code: e.emp_code || null, offer_letter: e.offer_letter || null, appointment_letter: e.appointment_letter || null, documents: e.documents || null })
 
 async function audit(env, actor, action, tbl, rowId, oldData, newData) {
   await env.DB.prepare('INSERT INTO audit_log (actor, action, tbl, row_id, old_data, new_data) VALUES (?,?,?,?,?,?)')
@@ -413,7 +413,7 @@ on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   const patch = {}
   if ('username' in b && b.username) { const u = String(b.username).trim().toLowerCase().replace(/\s+/g, ''); if (!/^[a-z0-9._-]{3,30}$/.test(u)) throw bad('Username में सिर्फ अंग्रेज़ी अक्षर/नंबर (बिना space)'); patch.username = u }
   if ('phone' in b) { const ph = b.phone ? phone10(b.phone) : ''; if (ph && ph.length !== 10) throw bad('Mobile 10 अंक'); patch.phone = ph || null }
-  for (const k of ['name', 'designation', 'department', 'work_location', 'shift_start', 'shift_end', 'joining_date', 'exit_date']) if (k in b) patch[k] = b[k] === '' ? null : b[k]
+  for (const k of ['name', 'designation', 'department', 'work_location', 'shift_start', 'shift_end', 'joining_date', 'exit_date', 'emp_code', 'offer_letter', 'appointment_letter', 'documents']) if (k in b) patch[k] = b[k] === '' ? null : b[k]
   if ('salary_inhand' in b) patch.salary_inhand = b.salary_inhand === '' || b.salary_inhand == null ? null : Math.max(0, Number(b.salary_inhand) || 0)
   if ('status' in b && Number(params.id) !== me.id) {
     const st = ['Active', 'Inactive', 'Dropped'].includes(b.status) ? b.status : 'Active'
@@ -834,7 +834,7 @@ async function runMigrations(env) {
   if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'app_login_at'").first())) {
     await env.DB.prepare('ALTER TABLE employees ADD COLUMN app_login_at TEXT').run()
   }
-  for (const [col, def] of [['status', 'TEXT'], ['exit_date', 'TEXT'], ['salary_inhand', 'REAL']]) {
+  for (const [col, def] of [['status', 'TEXT'], ['exit_date', 'TEXT'], ['salary_inhand', 'REAL'], ['emp_code', 'TEXT'], ['offer_letter', 'TEXT'], ['appointment_letter', 'TEXT'], ['documents', 'TEXT']]) {
     if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = ?").bind(col).first())) await env.DB.prepare(`ALTER TABLE employees ADD COLUMN ${col} ${def}`).run()
   }
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_files (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, mime TEXT, size INTEGER, data TEXT NOT NULL, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`).run()
@@ -845,6 +845,51 @@ async function runMigrations(env) {
     await env.DB.prepare("UPDATE employees SET active = 0, status = 'Inactive', token_version = token_version + 1 WHERE name LIKE 'Atul%' AND role = 'employee'").run()
     await env.DB.prepare("UPDATE employees SET status = CASE WHEN active = 1 THEN 'Active' ELSE 'Inactive' END WHERE status IS NULL").run()
     await mark('mig_people_v1')
+  }
+  if (!(await done('mig_directory_v1'))) {
+    // HR की employee sheet (19 Nov 2026) — EMP.ID, designation, joining, contact, time, city, salary, offer / appointment / documents
+    // [code, sheet name, tracker name, designation, joining, phone, shift start, shift end, city, salary, offer, appointment, documents, team]
+    const H = ['10:00', '19:00'], C = ['10:00', '20:00'], G = ['09:00', '18:00']
+    const rows = [
+      ['JD1001', 'Atmaram Sambhaji Malik', 'Atmaram Sambhaji Malik', 'Warehouse Incharge', '2025-04-03', '7757959644', G, 'Goa', 22000, 'Allotted', 'Pending', 'Submitted', 'Warehouse'],
+      ['JD1002', 'Yogesh', 'Yogesh', 'Logistics Coordinator', '2025-04-03', '8390049523', G, 'Goa', 16000, 'Allotted', 'Pending', null, 'Warehouse'],
+      ['JD1003', 'Shubham', 'Shubham', 'Pune Camp Incharge', '2025-04-17', '8983967180', H, 'Pune Camp', 25000, 'Allotted', 'Pending', null, 'Warehouse'],
+      ['JD1006', 'Om Adsul', 'Om Adsul', 'Operation Manager', '2025-11-10', '9136615178', H, 'Pune HO', 22000, 'Allotted', null, null, 'Office'],
+      ['JD1008', 'Nameera', 'Nameera', 'HR Manager', '2026-06-02', '8856860696', H, 'Pune HO', 24000, 'Allotted', null, 'Submitted', 'Office'],
+      ['JD1009', 'Neetu', 'Neetu', 'Customer Success Executive', '2026-06-15', '8530481556', H, 'Pune HO', 18000, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1012', 'Balaji', 'Balaji', 'Project Manager', '2026-07-13', '7588547132', H, 'Pune HO', 27500, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1013', 'Zubair', 'Zubair', 'Medical Representative', '2026-07-14', '7798763750', H, 'Pune HO', 20000, 'Allotted', 'Allotted', 'Submitted', null],
+      ['JD1014', 'Tanuja', 'Tanuja', 'Customer Success Executive', '2026-07-16', '8329813223', H, 'Pune HO', 18000, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1015', 'Snehal B', 'Snehal', 'HR Recruiter', '2026-08-03', '9075756438', H, 'Pune HO', 16000, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1016', 'Om PM', 'Om PM', 'Performance Marketing', '2026-08-10', '8767728297', H, 'Pune HO', 20000, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1017', 'Himanshu', 'Himanshu', 'Graphic Designer', '2026-08-10', '7888113974', H, 'Pune HO', 30000, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1018', 'Swapnil', 'Swapnil', 'Social Media Manager', '2026-08-04', '9067551551', H, 'Pune HO', 24000, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1020', 'Mohin', 'Mohin', 'Customer Success Executive', '2026-09-07', '9172821197', H, 'Pune HO', 26000, 'Allotted', 'Allotted', 'Submitted', 'Office'],
+      ['JD1021', 'Abrar', 'Abrar', 'Logistics Coordinator', '2026-08-24', '8888978680', C, 'Pune Camp', 20000, 'Pending', 'Pending', 'Submitted', 'Warehouse'],
+      ['JD1023', 'Snehal Z', 'Snehal S', 'Accountant', '2026-10-26', null, H, 'Pune HO', 30000, 'Pending', 'Pending', 'Submitted', 'Office'],
+      ['JD1024', 'Samadhan', 'Samadhan', 'Warehouse Executive', '2026-11-02', '9561816127', C, 'Pune Camp', 22000, 'Allotted', 'Allotted', 'Submitted', 'Warehouse'],
+      ['JD1025', 'Imran', 'Imran', 'Customer Success Executive', '2026-11-16', '7721004936', H, 'Pune HO', 19000, 'Pending', 'Pending', 'Submitted', 'Office'],
+      ['JD1026', 'Sushil', 'Sushil', 'Warehouse Executive', '2026-11-16', '8956968693', C, 'Pune Camp', 22000, 'Allotted', 'Allotted', 'Submitted', 'Warehouse'],
+      ['JD1027', 'Mustafa', 'Mustafa', 'Warehouse Executive', '2026-11-16', '7355613532', C, 'Pune Camp', 20000, 'Allotted', 'Allotted', 'Submitted', 'Warehouse'],
+    ]
+    for (const [code, sheetName, trName, des, join, phone, [ss, se], city, sal, offer, appt, docs, team] of rows) {
+      let e = await env.DB.prepare('SELECT * FROM employees WHERE emp_code = ? OR lower(name) = lower(?) OR lower(name) = lower(?) ORDER BY (emp_code = ?) DESC LIMIT 1').bind(code, trName, sheetName, code).first()
+      // phone किसी और के पास पहले से हो तो उसे न छेड़ें (UNIQUE)
+      const ph = phone && !(await env.DB.prepare('SELECT 1 AS x FROM employees WHERE phone = ? AND id != ?').bind(phone, e?.id ?? 0).first()) ? phone : null
+      if (!e) {
+        // नया व्यक्ति — login बंद ('locked'); HR "Make new password" से password देगा
+        let u = sheetName.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (await env.DB.prepare('SELECT 1 AS x FROM employees WHERE username = ?').bind(u).first()) u = u + code.slice(-2)
+        await env.DB.prepare("INSERT INTO employees (name, username, phone, pass_hash, role, team, designation, work_location, shift_start, shift_end, joining_date, active, status) VALUES (?,?,?,?, 'employee', ?,?,?,?,?,?, 1, 'Active')")
+          .bind(sheetName, u, ph, 'locked', team || 'Office', des, city, ss, se, join).run()
+        e = await env.DB.prepare('SELECT * FROM employees WHERE username = ?').bind(u).first()
+      }
+      await env.DB.prepare(`UPDATE employees SET name = ?, emp_code = ?, designation = ?, joining_date = ?, phone = COALESCE(?, phone), shift_start = ?, shift_end = ?, work_location = ?, salary_inhand = ?,
+          offer_letter = ?, appointment_letter = ?, documents = ?, team = COALESCE(?, team), active = 1, status = 'Active' WHERE id = ?`)
+        .bind(sheetName === 'Snehal Z' ? 'Snehal Z' : (sheetName === 'Snehal B' ? 'Snehal B' : e.name), code, des, join, ph, ss, se, city, sal, offer, appt, docs, team, e.id).run()
+    }
+    await audit(env, null, 'directory_import', 'employees', null, null, { rows: rows.length })
+    await mark('mig_directory_v1')
   }
   for (const q of DESK_TABLES) { try { await env.DB.prepare(q).run() } catch (e) { console.error('desk table', e?.message) } }
   if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }

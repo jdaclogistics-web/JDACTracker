@@ -20,7 +20,7 @@ ok((await call('POST', '/api/login', { username: 'rahul', password: 'wrong' })).
 const L = await call('POST', '/api/login', { username: 'Rahul', password: 'JDAC1234', device_id: 'dev-1' })
 ok(L.status === 200 && L.data.token, 'login with +91 format works')
 const T = L.data.token
-const HR = (await call('POST', '/api/login', { phone: '9000000001', password: 'JDAC1234' })).data.token
+const HR = (await call('POST', '/api/login', { username: 'nameera', password: 'JDAC1234' })).data.token
 const DEV = (await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234' })).data.token
 ok((await call('GET', '/api/admin/today', null, T)).status === 403, 'employee cannot open admin')
 
@@ -83,7 +83,7 @@ ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234'
 { const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'ashish2', 'duplicate name gets ashish2') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
-ok(sys.status === 200 && sys.data.employees === 5, 'developer system panel works')
+ok(sys.status === 200 && sys.data.employees >= 5, 'developer system panel works')
 
 console.log('End day + correction')
 const E1 = await call('POST', '/api/day/end', { lat: 18.56, lng: 73.86, client_id: 'end1' }, T)

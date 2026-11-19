@@ -629,6 +629,8 @@ export function viewCommand(v, go, role = 'boss') {
 
 // ═════════════════════════ TEAM (Directory sheet + Org chart) ═════════════════════════
 const STATUS_K = { Active: 'g', Inactive: 'n', Dropped: 'r' }
+const hm = (t) => { const [h, m] = String(t || '').split(':').map(Number); if (isNaN(h)) return '—'; return `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''}${h < 12 ? 'am' : 'pm'}` }
+const docPill = (x) => `<td>${x ? `<span class="doc ${/allot|submit|done|yes/i.test(x) ? 'ok' : 'wait'}">${esc(x)}</span>` : '<span class="doc no">—</span>'}</td>`
 export async function viewTeam(v, go, X, opts = {}) {
   const sub = opts.sub || 'dir'
   if (sub === 'today' || sub === 'leave') return viewPeople2(v, go, X, opts, 'team')
@@ -642,10 +644,10 @@ export async function viewTeam(v, go, X, opts = {}) {
     const mOf = (e) => master.find((m) => e.legacy_id && String(m.personId) === String(e.legacy_id))
     const salOf = (e) => { if (e.salary_inhand != null) return Number(e.salary_inhand); const s2 = sal.filter((r) => e.legacy_id && String(r.personId) === String(e.legacy_id)).sort((a, b) => String(b.month).localeCompare(String(a.month)))[0]; return Number(s2?.fixedSalary) || Number(mOf(e)?.salaryInHand) || 0 }
     const lpa = (m) => (m ? (m * 12 / 100000).toFixed(2) + ' LPA' : '—')
-    const empId = (e) => mOf(e)?.empCode || 'JDAC-' + String(e.id).padStart(3, '0')
+    const empId = (e) => e.emp_code || mOf(e)?.empCode || '—'
     if (sub === 'org') return orgChart(B, E.employees.filter((e) => e.status !== 'Dropped' && e.active), go)
     const st = opts.st || 'Active'
-    const list = E.employees.filter((e) => st === 'All' || (e.status || (e.active ? 'Active' : 'Inactive')) === st).sort((a, b) => a.name.localeCompare(b.name))
+    const list = E.employees.filter((e) => st === 'All' || (e.status || (e.active ? 'Active' : 'Inactive')) === st).sort((a, b) => String(a.joining_date || '9999').localeCompare(String(b.joining_date || '9999')) || String(a.emp_code || '').localeCompare(String(b.emp_code || '')) || a.name.localeCompare(b.name))
     const q0 = opts.q || ''
     const paint = (q) => {
       const L = list.filter((e) => !q || `${e.name} ${e.designation} ${e.username} ${e.phone} ${empId(e)}`.toLowerCase().includes(q.toLowerCase()))
@@ -654,17 +656,18 @@ export async function viewTeam(v, go, X, opts = {}) {
           <div class="chips">${['Active', 'Inactive', 'Dropped', 'All'].map((x) => `<button class="chip ${st === x ? 'on' : ''}" data-st="${x}">${x} <small>${E.employees.filter((e) => x === 'All' || (e.status || (e.active ? 'Active' : 'Inactive')) === x).length}</small></button>`).join('')}</div>
           <span class="sp"></span><button class="btn ghost sm" id="xl">⬇ Excel</button><button class="btn dark sm" id="add">+ Add person</button></div>
         <div class="tm-sum"><span><b>${L.length}</b> people</span><span>Monthly salary <b>${inr(tot)}</b></span><span>Yearly <b>${inrL(tot * 12)}</b></span></div>
-        <div class="tm-wrap"><table class="tm"><thead><tr><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th class="r">Salary in hand</th><th class="r">LPA</th><th>Tracker login</th><th></th></tr></thead><tbody>
+        <div class="tm-wrap"><table class="tds"><thead><tr><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="r">Salary in hand</th><th class="r">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th></th></tr></thead><tbody>
         ${L.map((e) => { const s2 = e.status || (e.active ? 'Active' : 'Inactive'), m = salOf(e)
           return `<tr data-e="${e.id}"><td><div class="tm-n"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(empId(e))}</span></div></div></td>
             <td><span class="pill ${STATUS_K[s2]}">${s2}</span></td><td>${esc(e.designation || '—')}<div class="sub">${esc(e.team)}${e.role !== 'employee' ? ' · ' + esc(e.role) : ''}</div></td>
             <td>${e.joining_date ? fmtDate(e.joining_date) : '—'}</td><td>${e.exit_date ? fmtDate(e.exit_date) : '—'}</td><td>${e.phone ? '+91 ' + esc(e.phone) : '—'}</td>
-            <td class="r"><b>${m ? inr(m) : '—'}</b></td><td class="r">${lpa(m)}</td><td><code>${esc(e.username)}</code><div class="sub">password: reset करके दें</div></td><td><button class="btn ghost sm" data-ed="${e.id}">Edit</button></td></tr>` }).join('') || '<tr><td colspan="10" class="empty">No one here</td></tr>'}</tbody></table></div>`
+            <td>${esc(hm(e.shift_start))} – ${esc(hm(e.shift_end))}</td><td>${esc(e.work_location || '—')}</td>
+            <td class="r"><b>${m ? inr(m) : '—'}</b></td><td class="r">${lpa(m)}</td>${[e.offer_letter, e.appointment_letter, e.documents].map(docPill).join('')}<td><code>${esc(e.username)}</code><div class="sub">password: Edit → नया बनाएं</div></td><td><button class="btn ghost sm" data-ed="${e.id}">Edit</button></td></tr>` }).join('') || '<tr><td colspan="10" class="empty">No one here</td></tr>'}</tbody></table></div>`
       const qi = B.querySelector('#q'); qi.oninput = () => { const val = qi.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
       B.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => go('team', null, { sub: 'dir', st: b.dataset.st })))
       B.querySelector('#add').onclick = () => go('staff')
-      B.querySelector('#xl').onclick = () => downloadCsv('jdac-team-directory.csv', [['Employee ID', 'Name', 'Status', 'Designation', 'Team', 'Joining date', 'Exit date', 'Contact', 'Salary in hand (monthly)', 'LPA', 'Tracker username'],
-        ...L.map((e) => [empId(e), e.name, e.status || (e.active ? 'Active' : 'Inactive'), e.designation, e.team, e.joining_date, e.exit_date, e.phone, salOf(e) || '', salOf(e) ? (salOf(e) * 12 / 100000).toFixed(2) : '', e.username])])
+      B.querySelector('#xl').onclick = () => downloadCsv('jdac-team-directory.csv', [['Emp ID', 'Name', 'Status', 'Designation', 'Joining date', 'Exit date', 'Contact', 'Time', 'City', 'Salary in hand (monthly)', 'Yearly (₹)', 'LPA', 'Offer letter', 'Appointment', 'Documents', 'Tracker username'],
+        ...L.map((e) => [empId(e), e.name, e.status || (e.active ? 'Active' : 'Inactive'), e.designation, e.joining_date, e.exit_date, e.phone, `${hm(e.shift_start)} to ${hm(e.shift_end)}`, e.work_location, salOf(e) || '', salOf(e) * 12 || '', salOf(e) ? (salOf(e) * 12 / 100000).toFixed(2) : '', e.offer_letter, e.appointment_letter, e.documents, e.username])])
       B.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = () => editPerson(E.employees.find((x) => x.id === Number(b.dataset.ed)), salOf, () => go('team', null, { sub: 'dir', st }))))
     }
     paint(q0)
@@ -681,6 +684,13 @@ function editPerson(e, salOf, again) {
     <label class="f">Joining date<input class="inp" type="date" name="joining_date" value="${esc(e.joining_date || '')}"></label>
     <label class="f">Exit date<input class="inp" type="date" name="exit_date" value="${esc(e.exit_date || '')}"></label>
     <label class="f">Salary in hand (₹ / month)<input class="inp" type="number" min="0" name="salary_inhand" value="${salOf(e) || ''}"></label>
+    <label class="f">Emp ID<input class="inp" name="emp_code" value="${esc(e.emp_code || '')}" placeholder="JD1028"></label>
+    <label class="f">City<select class="inp" name="work_location">${['Pune HO', 'Pune Camp', 'Goa', 'Mumbai', 'Delhi'].map((x) => `<option ${x === e.work_location ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    <label class="f">Time from<input class="inp" type="time" name="shift_start" value="${esc(e.shift_start || '10:00')}"></label>
+    <label class="f">Time to<input class="inp" type="time" name="shift_end" value="${esc(e.shift_end || '19:00')}"></label>
+    <label class="f">Offer letter<select class="inp" name="offer_letter">${['', 'Allotted', 'Pending', 'Submitted', 'Not required'].map((x) => `<option ${x === (e.offer_letter || '') ? 'selected' : ''} value="${x}">${x || '—'}</option>`).join('')}</select></label>
+    <label class="f">Appointment letter<select class="inp" name="appointment_letter">${['', 'Allotted', 'Pending', 'Submitted', 'Not required'].map((x) => `<option ${x === (e.appointment_letter || '') ? 'selected' : ''} value="${x}">${x || '—'}</option>`).join('')}</select></label>
+    <label class="f">Documents<select class="inp" name="documents">${['', 'Allotted', 'Pending', 'Submitted', 'Not required'].map((x) => `<option ${x === (e.documents || '') ? 'selected' : ''} value="${x}">${x || '—'}</option>`).join('')}</select></label>
     <label class="f">Tracker username<input class="inp" name="username" value="${esc(e.username)}"></label>
     <div class="tm-pw" style="grid-column:1/-1"><b>Tracker password</b><span>पुराना password दिखाया नहीं जा सकता (सुरक्षा के लिए छुपा रहता है). नया बनाकर WhatsApp पर भेजें.</span><button type="button" class="btn ghost sm" id="pw">Make new password</button><code id="pwv" hidden></code></div>
     <div class="sub" style="grid-column:1/-1">Inactive / Dropped करने पर उसका login बंद हो जाता है और Team list से हट जाता है. पुराना data (attendance आदि) रहता है.</div>

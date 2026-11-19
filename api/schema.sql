@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS employees (
   status        TEXT,                                   -- Active / Inactive / Dropped
   exit_date     TEXT,
   salary_inhand REAL,
+  emp_code      TEXT,                                   -- JD1001 …
+  offer_letter  TEXT,
+  appointment_letter TEXT,
+  documents     TEXT,
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   CHECK (phone IS NULL OR length(phone) = 10),
   CHECK (length(username) BETWEEN 3 AND 30)
