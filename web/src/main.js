@@ -37,7 +37,7 @@ function renderLogin(err = '') {
   cleanup()
   app.innerHTML = `<div class="wlogin"><form class="card" id="lf">
     <div class="wbrand"><img src="./jdac-logo-color.png" alt="JDAC — The Logistics Aggregator"><div class="sub">Tracker Admin panel — HR · Boss · Developer</div></div>
-    <label class="f" style="margin-top:18px">Username<input class="inp" id="lm" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. darshan" required></label>
+    <label class="f" style="margin-top:18px">User ID (Employee ID)<input class="inp" id="lm" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. JD1001" required></label>
     <label class="f" style="margin-top:10px">Password<span class="pwrap"><input class="inp" id="lp" type="password" autocomplete="current-password" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 18)}</button></span></label>
     ${err ? `<div class="err" style="margin-top:10px">${esc(err)}</div>` : ''}
     <button class="btn pri" id="lb" style="margin-top:14px">Login</button></form></div>`
@@ -95,6 +95,8 @@ function render() {
   if (tab === 'people' && boss) return viewPeople2(v, go, X, tabOpts)
   if (tab === 'tasks') return viewTasks2(v, go, tabOpts)
   if (tab === 'chat') return viewChat(v)
+  if (tab === 'attendance') return viewAttendance(v, tabOpts, X)
+  if (tab === 'dailyreports') return viewDailyReports(v, tabOpts)
   if (tab === 'old' && tabArg) return viewOld(v, tabArg)
   ;({ home: viewHome, people: viewPeople, live: viewLive, leaves: viewLeaves, staff: viewStaff, report: viewReport, biz: viewBiz, old: viewOld, system: viewSystem, audit: viewAudit }[tab])(v)
 }
@@ -135,7 +137,7 @@ async function viewHome(v) {
       ${lv.leaves.length || al.alerts.length ? `<section class="card"><div class="row"><h2 class="h3">Waiting on you</h2><span class="sp"></span><span class="pill o">${lv.leaves.length + al.alerts.length}</span></div><div class="list" style="margin-top:4px">
         ${lv.leaves.length ? `<button class="li" data-go="leaves"><span class="dot" style="background:#7C3AED"></span><b style="width:22px">${lv.leaves.length}</b><span class="sp" style="font-size:13.5px;color:#3A4558">leave requests to approve</span>${ic('chev', 18, '#9AA4B5')}</button>` : ''}
         ${al.alerts.map((a) => a.kind === 'auto_logout'
-          ? `<button class="li" data-go="live"><span class="dot" style="background:#EF4444"></span><span class="sp" style="font-size:13.5px;color:#3A4558"><b style="display:inline">${esc(a.name)}</b> — 24 घंटे पूरे, app से auto logout हुआ (${fmtTime(a.opened_at)}). दोबारा login करना होगा</span>${ic('chev', 18, '#9AA4B5')}</button>`
+          ? `<button class="li" data-go="live"><span class="dot" style="background:#EF4444"></span><span class="sp" style="font-size:13.5px;color:#3A4558"><b style="display:inline">${esc(a.name)}</b> — 24 hours done, auto logged out of the app (${fmtTime(a.opened_at)}). Needs to log in again</span>${ic('chev', 18, '#9AA4B5')}</button>`
           : `<button class="li" data-go="live"><span class="dot" style="background:#F59E0B"></span><span class="sp" style="font-size:13.5px;color:#3A4558"><b style="display:inline">${esc(a.name)}</b> — no GPS signal since ${fmtTime(a.detail?.replace('last GPS ', '')) || '—'}</span>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div></section>` : ''}
       ${rep ? monthSummary(rep) : ''}
       <section class="card"><div class="row"><h2 class="h3">Late / not in</h2><span class="sp"></span><button class="link" data-go="people" style="color:${acc}">All ${ic('chev', 16)}</button></div>
@@ -199,14 +201,14 @@ async function viewBiz(v) {
         <div class="tiles"><div class="tile hd"><b>${inr(T.sales)}</b><span>Sales</span></div><div class="tile hd"><b>${inr(T.direct)}</b><span>Direct cost</span></div><div class="tile hd"><b>${inr(T.fixed)}</b><span>Fixed cost</span></div><div class="tile hd"><b>${inr(T.sales - T.direct)}</b><span>Gross profit</span></div></div></section>
       <section class="card"><h2 class="h3">Month by month</h2>
         <div class="bars">${rows.map((x) => `<div class="bm"><div class="bb"><i class="s" style="height:${(x.sales / max) * 100}%" title="Sales ${inr(x.sales)}"></i><i class="c" style="height:${((x.direct + x.fixed) / max) * 100}%" title="Cost ${inr(x.direct + x.fixed)}"></i></div><b class="${x.net >= 0 ? 'pos' : 'neg'}">${inr(x.net)}</b><span>${mlabel(x.m)}</span></div>`).join('')}</div>
-        <div class="legend"><span><i class="dot" style="background:#10B981"></i>Sales</span><span><i class="dot" style="background:#F87171"></i>Total cost</span><span>नीचे का अंक = Net profit</span></div>
+        <div class="legend"><span><i class="dot" style="background:#10B981"></i>Sales</span><span><i class="dot" style="background:#F87171"></i>Total cost</span><span>Bottom number = Net profit</span></div>
         <div class="sheet old" style="margin-top:10px"><table><thead><tr><th>Month</th><th>Sales</th><th>Direct</th><th>Gross profit</th><th>Fixed</th><th>Net profit</th><th>Margin</th></tr></thead><tbody>
         ${rows.map((x) => `<tr><td>${mlabel(x.m)}</td><td>${inr(x.sales)}</td><td>${inr(x.direct)}</td><td>${inr(x.gross)}</td><td>${inr(x.fixed)}</td><td><b class="${x.net >= 0 ? 'pos' : 'neg'}">${inr(x.net)}</b></td><td>${x.sales ? Math.round((x.net / x.sales) * 100) : 0}%</td></tr>`).join('')}</tbody></table></div></section>
       <div class="two" style="align-items:start">
         <section class="card"><h2 class="h3">Sales by business</h2><div class="list">${parts('sales').map(([k, n]) => `<div class="li"><div class="nm"><b>${esc(k)}</b><span>${T.sales ? Math.round((n / T.sales) * 100) : 0}% of sales</span></div><b>${inr(n)}</b></div>`).join('')}</div></section>
         <section class="card"><h2 class="h3">Biggest costs</h2><div class="list">${[...parts('direct'), ...parts('fixed')].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `<div class="li"><div class="nm"><b>${esc(k)}</b></div><b>${inr(n)}</b></div>`).join('')}</div></section></div>
       <div class="tiles"><div class="tile wb"><b>${inr(hrDue)}</b><span>HR invoices unpaid</span></div><div class="tile wb"><b>${inr(adSpend)}</b><span>Ad spend</span></div><div class="tile wb"><b>${adLeads}</b><span>Ad leads</span></div><div class="tile wb"><b>${bank.length}</b><span>Bank recon months</span></div></div>
-      <p class="sub">Data: Records → Vittiya (finance). नया महीना जोड़ने के लिए Records → Vittiya (finance) → Add: section = sales / direct / fixed, particular, month (2026-09), amount.</p>`
+      <p class="sub">Data: Records → Vittiya (finance). To add a new month: Records → Vittiya (finance) → Add: section = sales / direct / fixed, particular, month (2026-09), amount.</p>`
   } catch (e) { fail(v, e) }
 }
 
@@ -216,7 +218,7 @@ async function viewOld(v, tbl = null, q = '', offset = 0) {
   loading(v)
   try {
     const { tables } = await get('/api/legacy/tables')
-    if (!tables.length) { v.innerHTML = '<section class="card empty">पुराना data अभी import नहीं हुआ</section>'; return }
+    if (!tables.length) { v.innerHTML = '<section class="card empty">Old data not imported yet</section>'; return }
     tbl = tbl || tables[0].tbl
     const r = await get(`/api/legacy/rows?tbl=${encodeURIComponent(tbl)}&q=${encodeURIComponent(q)}&offset=${offset}&limit=200`)
     const cols = [...new Set(r.rows.flatMap((x) => Object.keys(x)))].filter((c) => !['orgKey'].includes(c))
@@ -227,7 +229,7 @@ async function viewOld(v, tbl = null, q = '', offset = 0) {
         ${offset > 0 ? '<button class="btn ghost sm" id="op">‹ Prev</button>' : ''}${offset + 200 < r.total ? '<button class="btn ghost sm" id="on">Next ›</button>' : ''}<button class="btn pri sm" id="oadd">${ic('plus', 16, '#fff')} Add</button><button class="btn ghost sm" id="ocsv">${ic('download', 16)} CSV</button></div>
       <section class="card sheet old"><table><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>
       ${r.rows.map((x, i) => `<tr class="orow" data-i="${i}">${cols.map((c) => `<td>${cell(x[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></section>
-      <p class="sub">पुराने JDAC tracker का data + नए records. किसी भी row पर click करके बदलें, या <b>Add</b> से नया जोड़ें. हर बदलाव Audit में आपके नाम से दर्ज होता है.</p>
+      <p class="sub">Old JDAC tracker data + new records. Click any row to change it, or <b>Add</b> to add new. Every change is logged in Audit under your name.</p>
       <div id="oform"></div>`
     const SKIP = new Set(['id', '_rid', 'orgKey', 'createdAt', 'updatedAt', 'createdBy_name', 'updatedBy_name'])
     const formCols = cols.filter((c) => !SKIP.has(c) && !c.endsWith('_name'))
@@ -400,7 +402,7 @@ async function viewStaff(v) {
           ${e.id !== me.id ? `<label class="f">Role<select class="inp" name="role">${[...new Set([...roles, e.role])].map((r) => `<option ${e.role === r ? 'selected' : ''} ${roles.includes(r) ? '' : 'disabled'}>${r}</option>`).join('')}</select></label>
           <label class="f">New password<input class="inp" name="new_password" placeholder="leave blank to keep"></label>
           <label class="chk"><input type="checkbox" name="active" ${e.active ? 'checked' : ''}> Login active</label>
-          <label class="chk"><input type="checkbox" name="live_track" ${e.live_track || e.team === 'Warehouse' ? 'checked' : ''} ${e.team === 'Warehouse' ? 'disabled' : ''}> Live GPS tracking ${e.team === 'Warehouse' ? '(warehouse: हमेशा)' : '(घर/field से काम)'}</label>
+          <label class="chk"><input type="checkbox" name="live_track" ${e.live_track || e.team === 'Warehouse' ? 'checked' : ''} ${e.team === 'Warehouse' ? 'disabled' : ''}> Live GPS tracking ${e.team === 'Warehouse' ? '(warehouse: always)' : '(work from home/field)'}</label>
           <label class="chk"><input type="checkbox" name="unlink_device"> Unlink phone ${e.device_linked ? '(linked)' : ''}</label>` : ''}
           <button class="btn dark sm" style="grid-column:1/-1;width:100%">Save</button></form></details>`).join('')
       v.querySelectorAll('form[data-id]').forEach((f) => (f.onsubmit = async (ev) => {
@@ -424,54 +426,108 @@ async function viewStaff(v) {
 }
 
 // ── Month sheet / report ────────────────────────────────────────────────
-async function viewReport(v, month = istDate().slice(0, 7)) {
+// ── Attendance: Today · Week · Month · Live ─────────────────────────────
+async function viewAttendance(v, opts = {}, X) {
+  const sub = opts.sub || 'today'
+  v.innerHTML = `<div class="cc-top"><b>Attendance</b><span class="sp"></span></div>
+    <div class="cc-tabs">${[['today', 'Today'], ['week', 'Week'], ['month', 'Month'], ['live', 'Live tracking']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="atb" class="stack"></div>`
+  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => viewAttendance(v, { sub: b.dataset.sub }, X)))
+  const B = v.querySelector('#atb')
+  if (sub === 'today') return viewPeople2(B, null, X, { sub: 'today', bare: true })
+  if (sub === 'live') return viewLive(B)
+  return viewAttSheet(B, sub, opts.anchor || istDate())
+}
+const viewReport = (v, month) => viewAttSheet(v, 'month', month ? month + '-01' : istDate())
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const addDays = (ds, n) => new Date(Date.parse(ds + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10)
+async function viewAttSheet(v, mode = 'month', anchor = istDate()) {
   loading(v)
   try {
-    const r = await get('/api/admin/report?month=' + month)
-    const [y, m] = month.split('-').map(Number)
-    const days = new Date(y, m, 0).getDate()
-    const key = (e, d) => `${e}|${month}-${String(d).padStart(2, '0')}`
-    const S = new Map(r.sessions.map((s) => [`${s.emp_id}|${s.date}`, s]))
-    const M = new Map(r.marks.map((x) => [`${x.emp_id}|${x.date}`, x.status]))
-    const LV = new Map(r.leaves.map((x) => [`${x.emp_id}|${x.date}`, x.kind]))
-    const cell = (e, d) => {
-      const k = key(e.id, d), mk = M.get(k)
+    let dates
+    if (mode === 'week') { const dow = (new Date(anchor + 'T12:00:00Z').getUTCDay() + 6) % 7; const mon = addDays(anchor, -dow); dates = Array.from({ length: 7 }, (_, i) => addDays(mon, i)) }
+    else { const [y, m] = anchor.slice(0, 7).split('-').map(Number); dates = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => `${anchor.slice(0, 7)}-${String(i + 1).padStart(2, '0')}`) }
+    const months = [...new Set(dates.map((d) => d.slice(0, 7)))]
+    const reps = await Promise.all(months.map((m) => get('/api/admin/report?month=' + m)))
+    const S = new Map(reps.flatMap((r) => r.sessions).map((s) => [`${s.emp_id}|${s.date}`, s]))
+    const M = new Map(reps.flatMap((r) => r.marks).map((x) => [`${x.emp_id}|${x.date}`, x.status]))
+    const LV = new Map(reps.flatMap((r) => r.leaves).map((x) => [`${x.emp_id}|${x.date}`, x.kind]))
+    const today = istDate()
+    const cell = (e, ds) => {
+      const k = `${e.id}|${ds}`, mk = M.get(k)
       if (mk) return { Present: ['P', 'p'], 'Half Day': ['½', 'h'], Absent: ['A', 'a'], Leave: ['V', 'v'], 'Week Off': ['–', 'w'] }[mk]
       if (LV.has(k)) return ['V', 'v']
       const s = S.get(k)
       if (s) { const t = new Date(Date.parse(s.start_at) + 330 * 60000); const [sh, sm] = e.shift_start.split(':').map(Number); return t.getUTCHours() * 60 + t.getUTCMinutes() > sh * 60 + sm + 15 ? ['L', 'l'] : ['P', 'p'] }
-      const ds = `${month}-${String(d).padStart(2, '0')}`
-      if (new Date(ds + 'T12:00:00Z').getUTCDay() === 0) return ['–', 'w'] // Sunday off
-      return ds > istDate() ? ['', 'f'] : ['A', 'a']
+      if (e.joining_date && ds < e.joining_date) return ['', 'f']
+      if (e.exit_date && ds > e.exit_date) return ['', 'f']
+      if (new Date(ds + 'T12:00:00Z').getUTCDay() === 0) return ['–', 'w']
+      return ds > today ? ['', 'f'] : ['A', 'a']
     }
-    const emps = r.employees.filter((e) => e.active)
-    v.innerHTML = `<div class="row wrap"><input class="inp" type="month" id="rm" value="${month}" style="max-width:190px"><span class="sp"></span><button class="btn ghost sm" id="csv">${ic('download', 16)} Excel (CSV)</button></div>
-      <section class="card sheet"><table><thead><tr><th>Employee</th>${Array.from({ length: days }, (_, i) => `<th>${i + 1}</th>`).join('')}<th>P</th><th>KM</th></tr></thead><tbody>
-      ${emps.map((e) => { let p = 0, km = 0; const tds = Array.from({ length: days }, (_, i) => { const [t, c] = cell(e, i + 1); if (c === 'p' || c === 'l') p++; if (c === 'h') p += 0.5; const s = S.get(key(e.id, i + 1)); if (s) km += s.total_km || 0; return `<td class="${c} ed" data-e="${e.id}" data-d="${i + 1}" title="Click to change">${t}</td>` }).join(''); return `<tr><th><span class="tm ${e.team === 'Warehouse' ? 'w' : 'o'}">${e.team[0]}</span>${esc(e.name)}</th>${tds}<td><b>${p}</b></td><td>${Math.round(km)}</td></tr>` }).join('')}
-      </tbody></table></section><p class="sub">P present · L late · ½ half day · V leave · A absent · – week off (Sunday) · <b>किसी भी box पर click करके attendance बदलें</b></p>
+    // active staff + anyone who worked in this period (so past months still show people who later left)
+    const emps = reps[0].employees.filter((e) => e.role !== 'developer' && (e.active || dates.some((d) => S.has(`${e.id}|${d}`) || M.has(`${e.id}|${d}`))))
+      .sort((a, b) => String(a.emp_code || 'ZZ').localeCompare(String(b.emp_code || 'ZZ')) || a.name.localeCompare(b.name))
+    const presentOn = (ds) => emps.filter((e) => ['p', 'l'].includes(cell(e, ds)[1])).length
+    const title = mode === 'week' ? `${fmtDate(dates[0])} – ${fmtDate(dates[6])}` : new Date(dates[0] + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    const step = (n) => (mode === 'week' ? addDays(dates[0], 7 * n) : (() => { const [y, m] = dates[0].split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 10) })())
+    v.innerHTML = `<div class="at-bar"><button class="btn ghost sm" id="prv">‹ Prev</button><b style="font-size:15px">${title}</b><button class="btn ghost sm" id="nxt">Next ›</button>
+        ${mode === 'week' ? `<input class="inp" type="date" id="pick" value="${dates[0]}" style="max-width:170px">` : `<input class="inp" type="month" id="pick" value="${dates[0].slice(0, 7)}" style="max-width:170px">`}
+        <span class="sp"></span><button class="btn ghost sm" id="csv">${ic('download', 16)} Excel (CSV)</button></div>
+      <div class="at-wrap" id="aw"><section class="card sheet"><table><thead><tr><th>Employee</th>${dates.map((d) => { const w = WD[new Date(d + 'T12:00:00Z').getUTCDay()]; return `<th class="${d === today ? 'td' : ''}">${mode === 'week' ? `${w}<br>${Number(d.slice(8))}` : `${Number(d.slice(8))}<br><small>${w[0]}</small>`}</th>` }).join('')}<th>P</th><th>A</th><th>KM</th></tr></thead><tbody>
+      ${emps.map((e) => { let p = 0, a = 0, km = 0; const tds = dates.map((ds) => { const [t, c] = cell(e, ds); if (c === 'p' || c === 'l') p++; if (c === 'h') p += 0.5; if (c === 'a') a++; const s = S.get(`${e.id}|${ds}`); if (s) km += s.total_km || 0; return `<td class="${c} ed" data-e="${e.id}" data-d="${ds}" title="Click to change">${t}</td>` }).join(''); return `<tr><th><span class="tm ${e.team === 'Warehouse' ? 'w' : 'o'}">${e.team[0]}</span>${esc(e.name)}</th>${tds}<td><b>${p}</b></td><td>${a}</td><td>${Math.round(km)}</td></tr>` }).join('')}
+      <tr class="tot"><th>Present</th>${dates.map((d) => `<td><b>${d > today ? '' : presentOn(d)}</b></td>`).join('')}<td></td><td></td><td></td></tr>
+      </tbody></table></section></div><p class="sub" style="margin:0">P present · L late · ½ half day · V leave · A absent · – week off (Sunday) · <b>Click any box to change attendance</b></p>
       <div id="mk" class="mkpop" hidden></div>`
+    const aw = v.querySelector('#aw'); aw.style.maxHeight = Math.max(260, innerHeight - aw.getBoundingClientRect().top - 110) + 'px'
+    const re = (a) => viewAttSheet(v, mode, a)
+    v.querySelector('#prv').onclick = () => re(step(-1)); v.querySelector('#nxt').onclick = () => re(step(1))
+    v.querySelector('#pick').onchange = (e) => e.target.value && re(mode === 'week' ? e.target.value : e.target.value + '-01')
     const pop = v.querySelector('#mk')
-    v.querySelectorAll('td.ed').forEach((td) => (td.onclick = (ev) => {
-      const e = emps.find((x) => x.id === Number(td.dataset.e)); const ds = `${month}-${String(td.dataset.d).padStart(2, '0')}`
-      if (ds > istDate()) return toast('आगे की date नहीं बदल सकते', 'bad')
+    v.querySelectorAll('td.ed').forEach((td) => (td.onclick = () => {
+      const e = emps.find((x) => x.id === Number(td.dataset.e)); const ds = td.dataset.d
+      if (ds > today) return toast('Future dates cannot be changed', 'bad')
       pop.innerHTML = `<b>${esc(e.name)}</b><span class="sub" style="margin:0">${fmtDate(ds)}</span>
         <div class="mkb">${[['Present', 'p'], ['Half Day', 'h'], ['Absent', 'a'], ['Leave', 'v'], ['Week Off', 'w']].map(([st, c]) => `<button class="${c}" data-st="${st}">${st}</button>`).join('')}</div>
-        <input class="inp" id="mkr" placeholder="कारण (जैसे: office में थे, app नहीं चला)" value="HR update"><button class="link" id="mkx">Cancel</button>`
+        <input class="inp" id="mkr" placeholder="Reason (e.g. was in office, app did not work)" value="HR update"><button class="link" id="mkx">Cancel</button>`
       const rc = td.getBoundingClientRect(); pop.style.left = Math.min(rc.left, innerWidth - 300) + 'px'; pop.style.top = (rc.bottom + 6 + scrollY) + 'px'; pop.hidden = false
       pop.querySelector('#mkx').onclick = () => (pop.hidden = true)
       pop.querySelectorAll('[data-st]').forEach((b) => (b.onclick = async () => {
-        try { await post('/api/admin/marks', { emp_id: e.id, date: ds, status: b.dataset.st, reason: pop.querySelector('#mkr').value }); toast(`${e.name}: ${b.dataset.st}`); viewReport(v, month) } catch (er) { toast(er.message, 'bad') }
+        try { await post('/api/admin/marks', { emp_id: e.id, date: ds, status: b.dataset.st, reason: pop.querySelector('#mkr').value }); toast(`${e.name}: ${b.dataset.st}`); re(anchor) } catch (er) { toast(er.message, 'bad') }
       }))
     }))
-    v.querySelector('#rm').onchange = (e) => viewReport(v, e.target.value)
     v.querySelector('#csv').onclick = () => {
-      const rows = [['Date', 'Name', 'Mobile', 'Team', 'Designation', 'In', 'Out', 'Hours', 'KM', 'Status']]
-      for (const e of emps) for (let d = 1; d <= days; d++) {
-        const s = S.get(key(e.id, d)); const [t] = cell(e, d)
-        rows.push([`${month}-${String(d).padStart(2, '0')}`, e.name, e.phone, e.team, e.designation || '', s ? fmtTime(s.start_at) : '', s ? fmtTime(s.end_at) : '', s?.end_at ? ((Date.parse(s.end_at) - Date.parse(s.start_at)) / 3600000).toFixed(2) : '', s ? (s.total_km || 0).toFixed(2) : '', t])
+      const rows = [['Date', 'Emp ID', 'Name', 'Mobile', 'Team', 'Designation', 'In', 'Out', 'Hours', 'KM', 'Status']]
+      for (const e of emps) for (const ds of dates) {
+        const s = S.get(`${e.id}|${ds}`); const [t] = cell(e, ds)
+        rows.push([ds, e.emp_code || '', e.name, e.phone, e.team, e.designation || '', s ? fmtTime(s.start_at) : '', s ? fmtTime(s.end_at) : '', s?.end_at ? ((Date.parse(s.end_at) - Date.parse(s.start_at)) / 3600000).toFixed(2) : '', s ? (s.total_km || 0).toFixed(2) : '', t])
       }
-      downloadCsv(`JDAC-attendance-${month}.csv`, rows)
+      downloadCsv(`JDAC-attendance-${mode}-${dates[0]}.csv`, rows)
     }
+  } catch (e) { fail(v, e) }
+}
+
+// ── Daily reports (clean view) ──────────────────────────────────────────
+async function viewDailyReports(v, opts = {}) {
+  loading(v)
+  try {
+    const [R, E] = await Promise.all([get('/api/legacy/rows?tbl=daily_reports&limit=1000'), get('/api/admin/employees')])
+    const byId = new Map(E.employees.map((e) => [e.id, e])), byLeg = new Map(E.employees.filter((e) => e.legacy_id != null).map((e) => [String(e.legacy_id), e]))
+    const who = (r) => byId.get(Number(r.emp_id)) || byLeg.get(String(r.personId)) || { id: 0, name: r.personName || r.cseName || 'Unknown' }
+    const rows = R.rows.map((r) => ({ ...r, _e: who(r), _d: String(r.reportDate || r.date || r.createdAt || '').slice(0, 10) })).filter((r) => r._d).sort((a, b) => b._d.localeCompare(a._d) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+    const people = [...new Map(rows.map((r) => [r._e.id, r._e])).values()].sort((a, b) => a.name.localeCompare(b.name))
+    const f = { from: opts.from || addDays(istDate(), -6), to: opts.to || istDate(), p: opts.p || '', q: opts.q || '' }
+    const L = rows.filter((r) => r._d >= f.from && r._d <= f.to && (!f.p || String(r._e.id) === f.p) && (!f.q || JSON.stringify(r).toLowerCase().includes(f.q.toLowerCase())))
+    const days = [...new Set(L.map((r) => r._d))]
+    const field = (k, val) => (val && String(val).trim() ? `<div class="k">${k}</div><p>${esc(String(val))}</p>` : '')
+    v.innerHTML = `<div class="cc-top"><b>Daily reports</b><span class="sp"></span></div>
+      <div class="at-bar"><label class="sub" style="margin:0">From</label><input class="inp" type="date" id="df" value="${f.from}" style="max-width:160px"><label class="sub" style="margin:0">To</label><input class="inp" type="date" id="dt" value="${f.to}" style="max-width:160px">
+        <select class="inp" id="dp" style="max-width:200px"><option value="">Everyone</option>${people.map((p) => `<option value="${p.id}" ${String(p.id) === f.p ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+        <input class="inp" id="dq" placeholder="Search…" value="${esc(f.q)}" style="max-width:200px"><span class="sp"></span><span class="sub" style="margin:0">${L.length} reports</span></div>
+      <div>${days.map((d) => `<div class="dr-day">${fmtDate(d)}</div>${L.filter((r) => r._d === d).map((r) => `<div class="dr"><span class="av" style="background:${avColor(r._e.id)}">${esc(initials(r._e.name))}</span><div style="flex:1;min-width:0"><b>${esc(r._e.name)}</b> <span class="sub" style="display:inline">${esc(r._e.designation || '')}${r.createdAt ? ' · ' + esc(String(r.createdAt).slice(11, 16)) : ''}</span>
+        ${field('Tasks', r.tasksDone)}${field('Work done', r.workDone)}${field('Key numbers', r.keyNumbers)}${field('Blockers', r.blockers)}</div></div>`).join('')}`).join('') || '<section class="card empty">No reports in these dates</section>'}</div>`
+    const re = (o) => viewDailyReports(v, { ...f, ...o })
+    v.querySelector('#df').onchange = (e) => re({ from: e.target.value }); v.querySelector('#dt').onchange = (e) => re({ to: e.target.value })
+    v.querySelector('#dp').onchange = (e) => re({ p: e.target.value })
+    let t; v.querySelector('#dq').oninput = (e) => { clearTimeout(t); t = setTimeout(() => re({ q: e.target.value }), 400) }
   } catch (e) { fail(v, e) }
 }
 

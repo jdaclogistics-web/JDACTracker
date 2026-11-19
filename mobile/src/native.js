@@ -24,15 +24,15 @@ export async function currentPosition() {
   if (isNative()) {
     let perm = await Geolocation.checkPermissions().catch(() => null)
     if (!perm || perm.location !== 'granted') perm = await Geolocation.requestPermissions().catch(() => null)
-    if (!perm || perm.location !== 'granted') throw new Error('Location permission नहीं मिली — Settings में Allow करें')
+    if (!perm || perm.location !== 'granted') throw new Error('Location permission not given — Allow it in Settings')
     const p = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 })
     return { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }
   }
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error('GPS उपलब्ध नहीं'))
+    if (!navigator.geolocation) return reject(new Error('GPS not available'))
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
-      () => reject(new Error('Location चालू करें और Allow करें')),
+      () => reject(new Error('Turn on Location and tap Allow')),
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 })
   })
 }
@@ -41,7 +41,7 @@ export async function currentPosition() {
  *  पहले app के अंदर वाला camera (हमेशा front) — कई phones system camera में back खोल देते हैं.
  *  वो न चले तो Android camera (direction Front) fallback. */
 export async function takeSelfie() {
-  try { return await inAppSelfie() } catch (e) { if (e?.cancelled) throw new Error('Selfie नहीं ली गई') }
+  try { return await inAppSelfie() } catch (e) { if (e?.cancelled) throw new Error('Selfie was not taken') }
   let dataUrl
   if (isNative()) {
     const photo = await Camera.getPhoto({ source: CameraSource.Camera, direction: CameraDirection.Front, resultType: CameraResultType.DataUrl, quality: 60, width: 480, correctOrientation: true, saveToGallery: false })
@@ -50,7 +50,7 @@ export async function takeSelfie() {
     const file = await new Promise((resolve, reject) => {
       const inp = document.createElement('input')
       inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'user'
-      inp.onchange = () => (inp.files?.[0] ? resolve(inp.files[0]) : reject(new Error('Selfie नहीं ली गई')))
+      inp.onchange = () => (inp.files?.[0] ? resolve(inp.files[0]) : reject(new Error('Selfie was not taken')))
       inp.click()
     })
     dataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file) })
@@ -67,7 +67,7 @@ async function inAppSelfie() {
     ov.className = 'selfiecam'
     ov.innerHTML = `<video playsinline autoplay muted></video><div class="sc-ring"></div>
       <div class="sc-bar"><button class="sc-x" aria-label="Cancel">✕</button><button class="sc-shot" aria-label="Take selfie"></button><span></span></div>
-      <p class="sc-tip">चेहरा गोले के अंदर रखें</p>`
+      <p class="sc-tip">Keep your face inside the circle</p>`
     document.body.appendChild(ov)
     const video = ov.querySelector('video')
     video.srcObject = stream

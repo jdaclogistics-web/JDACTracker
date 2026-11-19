@@ -193,3 +193,32 @@ table.tds{border-collapse:separate;border-spacing:0;width:100%;min-width:1080px;
 .bk-bar{display:flex;align-items:center;gap:8px}.bk-bar button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 14px;font-weight:700;font-size:14px;cursor:pointer;color:var(--ink)}
 
 .tds .doc{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px}.tds .doc.ok{background:#DCFCE7;color:#166534}.tds .doc.wait{background:#FEF3C7;color:#92400E}.tds .doc.no{color:#CBD5E1}
+.tds-id{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#334155}
+.tds th:nth-child(2),.tds td:nth-child(2){position:sticky;left:0;background:#fff;z-index:2}.tds th:nth-child(2){background:#F8FAFC;z-index:3}
+.tds th:first-child,.tds td:first-child{position:static}
+/* ── Org chart (premium) ── */
+.oc2{background:radial-gradient(1200px 400px at 50% -100px,#EEF2FF 0,#fff 60%);border:1px solid var(--line);border-radius:22px;padding:26px 18px 22px;display:flex;flex-direction:column;align-items:center}
+.oc2-av,.oc-av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:800;font-size:12px;flex:none;box-shadow:0 0 0 3px #fff,0 2px 8px rgba(11,18,32,.15)}
+.oc2-top{display:flex;justify-content:center}
+.oc2-boss{display:flex;align-items:center;gap:14px;padding:16px 26px 16px 18px;border-radius:20px;background:linear-gradient(135deg,#0B1730 0%,#132A52 55%,#0E3B33 100%);color:#fff;box-shadow:0 14px 34px rgba(11,23,48,.35)}
+.oc2-boss .oc-av{font-size:18px;box-shadow:0 0 0 3px rgba(255,255,255,.25)}.oc2-boss b{display:block;font-size:19px;letter-spacing:.01em}.oc2-boss span{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#FCD34D}
+.oc2-stem{width:2px;height:28px;background:linear-gradient(#CBD5E1,#94A3B8)}
+.oc2-lbl{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#4338CA;text-align:center;margin-bottom:8px}.oc2-lbl.c{margin-bottom:12px}
+.oc2-hr{display:flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #E0E7FF;border-radius:18px;padding:12px 14px;box-shadow:0 6px 18px rgba(67,56,202,.08)}
+.oc2-hrrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}.oc2-arrow{color:#A5B4FC;font-weight:800}
+.oc2-card{display:flex;align-items:center;gap:10px;padding:8px 14px 8px 8px;border-radius:14px;background:#F8FAFC}.oc2-card.lead{background:#EEF2FF}
+.oc2-card b{display:block;font-size:14px}.oc2-card span{font-size:12px;color:var(--mut)}
+.oc2-deps{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;width:100%}
+.oc2-dep{background:#fff;border:1px solid var(--line);border-top:4px solid var(--c);border-radius:18px;padding:12px;box-shadow:0 4px 14px rgba(11,18,32,.05)}
+.oc2-dh{display:flex;align-items:center;gap:10px;padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--line2)}.oc2-dh b{font-size:14.5px;flex:1}.oc2-dh small{background:#F1F5F9;border-radius:99px;padding:2px 9px;font-weight:700;color:#475569}
+.oc2-di{width:32px;height:32px;border-radius:10px;background:var(--c);display:inline-flex;align-items:center;justify-content:center}
+.oc2-p{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:10px}.oc2-p b{display:block;font-size:13.5px}.oc2-p span{font-size:11.5px;color:var(--mut)}
+.oc2-p.lead{background:color-mix(in srgb,var(--c) 9%,#fff);padding:8px}.oc2-p em{margin-left:auto;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c)}
+/* ── Attendance ── */
+.at-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.at-wrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:16px}
+.at-wrap .sheet{margin:0;border:0;border-radius:0}.at-wrap th{position:sticky;top:0;z-index:1}
+/* ── Daily reports ── */
+.dr-day{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:14px 2px 6px}
+.dr{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;gap:12px}.dr+.dr{margin-top:8px}
+.dr .av{width:36px;height:36px;border-radius:50%;color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.dr b{font-size:14px}.dr .k{font-size:11px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-top:6px}.dr p{margin:2px 0 0;font-size:13.5px;white-space:pre-wrap}

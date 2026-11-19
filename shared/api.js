@@ -28,8 +28,8 @@ export async function api(method, path, body, { raw = false, timeout = 20000 } =
       signal: ctl.signal,
     })
   } catch {
-    if (!SERVER_SET && !import.meta.env?.DEV) throw new ApiError(0, 'Server अभी live नहीं है — setup पूरा होते ही login चलेगा')
-    throw new ApiError(0, 'नेट नहीं है — data phone में सुरक्षित है')
+    if (!SERVER_SET && !import.meta.env?.DEV) throw new ApiError(0, 'Server is not live yet — login will work once setup is done')
+    throw new ApiError(0, 'No internet — data is safe on the phone')
   } finally { clearTimeout(t) }
   if (r.status === 401 && path !== '/api/login') { auth.clear(); window.dispatchEvent(new Event('jdac-logout')) }
   if (raw) { if (!r.ok) throw new ApiError(r.status, 'Error ' + r.status); return r }
@@ -38,9 +38,21 @@ export async function api(method, path, body, { raw = false, timeout = 20000 } =
   return data
 }
 
-export const get = (p) => api('GET', p)
-export const post = (p, b) => api('POST', p, b || {})
-export const patch = (p, b) => api('PATCH', p, b || {})
+// Short GET cache: pages open instantly when you come back to them; any save clears it
+const cache = new Map()
+const NO_CACHE = /^\/api\/(cc\/chat|day\/|me\b|login|admin\/photo|admin\/trail)/
+export const get = (p, { fresh = false } = {}) => {
+  if (NO_CACHE.test(p)) return api('GET', p)
+  const hit = cache.get(p)
+  if (!fresh && hit && Date.now() - hit.at < 15000) return hit.pr
+  const pr = api('GET', p); cache.set(p, { at: Date.now(), pr })
+  pr.catch(() => cache.delete(p))
+  return pr
+}
+export const clearCache = () => cache.clear()
+export const post = (p, b) => { cache.clear(); return api('POST', p, b || {}) }
+export const patch = (p, b) => { cache.clear(); return api('PATCH', p, b || {}) }
+export const prefetch = (...ps) => ps.forEach((p) => get(p).catch(() => {}))
 
 export async function login(username, password, device_id) {
   const r = await post('/api/login', { username, password, device_id })

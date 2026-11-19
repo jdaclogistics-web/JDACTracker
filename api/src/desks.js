@@ -107,22 +107,22 @@ export function registerDesks(on, X) {
   })
   on('POST', '/api/desks/access', async (env, req) => {
     const me = await authUser(env, req); needAdmin(me); const b = await body(req)
-    const d = await env.DB.prepare('SELECT id, name FROM desks WHERE id = ?').bind(Number(b.desk_id)).first(); if (!d) throw new HttpError(404, 'Desk नहीं मिला')
-    const e = await env.DB.prepare('SELECT id, name FROM employees WHERE id = ?').bind(Number(b.emp_id)).first(); if (!e) throw new HttpError(404, 'Employee नहीं मिला')
+    const d = await env.DB.prepare('SELECT id, name FROM desks WHERE id = ?').bind(Number(b.desk_id)).first(); if (!d) throw new HttpError(404, 'Desk not found')
+    const e = await env.DB.prepare('SELECT id, name FROM employees WHERE id = ?').bind(Number(b.emp_id)).first(); if (!e) throw new HttpError(404, 'Employee not found')
     await env.DB.prepare('INSERT INTO desk_access (desk_id, emp_id, enabled, changed_at) VALUES (?,?,?,?) ON CONFLICT (desk_id, emp_id) DO UPDATE SET enabled = excluded.enabled, changed_at = excluded.changed_at').bind(d.id, e.id, b.enabled ? 1 : 0, new Date().toISOString()).run()
     await audit(env, me.id, b.enabled ? 'desk_on' : 'desk_off', 'desk_access', `${d.id}:${e.id}`, null, { desk: d.name, emp: e.name })
     return json({ ok: true })
   })
   on('POST', '/api/desks', async (env, req) => {
     const me = await authUser(env, req); needBoss(me); const b = await body(req)
-    const name = String(b.name || '').trim().slice(0, 60); if (!name) throw bad('Desk का नाम')
-    const company = String(b.company || ''); if (!['JDAC Logistics', 'Jupiter Equipment', 'GovaaBazaar', 'JDAC Studios'].includes(company)) throw bad('Company चुनें')
+    const name = String(b.name || '').trim().slice(0, 60); if (!name) throw bad('Desk name')
+    const company = String(b.company || ''); if (!['JDAC Logistics', 'Jupiter Equipment', 'GovaaBazaar', 'JDAC Studios'].includes(company)) throw bad('Choose a company')
     let fields = null, module = null, kind = b.kind === 'simple' ? 'simple' : 'ready'
-    if (kind === 'ready') { module = String(b.module || ''); if (!MODULES[module]) throw bad('Built screen चुनें') }
+    if (kind === 'ready') { module = String(b.module || ''); if (!MODULES[module]) throw bad('Choose a built screen') }
     else {
       fields = (Array.isArray(b.fields) ? b.fields : []).map((f, i) => ({ key: 'f' + (i + 1), label: String(f.label || '').trim().slice(0, 60), type: ['text', 'number', 'money', 'date', 'choice', 'photo'].includes(f.type) ? f.type : 'text',
         options: f.type === 'choice' ? String(f.options || '').split('/').map((x) => x.trim()).filter(Boolean).slice(0, 12) : undefined })).filter((f) => f.label)
-      if (!fields.length) throw bad('कम से कम एक field डालें')
+      if (!fields.length) throw bad('Add at least one field')
     }
     const r = await env.DB.prepare('INSERT INTO desks (company, name, icon, description, kind, module, fields, rolls_up) VALUES (?,?,?,?,?,?,?,?) RETURNING id')
       .bind(company, name, String(b.icon || (kind === 'simple' ? '✍️' : MODULES[module].icon)), String(b.description || '').slice(0, 120), kind, module, fields ? JSON.stringify(fields) : null, kind === 'simple' ? 'Money fields add up on the company Overview and group Home' : MODULES[module].rolls).first()
@@ -131,16 +131,16 @@ export function registerDesks(on, X) {
   })
   on('GET', '/api/desks/:id/entries', async (env, req, url, p) => {
     const me = await authUser(env, req)
-    const d = await env.DB.prepare('SELECT * FROM desks WHERE id = ?').bind(Number(p.id)).first(); if (!d) throw new HttpError(404, 'Desk नहीं मिला')
+    const d = await env.DB.prepare('SELECT * FROM desks WHERE id = ?').bind(Number(p.id)).first(); if (!d) throw new HttpError(404, 'Desk not found')
     const all = isAdmin(me) && url.searchParams.get('all') === '1'
-    if (!all && !(await env.DB.prepare('SELECT 1 x FROM desk_access WHERE desk_id = ? AND emp_id = ? AND enabled = 1').bind(d.id, me.id).first()) && !isAdmin(me)) throw new HttpError(403, 'यह desk आपके लिए on नहीं है')
+    if (!all && !(await env.DB.prepare('SELECT 1 x FROM desk_access WHERE desk_id = ? AND emp_id = ? AND enabled = 1').bind(d.id, me.id).first()) && !isAdmin(me)) throw new HttpError(403, 'This desk is not on for you')
     const { results } = await env.DB.prepare(`SELECT x.*, e.name FROM desk_entries x LEFT JOIN employees e ON e.id = x.emp_id WHERE x.desk_id = ? ${all ? '' : 'AND x.emp_id = ?'} ORDER BY x.date DESC, x.id DESC LIMIT 500`).bind(...(all ? [d.id] : [d.id, me.id])).all()
     return json({ desk: { ...d, fields: JSON.parse(d.fields || '[]') }, entries: results.map((r) => ({ ...r, data: JSON.parse(r.data) })) })
   })
   on('POST', '/api/desks/:id/entries', async (env, req, url, p) => {
     const me = await authUser(env, req); const b = await body(req)
-    const d = await env.DB.prepare("SELECT * FROM desks WHERE id = ? AND kind = 'simple'").bind(Number(p.id)).first(); if (!d) throw new HttpError(404, 'Desk नहीं मिला')
-    if (!isAdmin(me) && !(await env.DB.prepare('SELECT 1 x FROM desk_access WHERE desk_id = ? AND emp_id = ? AND enabled = 1').bind(d.id, me.id).first())) throw new HttpError(403, 'यह desk आपके लिए on नहीं है')
+    const d = await env.DB.prepare("SELECT * FROM desks WHERE id = ? AND kind = 'simple'").bind(Number(p.id)).first(); if (!d) throw new HttpError(404, 'Desk not found')
+    if (!isAdmin(me) && !(await env.DB.prepare('SELECT 1 x FROM desk_access WHERE desk_id = ? AND emp_id = ? AND enabled = 1').bind(d.id, me.id).first())) throw new HttpError(403, 'This desk is not on for you')
     const fields = JSON.parse(d.fields || '[]'), data = {}
     let amount = 0
     for (const f of fields) {
@@ -173,21 +173,21 @@ export function registerDesks(on, X) {
   })
   on('POST', '/api/bookings', async (env, req) => {
     const me = await authUser(env, req); const b = await body(req)
-    const no = String(b.booking_no || '').trim().slice(0, 40); if (!no) throw bad('Booking number डालें')
-    const amount = dN(b.amount); if (amount <= 0) throw bad('Amount डालें')
+    const no = String(b.booking_no || '').trim().slice(0, 40); if (!no) throw bad('Enter booking number')
+    const amount = dN(b.amount); if (amount <= 0) throw bad('Enter amount')
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
-    if (date > istDate()) throw bad('आगे की तारीख नहीं')
+    if (date > istDate()) throw bad('No future dates')
     if (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
     await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount) VALUES (?,?,?,?)').bind(me.id, date, no, amount).run()
     return json({ ok: true })
   })
   on('PATCH', '/api/bookings/:id', async (env, req, url, p) => {
     const me = await authUser(env, req); const b = await body(req)
-    const r = await env.DB.prepare('SELECT * FROM daily_bookings WHERE id = ?').bind(Number(p.id)).first(); if (!r) throw new HttpError(404, 'Booking नहीं मिली')
-    if (!isAdmin(me) && (r.emp_id !== me.id || String(r.created_at).slice(0, 10) !== new Date().toISOString().slice(0, 10) && r.date !== istDate())) throw new HttpError(403, 'Edit या delete सिर्फ उसी दिन — उसके बाद admin')
+    const r = await env.DB.prepare('SELECT * FROM daily_bookings WHERE id = ?').bind(Number(p.id)).first(); if (!r) throw new HttpError(404, 'Booking not found')
+    if (!isAdmin(me) && (r.emp_id !== me.id || String(r.created_at).slice(0, 10) !== new Date().toISOString().slice(0, 10) && r.date !== istDate())) throw new HttpError(403, 'Edit or delete only on the same day — after that, admin')
     if (b.delete) { await env.DB.prepare('DELETE FROM daily_bookings WHERE id = ?').bind(r.id).run(); await audit(env, me.id, 'booking_delete', 'daily_bookings', r.id, r, null); return json({ ok: true }) }
     const no = String(b.booking_no ?? r.booking_no).trim(), amount = b.amount != null ? dN(b.amount) : r.amount
-    if (amount <= 0 || !no) throw bad('Booking number और amount')
+    if (amount <= 0 || !no) throw bad('Booking number and amount')
     if (no.toLowerCase() !== r.booking_no.toLowerCase() && await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
     await env.DB.prepare('UPDATE daily_bookings SET booking_no = ?, amount = ?, date = ?, updated_at = ? WHERE id = ?').bind(no, amount, /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : r.date, new Date().toISOString(), r.id).run()
     await audit(env, me.id, 'booking_edit', 'daily_bookings', r.id, r, { no, amount })
@@ -197,9 +197,9 @@ export function registerDesks(on, X) {
   // ── Orders: approval + stages (Ops board) → invoice on Delivered ─────────────
   on('POST', '/api/cc/order-approve', async (env, req) => {
     const me = await authUser(env, req); needBoss(me); const b = await body(req)
-    const o = await legacyGet(env, 'cargo_orders', b.id); if (!o) throw new HttpError(404, 'Order नहीं मिला')
+    const o = await legacyGet(env, 'cargo_orders', b.id); if (!o) throw new HttpError(404, 'Order not found')
     const reason = String(b.reason || '').trim()
-    if (!b.approve && reason.length < 3) throw bad('Reject का कारण लिखें')
+    if (!b.approve && reason.length < 3) throw bad('Write the reason for rejecting')
     const upd = { ...o, approvalStatus: b.approve ? 'approved' : 'rejected', rejectReason: b.approve ? null : reason, approvedBy: me.name, approvedAt: nowLocal(), ...(b.approve ? {} : { stage: 'Cancelled', cancelReason: reason }) }
     await legacySet(env, 'cargo_orders', b.id, upd)
     await audit(env, me.id, b.approve ? 'order_approve' : 'order_reject', 'cargo_orders', String(b.id), { approvalStatus: o.approvalStatus }, { approvalStatus: upd.approvalStatus, reason })
@@ -209,9 +209,9 @@ export function registerDesks(on, X) {
   on('POST', '/api/cc/order-stage', async (env, req) => {
     const me = await authUser(env, req); needBoss(me); const b = await body(req)
     const stage = STAGES.find((s) => s === b.stage); if (!stage) throw bad('Stage?')
-    const o = await legacyGet(env, 'cargo_orders', b.id); if (!o) throw new HttpError(404, 'Order नहीं मिला')
-    if (/pending/i.test(o.approvalStatus || '') && stage !== 'Cancelled') throw bad('पहले markup approve करें')
-    if (stage === 'Cancelled' && String(b.reason || '').trim().length < 3) throw bad('Cancel का कारण लिखें')
+    const o = await legacyGet(env, 'cargo_orders', b.id); if (!o) throw new HttpError(404, 'Order not found')
+    if (/pending/i.test(o.approvalStatus || '') && stage !== 'Cancelled') throw bad('Approve the markup first')
+    if (stage === 'Cancelled' && String(b.reason || '').trim().length < 3) throw bad('Write the reason for cancelling')
     const amount = b.amount != null && dN(b.amount) > 0 ? dN(b.amount) : dN(o.amount)
     const upd = { ...o, stage, amount, updatedAt: nowLocal(), ...(stage === 'Cancelled' ? { cancelReason: String(b.reason).trim() } : {}), ...(dN(b.kg) > 0 ? { kg: dN(b.kg) } : {}) }
     let invoice = null
@@ -233,7 +233,7 @@ export function registerDesks(on, X) {
         return { rid, docNo, total, taxable, gst }
       } catch (e) { if (!/UNIQUE/i.test(String(e?.message))) throw e }
     }
-    throw new HttpError(409, 'Invoice number नहीं बन पाया — दोबारा कोशिश करें')
+    throw new HttpError(409, 'Could not create invoice number — try again')
   }
   on('GET', '/api/cc/invoice-dupes', async (env, req) => {
     const me = await authUser(env, req); needBoss(me)
@@ -257,11 +257,11 @@ export function registerDesks(on, X) {
   })
   on('POST', '/api/cc/payments', async (env, req) => {
     const me = await authUser(env, req); needBoss(me); const b = await body(req)
-    const inv = await legacyGet(env, 'invoices', b.invoice_id); if (!inv) throw new HttpError(404, 'Invoice नहीं मिला')
-    const amount = dN(b.amount); if (amount <= 0) throw bad('Amount डालें')
-    const mode = ['UPI', 'NEFT', 'Cash', 'Cheque'].includes(b.mode) ? b.mode : null; if (!mode) throw bad('Mode चुनें')
+    const inv = await legacyGet(env, 'invoices', b.invoice_id); if (!inv) throw new HttpError(404, 'Invoice not found')
+    const amount = dN(b.amount); if (amount <= 0) throw bad('Enter amount')
+    const mode = ['UPI', 'NEFT', 'Cash', 'Cheque'].includes(b.mode) ? b.mode : null; if (!mode) throw bad('Choose a mode')
     const paid = (await env.DB.prepare('SELECT COALESCE(SUM(amount),0) s FROM payments WHERE invoice_id = ?').bind(String(b.invoice_id)).first()).s
-    if (paid + amount > dN(inv.total) + 0.5) throw bad(`बाकी सिर्फ ₹${Math.round(dN(inv.total) - paid)} है`)
+    if (paid + amount > dN(inv.total) + 0.5) throw bad(`Only ₹${Math.round(dN(inv.total) - paid)} is left`)
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
     await env.DB.prepare('INSERT INTO payments (invoice_id, company, amount, date, mode, reference, by_emp) VALUES (?,?,?,?,?,?,?)').bind(String(b.invoice_id), inv.company, amount, date, mode, String(b.reference || '').slice(0, 80), me.id).run()
     const now = paid + amount
@@ -279,10 +279,10 @@ export function registerDesks(on, X) {
   })
   on('POST', '/api/forms', async (env, req) => {
     const me = await authUser(env, req); needAdmin(me); const b = await body(req)
-    const title = String(b.title || '').trim().slice(0, 60); if (!title) throw bad('Form का नाम')
+    const title = String(b.title || '').trim().slice(0, 60); if (!title) throw bad('Form name')
     const fields = (Array.isArray(b.fields) ? b.fields : []).map((f, i) => ({ key: 'q' + (i + 1), label: String(f.label || '').trim().slice(0, 80), type: ['text', 'phone', 'number', 'date', 'choice', 'long'].includes(f.type) ? f.type : 'text', required: !!f.required,
       options: f.type === 'choice' ? String(f.options || '').split('/').map((x) => x.trim()).filter(Boolean) : undefined })).filter((f) => f.label)
-    if (!fields.length) throw bad('कम से कम एक सवाल')
+    if (!fields.length) throw bad('At least one question')
     const becomes = ['lead', 'task', 'entry'].includes(b.becomes) ? b.becomes : 'entry'
     let slug = slugify(b.slug || title)
     while (await env.DB.prepare('SELECT 1 x FROM public_forms WHERE slug = ?').bind(slug).first()) slug = slug.replace(/-\d+$/, '') + '-' + Math.floor(Math.random() * 90 + 10)
@@ -303,20 +303,20 @@ export function registerDesks(on, X) {
   // बिना login — public
   on('GET', '/api/public/form/:slug', async (env, req, url, p) => {
     const f = await env.DB.prepare("SELECT slug, title, icon, fields FROM public_forms WHERE slug = ? AND status = 'live'").bind(p.slug).first()
-    if (!f) throw new HttpError(404, 'यह form बंद है या मौजूद नहीं')
+    if (!f) throw new HttpError(404, 'This form is closed or does not exist')
     return json({ ...f, fields: JSON.parse(f.fields) })
   })
   on('POST', '/api/public/form/:slug', async (env, req, url, p) => {
     const f = await env.DB.prepare("SELECT * FROM public_forms WHERE slug = ? AND status = 'live'").bind(p.slug).first()
-    if (!f) throw new HttpError(404, 'यह form बंद है या मौजूद नहीं')
+    if (!f) throw new HttpError(404, 'This form is closed or does not exist')
     const b = await body(req), fields = JSON.parse(f.fields), data = {}
     for (const q of fields) {
       const v = String(b[q.key] ?? '').trim().slice(0, q.type === 'long' ? 2000 : 300)
-      if (q.required && !v) throw bad(`${q.label} भरें`)
+      if (q.required && !v) throw bad(`Fill ${q.label}`)
       data[q.label] = v
     }
     const recent = await env.DB.prepare("SELECT COUNT(*) n FROM form_answers WHERE form_id = ? AND created_at > strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 minute')").bind(f.id).first()
-    if (recent.n > 20) throw new HttpError(429, 'थोड़ी देर बाद भेजें')
+    if (recent.n > 20) throw new HttpError(429, 'Please try again in a little while')
     let result = null
     const phone = fields.find((q) => q.type === 'phone'), nameQ = fields.find((q) => /name/i.test(q.label))
     const summary = Object.entries(data).map(([k, v]) => `${k}: ${v}`).join(' · ').slice(0, 500)
@@ -343,7 +343,7 @@ export function registerDesks(on, X) {
     const me = await authUser(env, req); needAdmin(me); const b = await body(req)
     const e = await env.DB.prepare('SELECT id FROM employees WHERE id = ?').bind(Number(b.emp_id)).first(); if (!e) throw new HttpError(404, 'Employee?')
     const from = b.from, to = b.to || b.from
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) throw bad('तारीख?')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) throw bad('Date?')
     const reason = String(b.reason || 'Marked by admin').slice(0, 200)
     let n = 0
     for (let d = new Date(from + 'T00:00:00Z'); d.toISOString().slice(0, 10) <= to && n < 31; d.setUTCDate(d.getUTCDate() + 1), n++) {

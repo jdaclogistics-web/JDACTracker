@@ -28,7 +28,7 @@ function cors(env, req) {
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...extra } })
 async function body(req) { try { return await req.json() } catch { return {} } }
 const tracked = (e) => e.team === 'Warehouse' || !!e.live_track
-const pub = (e) => e && ({ id: e.id, legacy_id: e.legacy_id ?? null, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id, status: e.status || (e.active ? 'Active' : 'Inactive'), exit_date: e.exit_date || null, salary_inhand: e.salary_inhand ?? null, emp_code: e.emp_code || null, offer_letter: e.offer_letter || null, appointment_letter: e.appointment_letter || null, documents: e.documents || null })
+const pub = (e) => e && ({ id: e.id, legacy_id: e.legacy_id ?? null, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id, status: e.status || (e.active ? 'Active' : 'Inactive'), exit_date: e.exit_date || null, salary_inhand: e.salary_inhand ?? null, emp_code: e.emp_code || null, offer_letter: e.offer_letter || null, appointment_letter: e.appointment_letter || null, documents: e.documents || null, login_mode: e.pass_hash === 'phone' ? 'phone' : e.pass_hash === 'locked' ? 'locked' : 'custom' })
 
 async function audit(env, actor, action, tbl, rowId, oldData, newData) {
   await env.DB.prepare('INSERT INTO audit_log (actor, action, tbl, row_id, old_data, new_data) VALUES (?,?,?,?,?,?)')
@@ -114,17 +114,20 @@ on('GET', '/api/usage', async (env) => json(await usageSummary(env)))
 on('POST', '/api/login', async (env, req) => {
   const b = await body(req)
   const id = String(b.username ?? b.phone ?? '').trim()
-  if (!id || !b.password) throw bad('Username और password डालें')
+  if (!id || !b.password) throw bad('Enter User ID and password')
   // username (JDAC1013) से login; पुराने app के लिए 10 अंक mobile भी चलेगा
   const ph = phone10(id)
   const me = await env.DB.prepare('SELECT * FROM employees WHERE username = ? COLLATE NOCASE OR (? <> \'\' AND phone = ?)').bind(id, ph.length === 10 ? ph : '', ph).first()
-  if (!me || !me.active || !(await verifyPassword(String(b.password).trim(), me.pass_hash))) throw new HttpError(401, 'Username या password गलत है')
+  const pw = String(b.password).trim()
+  // pass_hash 'phone' = password is the employee's own 10-digit mobile number
+  const okPw = me && (me.pass_hash === 'phone' ? !!me.phone && phone10(pw) === me.phone : await verifyPassword(pw, me.pass_hash))
+  if (!me || !me.active || !okPw) throw new HttpError(401, 'User ID or password is wrong')
   // Phone lock: app login पहली बार जिस phone से हुआ उसी से चलेगा (developer login पर हमेशा लागू).
   // Web panel (device_id 'web') पर lock नहीं; दूसरा phone चाहिए तो Developer panel → Unlink phone.
   const dev = b.device_id ? String(b.device_id).slice(0, 100) : ''
   if (dev && dev !== 'web') {
     if (!me.device_id) await env.DB.prepare('UPDATE employees SET device_id = ? WHERE id = ?').bind(dev, me.id).run()
-    else if (me.device_id !== dev && me.role === 'developer') throw new HttpError(403, 'यह developer login सिर्फ registered phone पर चलेगा')
+    else if (me.device_id !== dev && me.role === 'developer') throw new HttpError(403, 'This developer login works only on the registered phone')
   }
   // GPS वाले staff (Warehouse / live GPS): phone login 24 घंटे बाद अपने आप logout (cron देखता है)
   if (dev && dev !== 'web' && (me.team === 'Warehouse' || me.live_track)) {
@@ -147,10 +150,10 @@ on('POST', '/api/day/start', async (env, req) => {
   const me = await authUser(env, req)
   const b = await body(req)
   const lat = Number(b.lat), lng = Number(b.lng)
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) throw bad('Location ज़रूरी है — GPS चालू करें')
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) throw bad('Location is required — turn on GPS')
   const date = istDate()
   const existing = await env.DB.prepare('SELECT * FROM day_sessions WHERE emp_id = ? AND date = ?').bind(me.id, date).first()
-  if (existing?.end_at) throw new HttpError(409, 'आज का day पहले ही close हो चुका है')
+  if (existing?.end_at) throw new HttpError(409, 'Today\'s day is already closed')
   const photo = b.photo ? await savePhoto(env, `${me.id}/${date}-in-${Date.now()}.jpg`, b.photo) : null
   if (existing) {
     // ऐप दोबारा खुला / पिछली कोशिश अधूरी → resume, start time वही रहता है
@@ -172,7 +175,7 @@ on('POST', '/api/day/end', async (env, req) => {
   const b = await body(req)
   const date = b.date || istDate()
   const s = await env.DB.prepare('SELECT * FROM day_sessions WHERE emp_id = ? AND date = ?').bind(me.id, date).first()
-  if (!s) throw new HttpError(404, 'Day शुरू नहीं हुआ')
+  if (!s) throw new HttpError(404, 'Day has not started')
   if (s.end_at) return json({ session: s, already: true }) // दोबारा भेजा → वही जवाब, कुछ नहीं बदलता
   const at = nowIso()
   const photo = b.photo ? await savePhoto(env, `${me.id}/${date}-out-${Date.now()}.jpg`, b.photo) : null
@@ -190,10 +193,10 @@ on('POST', '/api/day/manual-km', async (env, req) => {
   const me = await authUser(env, req)
   const b = await body(req)
   const km = Number(b.km)
-  if (!Number.isFinite(km) || km < 0 || km > 500) throw bad('KM 0–500 के बीच')
-  if (!b.note || String(b.note).trim().length < 3) throw bad('कारण लिखें')
+  if (!Number.isFinite(km) || km < 0 || km > 500) throw bad('KM must be between 0 and 500')
+  if (!b.note || String(b.note).trim().length < 3) throw bad('Write the reason')
   const s = await env.DB.prepare('SELECT * FROM day_sessions WHERE emp_id = ? AND date = ?').bind(me.id, istDate()).first()
-  if (!s) throw new HttpError(404, 'पहले day start करें')
+  if (!s) throw new HttpError(404, 'Start your day first')
   await env.DB.prepare('UPDATE day_sessions SET manual_km = ?, manual_km_note = ? WHERE id = ?').bind(km, String(b.note).trim().slice(0, 300), s.id).run()
   await audit(env, me.id, 'manual_km', 'day_sessions', s.id, { manual_km: s.manual_km }, { manual_km: km, note: b.note })
   const total = await recompute(env, me.id, s.date)
@@ -243,13 +246,13 @@ on('GET', '/api/leaves/mine', async (env, req) => {
 on('POST', '/api/leaves', async (env, req) => {
   const me = await authUser(env, req)
   const b = await body(req)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || b.date < istDate()) throw bad('सही date चुनें')
-  if (!b.reason || String(b.reason).trim().length < 3) throw bad('कारण लिखें')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || b.date < istDate()) throw bad('Choose a valid date')
+  if (!b.reason || String(b.reason).trim().length < 3) throw bad('Write the reason')
   const kind = b.kind === 'Half day' ? 'Half day' : 'Full day'
   try {
     await env.DB.prepare('INSERT INTO leave_requests (emp_id, date, kind, reason) VALUES (?,?,?,?)').bind(me.id, b.date, kind, String(b.reason).trim().slice(0, 300)).run()
   } catch (e) {
-    if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'इस date की leave पहले से है')
+    if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'Leave already exists for this date')
     throw e
   }
   return json({ ok: true })
@@ -333,7 +336,7 @@ on('POST', '/api/admin/marks', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || !b.emp_id) throw bad('date / employee?')
-  if (!b.reason || String(b.reason).trim().length < 3) throw bad('कारण लिखें')
+  if (!b.reason || String(b.reason).trim().length < 3) throw bad('Write the reason')
   const old = await env.DB.prepare('SELECT * FROM attendance_marks WHERE emp_id = ? AND date = ?').bind(b.emp_id, b.date).first()
   if (!['Present', 'Half Day', 'Absent', 'Leave', 'Week Off'].includes(b.status)) throw bad('status?')
   await env.DB.prepare('INSERT INTO attendance_marks (emp_id, date, status, reason, set_by) VALUES (?,?,?,?,?) ON CONFLICT (emp_id, date) DO UPDATE SET status = excluded.status, reason = excluded.reason, set_by = excluded.set_by, set_at = excluded.set_at')
@@ -346,14 +349,14 @@ on('POST', '/api/admin/marks', async (env, req) => {
 on('POST', '/api/admin/day/:id/correct', async (env, req, url, params) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
-  if (!b.reason || String(b.reason).trim().length < 3) throw bad('कारण लिखें')
+  if (!b.reason || String(b.reason).trim().length < 3) throw bad('Write the reason')
   const s = await env.DB.prepare('SELECT * FROM day_sessions WHERE id = ?').bind(params.id).first()
   if (!s) throw new HttpError(404, 'Not found')
   const patch = {}
-  if (b.end_at) { if (Date.parse(b.end_at) < Date.parse(s.start_at)) throw bad('Out time, In time से पहले नहीं हो सकता'); patch.end_at = new Date(b.end_at).toISOString() }
+  if (b.end_at) { if (Date.parse(b.end_at) < Date.parse(s.start_at)) throw bad('Out time cannot be before In time'); patch.end_at = new Date(b.end_at).toISOString() }
   if (b.manual_km != null) patch.manual_km = Number(b.manual_km)
   const keys = Object.keys(patch)
-  if (!keys.length) throw bad('कुछ बदलाव नहीं')
+  if (!keys.length) throw bad('Nothing changed')
   await env.DB.prepare(`UPDATE day_sessions SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).bind(...keys.map((k) => patch[k]), s.id).run()
   await audit(env, me.id, 'day_correct', 'day_sessions', s.id, Object.fromEntries(keys.map((k) => [k, s[k]])), { ...patch, reason: b.reason })
   if ('manual_km' in patch) await recompute(env, s.emp_id, s.date)
@@ -386,33 +389,77 @@ on('POST', '/api/admin/employees', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
   const phone = b.phone ? phone10(b.phone) : ''
-  if ((phone && phone.length !== 10) || !b.name || !b.password || String(b.password).length < 6) throw bad('नाम और कम से कम 6 अक्षर password डालें (mobile हो तो 10 अंक)')
+  if (phone && phone.length !== 10) throw bad('Mobile must be 10 digits')
+  if (!b.name) throw bad('Enter the name')
+  if (b.password && String(b.password).length < 6) throw bad('Password must be at least 6 characters')
+  if (!b.password && !phone) throw bad('Enter the 10-digit mobile number (it is the password) or set a password')
+  // Employee ID: next JD number unless given; login User ID = Employee ID
+  let empCode = String(b.emp_code || '').trim().toUpperCase()
+  if (!empCode) { const r = await env.DB.prepare("SELECT MAX(CAST(SUBSTR(emp_code, 3) AS INTEGER)) AS n FROM employees WHERE emp_code LIKE 'JD%'").first(); empCode = 'JD' + ((r?.n || 1000) + 1) }
+  if (!b.username) b.username = empCode
   const role = b.role || 'employee'
-  if (!roleAllowed(me, role)) throw new HttpError(403, 'यह role आप नहीं दे सकते')
+  if (!roleAllowed(me, role)) throw new HttpError(403, 'You cannot give this role')
   // username = नाम से (Atmaram Sambhaji Malik → atmaram), पहले से हो तो atmaram2, atmaram3…
-  let username = String(b.username || '').trim().toLowerCase().replace(/\s+/g, '')
+  let username = String(b.username || '').trim().replace(/\s+/g, '')
   if (!username) {
     const base = String(b.name).trim().toLowerCase().split(/\s+/)[0].replace(/[^a-z0-9]/g, '') || 'user'
     username = base
     for (let i = 2; await env.DB.prepare('SELECT 1 FROM employees WHERE username = ? COLLATE NOCASE').bind(username).first(); i++) username = base + i
   }
-  if (!/^[a-z0-9._-]{3,30}$/.test(username)) throw bad('Username में सिर्फ अंग्रेज़ी अक्षर/नंबर (बिना space)')
+  if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) throw bad('Username can only have English letters/numbers (no spaces)')
   try {
-    await env.DB.prepare('INSERT INTO employees (username, name, phone, pass_hash, role, team, designation, department, work_location, shift_start, shift_end, joining_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-      .bind(username, String(b.name).trim(), phone || null, await hashPassword(String(b.password)), role, b.team === 'Warehouse' ? 'Warehouse' : 'Office', b.designation || null, b.department || null, b.work_location || null, b.shift_start || '10:00', b.shift_end || '19:00', b.joining_date || null).run()
-  } catch (e) { if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'यह username या mobile पहले से है'); throw e }
+    const sal = b.salary_inhand === '' || b.salary_inhand == null ? null : Math.max(0, Number(b.salary_inhand) || 0)
+    await env.DB.prepare("INSERT INTO employees (username, name, phone, pass_hash, role, team, designation, department, work_location, shift_start, shift_end, joining_date, emp_code, salary_inhand, offer_letter, appointment_letter, documents, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'Active')")
+      .bind(username, String(b.name).trim(), phone || null, b.password ? await hashPassword(String(b.password)) : 'phone', role, b.team === 'Warehouse' ? 'Warehouse' : 'Office', b.designation || null, b.department || null, b.work_location || null, b.shift_start || '10:00', b.shift_end || '19:00', b.joining_date || null, empCode, sal, b.offer_letter || null, b.appointment_letter || null, b.documents || null).run()
+  } catch (e) { if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'This username or mobile already exists'); throw e }
   await audit(env, me.id, 'employee_create', 'employees', username, null, { username, name: b.name, role, team: b.team })
-  return json({ ok: true, username })
+  return json({ ok: true, username, emp_code: empCode })
+})
+// Team directory: upload an Excel / CSV sheet → update or add people (matched by Employee ID, then name)
+on('POST', '/api/admin/directory-import', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req)
+  const rows = Array.isArray(b.rows) ? b.rows.slice(0, 300) : []
+  if (!rows.length) throw bad('No rows found in the sheet')
+  let updated = 0, added = 0; const skipped = []
+  const t = (x) => (x == null ? '' : String(x).trim())
+  for (const r of rows) {
+    const code = t(r.emp_code).toUpperCase(), name = t(r.name)
+    if (!code && !name) continue
+    let e = code ? await env.DB.prepare('SELECT * FROM employees WHERE emp_code = ? COLLATE NOCASE').bind(code).first() : null
+    if (!e && name) e = await env.DB.prepare('SELECT * FROM employees WHERE lower(name) = lower(?)').bind(name).first()
+    const ph = t(r.phone) ? phone10(t(r.phone)) : ''
+    const patch = {}
+    if (name) patch.name = name
+    if (code) patch.emp_code = code
+    for (const k of ['designation', 'department', 'work_location', 'joining_date', 'exit_date', 'offer_letter', 'appointment_letter', 'documents', 'shift_start', 'shift_end']) if (t(r[k])) patch[k] = t(r[k])
+    if (t(r.salary_inhand)) patch.salary_inhand = Number(String(r.salary_inhand).replace(/[^\d.]/g, '')) || null
+    if (ph.length === 10 && !(await env.DB.prepare('SELECT 1 AS x FROM employees WHERE phone = ? AND id != ?').bind(ph, e?.id ?? 0).first())) patch.phone = ph
+    else if (t(r.phone)) skipped.push(`${name || code}: mobile "${t(r.phone)}" not saved`)
+    if (t(r.status)) { const st = /drop/i.test(r.status) ? 'Dropped' : /inact|left|exit/i.test(r.status) ? 'Inactive' : 'Active'; patch.status = st; patch.active = st === 'Active' ? 1 : 0 }
+    if (!e) {
+      if (!name) { skipped.push(`${code}: no name`); continue }
+      const c = code || 'JD' + (((await env.DB.prepare("SELECT MAX(CAST(SUBSTR(emp_code, 3) AS INTEGER)) AS n FROM employees WHERE emp_code LIKE 'JD%'").first())?.n || 1000) + 1)
+      if (await env.DB.prepare('SELECT 1 AS x FROM employees WHERE username = ? COLLATE NOCASE').bind(c).first()) { skipped.push(`${name}: ID ${c} already used`); continue }
+      await env.DB.prepare("INSERT INTO employees (username, name, pass_hash, emp_code, status) VALUES (?, ?, 'phone', ?, 'Active')").bind(c, name, c).run()
+      e = await env.DB.prepare('SELECT * FROM employees WHERE username = ?').bind(c).first(); added++
+    } else updated++
+    if (e.active && patch.active === 0) patch.token_version = e.token_version + 1
+    const keys = Object.keys(patch)
+    if (keys.length) await env.DB.prepare(`UPDATE employees SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).bind(...keys.map((k) => patch[k]), e.id).run()
+  }
+  await audit(env, me.id, 'directory_upload', 'employees', null, null, { rows: rows.length, updated, added })
+  return json({ ok: true, updated, added, skipped })
 })
 on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
   const e = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(params.id).first()
   if (!e) throw new HttpError(404, 'Not found')
-  if (!roleAllowed(me, e.role)) throw new HttpError(403, 'यह login आप नहीं बदल सकते')
+  if (!roleAllowed(me, e.role)) throw new HttpError(403, 'You cannot change this login')
   const patch = {}
-  if ('username' in b && b.username) { const u = String(b.username).trim().toLowerCase().replace(/\s+/g, ''); if (!/^[a-z0-9._-]{3,30}$/.test(u)) throw bad('Username में सिर्फ अंग्रेज़ी अक्षर/नंबर (बिना space)'); patch.username = u }
-  if ('phone' in b) { const ph = b.phone ? phone10(b.phone) : ''; if (ph && ph.length !== 10) throw bad('Mobile 10 अंक'); patch.phone = ph || null }
+  if ('username' in b && b.username) { const u = String(b.username).trim().replace(/\s+/g, ''); if (!/^[a-zA-Z0-9._-]{3,30}$/.test(u)) throw bad('Username can only have English letters/numbers (no spaces)'); patch.username = u }
+  if ('phone' in b) { const ph = b.phone ? phone10(b.phone) : ''; if (ph && ph.length !== 10) throw bad('Mobile must be 10 digits'); patch.phone = ph || null }
   for (const k of ['name', 'designation', 'department', 'work_location', 'shift_start', 'shift_end', 'joining_date', 'exit_date', 'emp_code', 'offer_letter', 'appointment_letter', 'documents']) if (k in b) patch[k] = b[k] === '' ? null : b[k]
   if ('salary_inhand' in b) patch.salary_inhand = b.salary_inhand === '' || b.salary_inhand == null ? null : Math.max(0, Number(b.salary_inhand) || 0)
   if ('status' in b && Number(params.id) !== me.id) {
@@ -423,18 +470,19 @@ on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   if ('team' in b) patch.team = b.team === 'Warehouse' ? 'Warehouse' : 'Office'
   if ('live_track' in b) patch.live_track = b.live_track ? 1 : 0
   if ('role' in b && b.role !== e.role) {
-    if (Number(params.id) === me.id) throw bad('अपना role खुद नहीं बदल सकते')
-    if (!roleAllowed(me, b.role)) throw new HttpError(403, 'यह role आप नहीं दे सकते')
+    if (Number(params.id) === me.id) throw bad('You cannot change your own role')
+    if (!roleAllowed(me, b.role)) throw new HttpError(403, 'You cannot give this role')
     patch.role = b.role; patch.token_version = e.token_version + 1
   }
   if ('active' in b && Number(params.id) !== me.id) { patch.active = b.active ? 1 : 0; if (!b.active) patch.token_version = (patch.token_version ?? e.token_version) + 1 }
-  if (b.new_password) { if (String(b.new_password).length < 6) throw bad('Password कम से कम 6 अक्षर'); patch.pass_hash = await hashPassword(String(b.new_password)); patch.token_version = (patch.token_version ?? e.token_version) + 1 }
+  if (b.new_password) { if (String(b.new_password).length < 6) throw bad('Password must be at least 6 characters'); patch.pass_hash = await hashPassword(String(b.new_password)); patch.token_version = (patch.token_version ?? e.token_version) + 1 }
+  if (b.password_phone) patch.pass_hash = 'phone'
   if (b.unlink_device) patch.device_id = null
   const keys = Object.keys(patch)
   if (!keys.length) return json({ ok: true })
   await env.DB.prepare(`UPDATE employees SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).bind(...keys.map((k) => patch[k]), e.id).run()
   const safe = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== 'pass_hash'))
-  await audit(env, me.id, 'employee_update', 'employees', e.id, safe(Object.fromEntries(keys.map((k) => [k, e[k]]))), { ...safe(patch), ...(b.new_password ? { password: 'reset' } : {}) })
+  await audit(env, me.id, 'employee_update', 'employees', e.id, safe(Object.fromEntries(keys.map((k) => [k, e[k]]))), { ...safe(patch), ...(b.new_password ? { password: 'reset' } : b.password_phone ? { password: 'mobile number' } : {}) })
   return json({ ok: true })
 })
 
@@ -477,7 +525,7 @@ on('GET', '/api/legacy/tables', async (env, req) => {
 on('GET', '/api/legacy/rows', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
   const tbl = url.searchParams.get('tbl') || ''
-  if (!canTable(me, tbl)) throw new HttpError(403, 'यह data आपके लिए नहीं है')
+  if (!canTable(me, tbl)) throw new HttpError(403, 'This data is not for you')
   const q = (url.searchParams.get('q') || '').trim()
   const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0)
   const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get('limit')) || 200))
@@ -491,13 +539,13 @@ const cleanData = (d) => {
   if (!d || typeof d !== 'object' || Array.isArray(d)) throw bad('data?')
   const o = {}
   for (const [k, v] of Object.entries(d)) { if (k === '_rid' || !/^[A-Za-z0-9_]{1,40}$/.test(k)) continue; o[k] = v === '' ? null : v }
-  const t = JSON.stringify(o); if (t.length > 20000) throw bad('बहुत बड़ा record')
+  const t = JSON.stringify(o); if (t.length > 20000) throw bad('Record too large')
   return o
 }
 on('POST', '/api/legacy/rows', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
-  if (!/^[a-z_]{2,40}$/.test(b.tbl || '') || !canTable(me, b.tbl)) throw new HttpError(403, 'यह data आपके लिए नहीं है')
+  if (!/^[a-z_]{2,40}$/.test(b.tbl || '') || !canTable(me, b.tbl)) throw new HttpError(403, 'This data is not for you')
   const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
   const d = { ...cleanData(b.data), id, createdAt: nowIso(), createdBy_name: me.name }
   await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind(b.tbl, id, JSON.stringify(d)).run()
@@ -507,9 +555,9 @@ on('POST', '/api/legacy/rows', async (env, req) => {
 on('PATCH', '/api/legacy/rows', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
   const b = await body(req)
-  if (!canTable(me, b.tbl || '')) throw new HttpError(403, 'यह data आपके लिए नहीं है')
+  if (!canTable(me, b.tbl || '')) throw new HttpError(403, 'This data is not for you')
   const old = await env.DB.prepare('SELECT data FROM legacy_records WHERE tbl = ? AND legacy_id = ?').bind(b.tbl, String(b.id)).first()
-  if (!old) throw new HttpError(404, 'Record नहीं मिला')
+  if (!old) throw new HttpError(404, 'Record not found')
   const prev = JSON.parse(old.data)
   const d = { ...prev, ...cleanData(b.data), id: prev.id, updatedAt: nowIso(), updatedBy_name: me.name }
   await env.DB.prepare('UPDATE legacy_records SET data = ? WHERE tbl = ? AND legacy_id = ?').bind(JSON.stringify(d), b.tbl, String(b.id)).run()
@@ -555,17 +603,17 @@ on('GET', '/api/cc/chat', async (env, req, url) => {
 on('POST', '/api/cc/chat', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
   const group = String(b.group || 'general')
-  if (group === 'ann' && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'Announcements में सिर्फ Boss / HR लिख सकते हैं')
+  if (group === 'ann' && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'Only Boss / HR can post in Announcements')
   const text = String(b.body || '').replace(/\r/g, '').trim().slice(0, 4000)
   let file = null
   if (b.file && b.file.data) {
     const data = String(b.file.data)
-    if (data.length > 950000) throw bad('File बहुत बड़ी है — 700 KB तक भेजें')
+    if (data.length > 950000) throw bad('File too large — send up to 700 KB')
     const mime = String(b.file.mime || 'application/octet-stream').slice(0, 80), name = String(b.file.name || 'file').slice(0, 120)
     const r = await env.DB.prepare('INSERT INTO chat_files (name, mime, size, data, by_emp) VALUES (?,?,?,?,?) RETURNING id').bind(name, mime, Math.round(data.length * 0.75), data, me.id).first()
     file = { id: r.id, name, mime, size: Math.round(data.length * 0.75) }
   }
-  if (!text && !file) throw bad('Message लिखें')
+  if (!text && !file) throw bad('Write a message')
   const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
   const kind = file ? (b.kind === 'voice' ? 'voice' : 'file') : 'text'
   const d = { id, projectId: group !== 'ann' && group !== 'general' ? (Number(group) || group) : null, channel: group === 'ann' ? 'ann' : null, senderId: me.legacy_id || null, senderName: me.name, body: text, kind,
@@ -576,7 +624,7 @@ on('POST', '/api/cc/chat', async (env, req) => {
 on('GET', '/api/cc/chat/file/:id', async (env, req, url, p) => {
   await authUser(env, req)
   const f = await env.DB.prepare('SELECT name, mime, data FROM chat_files WHERE id = ?').bind(Number(p.id)).first()
-  if (!f) throw new HttpError(404, 'File नहीं मिली')
+  if (!f) throw new HttpError(404, 'File not found')
   const bin = Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0))
   return new Response(bin, { headers: { 'Content-Type': f.mime, 'Content-Disposition': `inline; filename="${encodeURIComponent(f.name)}"`, 'Cache-Control': 'private, max-age=86400' } })
 })
@@ -607,8 +655,8 @@ const legacySet = async (env, tbl, id, d) => { await env.DB.prepare('UPDATE lega
 const nowLocal = () => new Date(Date.now() + 330 * 60000).toISOString().replace('T', ' ').slice(0, 19)
 on('POST', '/api/my/lead-log', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
-  const lead = await legacyGet(env, 'ad_leads', b.leadId); if (!lead) throw new HttpError(404, 'Lead नहीं मिला')
-  const outcome = String(b.outcome || '').slice(0, 60); if (!outcome) throw bad('Result चुनें')
+  const lead = await legacyGet(env, 'ad_leads', b.leadId); if (!lead) throw new HttpError(404, 'Lead not found')
+  const outcome = String(b.outcome || '').slice(0, 60); if (!outcome) throw bad('Choose a result')
   await legacyPut(env, 'cse_call_logs', { personId: me.legacy_id || null, emp_id: me.id, leadId: lead.id, outcome, note: String(b.note || '').slice(0, 500), nextFollowUp: b.next || null, createdAt: nowLocal() })
   const stage = String(b.stage || '').slice(0, 60)
   const upd = { ...lead, lastActivityAt: nowLocal(), updatedAt: nowLocal(), ...(b.next ? { nextFollowUp: b.next } : {}), ...(stage ? { stage, stageChangedAt: nowLocal() } : {}) }
@@ -618,7 +666,7 @@ on('POST', '/api/my/lead-log', async (env, req) => {
 })
 on('POST', '/api/my/cargo-quote', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
-  const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer का नाम')
+  const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer name')
   const L = Number(b.lengthCm) || 0, W = Number(b.breadthCm) || 0, H = Number(b.heightCm) || 0, kg = Number(b.actualKg) || 0
   const vol = Math.round((L * W * H / 5000) * 100) / 100, charge = Math.max(kg, vol), rate = Number(b.rate) || 0
   const id = await legacyPut(env, 'cargo_quotes', { date: istDate(), personId: me.legacy_id || null, emp_id: me.id, cseName: me.name, leadId: b.leadId || null, customerName: name, phone: String(b.phone || ''),
@@ -628,10 +676,10 @@ on('POST', '/api/my/cargo-quote', async (env, req) => {
 })
 on('POST', '/api/my/cargo-order', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
-  const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer का नाम')
-  const amount = Number(b.amount) || 0; if (amount <= 0) throw bad('Amount डालें')
+  const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer name')
+  const amount = Number(b.amount) || 0; if (amount <= 0) throw bad('Enter amount')
   const vendorCost = Number(b.vendorCost) || 0
-  if (vendorCost <= 0) throw bad('Vendor cost डालना ज़रूरी है')
+  if (vendorCost <= 0) throw bad('Vendor cost is required')
   const markupPct = Math.round(((amount - vendorCost) / vendorCost) * 100)
   const needApproval = amount < vendorCost * 1.4
   const id = await legacyPut(env, 'cargo_orders', { date: istDate(), customerName: name, phone: String(b.phone || ''), mode: String(b.mode || 'Road Cargo'), kg: Number(b.kg) || 0, amount,
@@ -643,8 +691,8 @@ on('POST', '/api/my/cargo-order', async (env, req) => {
 })
 on('POST', '/api/my/task-done', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
-  const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task नहीं मिला')
-  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'यह आपका task नहीं है')
+  const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task not found')
+  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'This is not your task')
   await legacySet(env, 'tasks', b.id, { ...t, status: b.done === false ? 'Open' : 'Done', closedAt: b.done === false ? null : nowLocal() })
   return json({ ok: true })
 })
@@ -891,6 +939,22 @@ async function runMigrations(env) {
     await audit(env, null, 'directory_import', 'employees', null, null, { rows: rows.length })
     await mark('mig_directory_v1')
   }
+  if (!(await done('mig_org_v2'))) {
+    // 19 Nov 2026 (Darshan): Boss = Darshan Sir; left: Rahul, Ashish, Cathrine, Priyanka; Mohin → Operation Manager; Balaji → CSE; departments for the org chart
+    await env.DB.prepare("UPDATE employees SET name = 'Darshan Sir', designation = 'Director' WHERE role = 'boss'").run()
+    for (const n of ['Rahul', 'Ashish', 'Cathrine', 'Priyanka']) await env.DB.prepare("UPDATE employees SET active = 0, status = 'Inactive', token_version = token_version + 1 WHERE role = 'employee' AND lower(name) LIKE lower(?) AND active = 1").bind(n + '%').run()
+    await env.DB.prepare("UPDATE employees SET designation = 'Operation Manager' WHERE emp_code = 'JD1020'").run()
+    await env.DB.prepare("UPDATE employees SET designation = 'Customer Success Executive' WHERE emp_code = 'JD1012'").run()
+    const DEP = { 'Govaa Bazaar Warehouse': ['JD1001', 'JD1002'], 'Delivery team': ['JD1003', 'JD1021', 'JD1024', 'JD1026', 'JD1027'], Operations: ['JD1006', 'JD1020'],
+      'Customer Success': ['JD1009', 'JD1012', 'JD1014', 'JD1025'], Accounts: ['JD1023'], Marketing: ['JD1016', 'JD1017', 'JD1018'], 'Medical sales': ['JD1013'], HR: ['JD1008', 'JD1015'] }
+    for (const [d, codes] of Object.entries(DEP)) for (const c of codes) await env.DB.prepare('UPDATE employees SET department = ? WHERE emp_code = ?').bind(d, c).run()
+    await mark('mig_org_v2')
+  }
+  if (!(await done('mig_login_v1'))) {
+    // Login: User ID = Employee ID (JD1001), password = own 10-digit mobile number. Existing sessions stay logged in.
+    await env.DB.prepare("UPDATE employees SET username = emp_code, pass_hash = 'phone' WHERE emp_code IS NOT NULL AND phone IS NOT NULL AND role != 'developer' AND NOT EXISTS (SELECT 1 FROM employees x WHERE x.username = employees.emp_code COLLATE NOCASE AND x.id != employees.id)").run()
+    await mark('mig_login_v1')
+  }
   for (const q of DESK_TABLES) { try { await env.DB.prepare(q).run() } catch (e) { console.error('desk table', e?.message) } }
   if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
@@ -908,7 +972,7 @@ async function runMigrations(env) {
     const e = await env.DB.prepare("SELECT id FROM employees WHERE username = 'himanshu'").first()
     if (e) {
       const dates = ['05', '06', '07', '09', '10', '11', '12', '13', '14'].map((d) => `2026-11-${d}`)
-      await env.DB.batch(dates.map((d) => env.DB.prepare("INSERT OR IGNORE INTO attendance_marks (emp_id, date, status, reason) VALUES (?, ?, 'Present', 'पुराना system बंद था (5–14 Nov) — Present')").bind(e.id, d)))
+      await env.DB.batch(dates.map((d) => env.DB.prepare("INSERT OR IGNORE INTO attendance_marks (emp_id, date, status, reason) VALUES (?, ?, 'Present', 'Old system was down (5–14 Nov) — Present')").bind(e.id, d)))
       await audit(env, null, 'gap_present', 'attendance_marks', String(e.id), null, { dates })
       await mark('mig_gap_himanshu_2026_11')
     }

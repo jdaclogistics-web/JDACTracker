@@ -7,7 +7,7 @@ const fileCache = new Map()
 async function fileUrl(id) {
   if (fileCache.has(id)) return fileCache.get(id)
   const r = await fetch(`${API}/api/cc/chat/file/${id}`, { headers: { Authorization: 'Bearer ' + auth.token } })
-  if (!r.ok) throw new Error('File नहीं खुली')
+  if (!r.ok) throw new Error('File did not open')
   const u = URL.createObjectURL(await r.blob()); fileCache.set(id, u); return u
 }
 const toB64 = (blob) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob) })
@@ -24,7 +24,7 @@ export async function renderChatUI(v, opts = {}) {
   const canWrite = g.id !== 'ann' || c.can_announce
   v.innerHTML = `<section class="card ch">
     <div class="ch-tabs" role="tablist">${c.groups.map((x) => `<button role="tab" class="${x.id === g.id ? 'on' : ''}" data-g="${esc(x.id)}">${x.icon} ${esc(x.name)}</button>`).join('')}</div>
-    <div class="ch-head"><b>${g.icon} ${esc(g.name)}</b><span>${g.id === 'ann' ? 'सबके लिए — सिर्फ Boss / HR लिखते हैं' : g.id === 'general' ? 'पूरी team' : 'project group'}</span></div>
+    <div class="ch-head"><b>${g.icon} ${esc(g.name)}</b><span>${g.id === 'ann' ? 'For everyone — only Boss / HR can post' : g.id === 'general' ? 'Whole team' : 'project group'}</span></div>
     <div class="ch-msgs" id="msgs">${c.messages.map((m) => `<div class="ch-m ${m.sender === c.me ? 'me' : ''} ${g.id === 'ann' ? 'ann' : ''}"><span class="ch-who">${esc(m.sender)} · ${when(m.at)}</span>
       ${m.kind === 'voice' && m.file ? `<audio controls preload="none" data-file="${m.file}"></audio>` : ''}
       ${m.kind === 'file' && m.file ? (/^image\//.test(m.file_mime) ? `<img class="ch-img" data-img="${m.file}" alt="${esc(m.file_name)}">` : '') + `<button class="ch-file" data-dl="${m.file}" data-name="${esc(m.file_name)}">📎 ${esc(m.file_name)} <small>${kb(m.file_size || 0)}</small></button>` : ''}
@@ -33,7 +33,7 @@ export async function renderChatUI(v, opts = {}) {
       <textarea id="cm" rows="1" placeholder="Message… (Shift + Enter = new line)"></textarea>
       <button type="button" class="ch-ic" id="mic" title="Voice message" aria-label="Voice message">🎤</button><button class="ch-send" aria-label="Send">➤</button></form>
       <div class="ch-rec" id="rec" hidden><span class="dot"></span><b id="rt">0:00</b> Recording… <button type="button" id="rstop">Send</button><button type="button" id="rcancel">Cancel</button></div>`
-    : '<div class="sub" style="text-align:center;margin-top:8px">📢 Announcements सिर्फ Boss / HR भेजते हैं</div>'}</section>`
+    : '<div class="sub" style="text-align:center;margin-top:8px">📢 Only Boss / HR post Announcements</div>'}</section>`
   const box = v.querySelector('#msgs'); box.scrollTop = box.scrollHeight
   v.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => { state.group = b.dataset.g; renderChatUI(v) }))
   v.querySelector('.ch-tabs .on')?.scrollIntoView({ inline: 'center', block: 'nearest' })
@@ -56,14 +56,14 @@ export async function renderChatUI(v, opts = {}) {
   v.querySelector('#att').onclick = () => fi.click()
   fi.onchange = async () => {
     const f = fi.files?.[0]; if (!f) return
-    if (f.size > 700 * 1024) return toast('File 700 KB तक — बड़ी file Google Drive link से भेजें', 'bad')
+    if (f.size > 700 * 1024) return toast('Files up to 700 KB — send bigger files as a Google Drive link', 'bad')
     send({ body: ta.value.trim(), file: { name: f.name, mime: f.type || 'application/octet-stream', data: await toB64(f) } })
   }
   // Voice message
   let rec = null, chunks = [], timer = null, t0 = 0, cancelled = false
   const ui = v.querySelector('#rec')
   v.querySelector('#mic').onclick = async () => {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') return toast('इस phone / browser में voice recording नहीं चलती', 'bad')
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') return toast('Voice recording does not work on this phone / browser', 'bad')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((m) => MediaRecorder.isTypeSupported?.(m)) || ''
@@ -73,12 +73,12 @@ export async function renderChatUI(v, opts = {}) {
         stream.getTracks().forEach((t) => t.stop()); clearInterval(timer); ui.hidden = true
         if (cancelled || !chunks.length) return
         const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' })
-        if (blob.size > 700 * 1024) return toast('Voice बहुत लंबा है — 2 मिनट से कम रखें', 'bad')
+        if (blob.size > 700 * 1024) return toast('Voice note too long — keep it under 2 minutes', 'bad')
         send({ kind: 'voice', file: { name: `voice-${Date.now()}.${(rec.mimeType || '').includes('mp4') ? 'm4a' : 'webm'}`, mime: rec.mimeType || 'audio/webm', data: await toB64(blob) } })
       }
       rec.start(); t0 = Date.now(); ui.hidden = false
       timer = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); v.querySelector('#rt').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s >= 120) rec.stop() }, 300)
-    } catch { toast('Microphone की permission दें', 'bad') }
+    } catch { toast('Allow microphone permission', 'bad') }
   }
   v.querySelector('#rstop').onclick = () => rec?.state === 'recording' && rec.stop()
   v.querySelector('#rcancel').onclick = () => { cancelled = true; rec?.state === 'recording' && rec.stop() }

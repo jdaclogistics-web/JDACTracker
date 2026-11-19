@@ -1,5 +1,5 @@
 // Boss / Developer screens: Home (8 blocks), Company page (Overview · Desks · Accounts), Desks, People, Tasks, Chat, Accounts
-import { get, post, patch } from '@shared/api.js'
+import { get, post, patch, prefetch } from '@shared/api.js'
 import { esc, ic, fmtDate, fmtTime, toast, initials, avColor, istDate, downloadCsv } from '@shared/util.js'
 import { renderChatUI, injectChatCss } from '@shared/chat.js'
 
@@ -50,7 +50,7 @@ export function viewCC(v, go, X) {
         w.unpaid_30 && `<button data-act="unpaid"><span>Invoices unpaid 30+ days<small>${w.unpaid_30} · ${inr(w.unpaid_30_amount)}</small></span><i class="pill r">Follow up</i></button>`,
         w.uncalled_72h && `<button data-act="pool"><span>Leads uncalled 72h+<small>${num(w.uncalled_72h)} leads</small></span><i class="pill b">Assign</i></button>`,
         lv.leaves.length && `<button data-act="leave"><span>Leave requests<small>${lv.leaves.length}</small></span><i class="pill p">Approve</i></button>`,
-        ...al.alerts.map((a) => `<button data-act="live"><span><b>${esc(a.name)}</b><small>${a.kind === 'auto_logout' ? '24 घंटे पूरे — auto logout' : 'no GPS signal'}</small></span><i class="pill ${a.kind === 'auto_logout' ? 'r' : 'o'}">Check</i></button>`),
+        ...al.alerts.map((a) => `<button data-act="live"><span><b>${esc(a.name)}</b><small>${a.kind === 'auto_logout' ? '24 hours done — auto logout' : 'no GPS signal'}</small></span><i class="pill ${a.kind === 'auto_logout' ? 'r' : 'o'}">Check</i></button>`),
         // Weight-difference payments: Om का Ops panel बनने पर यहाँ जुड़ेगा
       ].filter(Boolean)
       el.innerHTML = `<section class="card"><div class="row"><h2 class="h3">Waiting on you</h2><span class="sp"></span><span class="sub">tap to act</span></div>
@@ -159,7 +159,7 @@ function managerSales(B, c, go, re) {
     <section class="card"><h2 class="h3">Sales team · this month</h2>${salesTable(M.sales_team)}<div class="sub" style="margin-top:6px">Tap a CSE to view their desk</div></section>
     <section class="card"><h2 class="h3">Lead pipeline · all CSEs</h2><div class="tiles t3" style="margin-top:8px">${Object.entries(M.pipeline).map(([k, n]) => `<div class="tile"><b>${num(n)}</b><span>${esc(k)}</span></div>`).join('')}</div></section>
     <section class="card"><div class="row"><h2 class="h3">Lead pool · not assigned</h2><span class="sp"></span><span class="pill n">${num(M.pool)}</span></div>
-      <div class="sub">Assign करने के लिए lead खोलें (Records → ad_leads → cseName भरें)</div>
+      <div class="sub">To assign, open the lead (Records → ad_leads → fill cseName)</div>
       <div class="list">${M.pool_leads.slice(0, 50).map((l) => `<div class="li"><div class="nm"><b>${esc(l.phone || l.name || '—')}</b><span>${esc(l.name)} · ${fmtDate(l.date) || '—'}</span></div></div>`).join('') || '<div class="empty">Pool is empty</div>'}</div>
       <button class="btn ghost sm" id="pool" style="margin-top:8px">Open lead records</button></section>`
   B.querySelector('#mb').onclick = () => re({ mv: null })
@@ -180,12 +180,12 @@ function managerOps(B, c, go, re, filter = 'all') {
   B.querySelector('#mb').onclick = () => re({ mv: null })
   B.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => re({ mv: 'ops', filter: b.dataset.f })))
   B.querySelectorAll('[data-app]').forEach((b) => (b.onclick = async () => { try { await post('/api/cc/order-approve', { id: b.dataset.app, approve: true }); toast('Approved'); re({}) } catch (e) { toast(e.message, 'bad') } }))
-  B.querySelectorAll('[data-rej]').forEach((b) => (b.onclick = async () => { const r = prompt('Reject का कारण'); if (!r) return; try { await post('/api/cc/order-approve', { id: b.dataset.rej, approve: false, reason: r }); toast('Rejected'); re({}) } catch (e) { toast(e.message, 'bad') } }))
+  B.querySelectorAll('[data-rej]').forEach((b) => (b.onclick = async () => { const r = prompt('Reason for rejecting'); if (!r) return; try { await post('/api/cc/order-approve', { id: b.dataset.rej, approve: false, reason: r }); toast('Rejected'); re({}) } catch (e) { toast(e.message, 'bad') } }))
   B.querySelectorAll('[data-stage]').forEach((s) => (s.onchange = async () => {
     const body = { id: s.dataset.stage, stage: s.value }
-    if (s.value === 'Cancelled') { body.reason = prompt('Cancel का कारण'); if (!body.reason) return re({}) }
-    if (s.value === 'Delivered') { const a = prompt('Final amount (weight बदला हो तो नया amount, वरना खाली छोड़ें)'); if (a) body.amount = Number(a) }
-    try { const r = await post('/api/cc/order-stage', body); toast(r.invoice ? `Delivered — invoice ${r.invoice.docNo} बना` : 'Saved'); re({}) } catch (e) { toast(e.message, 'bad'); re({}) }
+    if (s.value === 'Cancelled') { body.reason = prompt('Reason for cancelling'); if (!body.reason) return re({}) }
+    if (s.value === 'Delivered') { const a = prompt('Final amount (enter new amount if weight changed, else leave blank)'); if (a) body.amount = Number(a) }
+    try { const r = await post('/api/cc/order-stage', body); toast(r.invoice ? `Delivered — invoice ${r.invoice.docNo} created` : 'Saved'); re({}) } catch (e) { toast(e.message, 'bad'); re({}) }
   }))
 }
 function managerCampaigns(B, c, re) {
@@ -255,7 +255,7 @@ export async function viewDesks(v, go, opts = {}) {
 }
 function deskDetail(v, go, D, id) {
   const d = D.desks.find((x) => x.id === id) || null
-  if (!d) { v.innerHTML = '<section class="card empty">Desk नहीं मिला (company switcher बदलकर देखें)</section>'; return }
+  if (!d) { v.innerHTML = '<section class="card empty">Desk not found (try changing the company switcher)</section>'; return }
   const on = new Set(D.access.filter((a) => a.desk_id === d.id && a.enabled).map((a) => a.emp_id))
   const emps = [...D.employees].sort((a, b) => (on.has(b.id) - on.has(a.id)) || a.name.localeCompare(b.name))
   const first = emps.find((e) => on.has(e.id))
@@ -302,7 +302,7 @@ function createDesk(v, go, company) {
     v.querySelectorAll('[data-x]').forEach((b) => (b.onclick = () => { sync(); fields.splice(Number(b.dataset.x), 1); if (!fields.length) fields.push({ label: '', type: 'text' }); paint() }))
     v.querySelector('#cf').onsubmit = async (e) => {
       e.preventDefault(); sync()
-      try { const r = await post('/api/desks', { name: v.querySelector('#dn').value, company, kind, module: v.querySelector('#mod')?.value, fields }); toast('Desk बन गया — अब लोगों को On करें'); go('desks', null, { desk: r.id }) } catch (er) { toast(er.message, 'bad') }
+      try { const r = await post('/api/desks', { name: v.querySelector('#dn').value, company, kind, module: v.querySelector('#mod')?.value, fields }); toast('Desk created — now switch people On'); go('desks', null, { desk: r.id }) } catch (er) { toast(er.message, 'bad') }
     }
   }
   const sync = () => {
@@ -318,7 +318,7 @@ function createDesk(v, go, company) {
 export async function viewDeskAdmin(v, go, id, opts = {}) {
   let d = opts.desk
   if (!d) { try { d = (await get('/api/desks')).desks.find((x) => String(x.id) === String(id)) } catch (e) { v.innerHTML = err(e); return } }
-  if (!d) { v.innerHTML = '<section class="card empty">Desk नहीं मिला</section>'; return }
+  if (!d) { v.innerHTML = '<section class="card empty">Desk not found</section>'; return }
   const head = `<button class="link cc-back" id="back">← ${esc(d.name)}</button><div class="cc-top"><b>${esc(d.icon || '')} ${esc(d.name)}${opts.emp ? '' : ' · all'}</b><span class="sp"></span><span class="pill n">${esc(d.company)}</span></div>`
   const back = () => go('desks', null, { desk: d.id })
   const M = d.kind === 'simple' ? 'simple' : d.module
@@ -345,7 +345,7 @@ export async function viewDeskAdmin(v, go, id, opts = {}) {
     } catch (e) { v.innerHTML = head + err(e); v.querySelector('#back').onclick = back }
     return
   }
-  v.innerHTML = head + '<section class="card empty">यह desk Om के Ops panel के साथ आएगा</section>'
+  v.innerHTML = head + '<section class="card empty">This desk will come with Om’s Ops panel</section>'
   v.querySelector('#back').onclick = back
 }
 async function bookingsAdmin(v, head, back, opts) {
@@ -375,7 +375,7 @@ async function bookingsAdmin(v, head, back, opts) {
     v.querySelector('#f2')?.addEventListener('change', (e) => re({ to: e.target.value }))
     v.querySelector('#xl').onclick = () => downloadCsv(`daily-bookings-${from}.csv`, [['Date', 'Booking no', 'CSE', 'Amount (incl GST)'], ...r.rows.map((x) => [x.date, x.booking_no, x.name, x.amount])])
     v.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = async () => {
-      const a = prompt(`${b.dataset.no} — नया amount (खाली = delete)`, b.dataset.amt); if (a === null) return
+      const a = prompt(`${b.dataset.no} — new amount (blank = delete)`, b.dataset.amt); if (a === null) return
       try { await patch('/api/bookings/' + b.dataset.ed, a === '' ? { delete: true } : { amount: Number(a) }); toast('Saved'); re({}) } catch (e) { toast(e.message, 'bad') }
     }))
   } catch (e) { v.innerHTML = head + err(e); v.querySelector('#back').onclick = back }
@@ -403,10 +403,11 @@ export async function viewDesk(v, go, empId) {
 // ═════════════════════════ PEOPLE ═════════════════════════
 export async function viewPeople2(v, go, X, opts = {}, tabName = 'people') {
   const sub = opts.sub || 'today'
+  if (opts.bare) { v.innerHTML = `<div id="pb">${skel}</div>` } else
   v.innerHTML = `<div class="cc-top"><b>${tabName === 'team' ? 'Team' : 'People'}</b><span class="sp"></span>${switcher('psw')}</div>
     <div class="cc-tabs">${[['today', 'Today'], ['dir', 'Directory'], ['leave', 'Leave'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="pb">${skel}</div>`
-  v.querySelector('#psw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewPeople2(v, go, X, opts, tabName) }
-  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => (tabName === 'team' ? go('team', null, { sub: b.dataset.sub }) : viewPeople2(v, go, X, { sub: b.dataset.sub }))))
+  if (!opts.bare) v.querySelector('#psw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewPeople2(v, go, X, opts, tabName) }
+  if (!opts.bare) v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => (tabName === 'team' ? go('team', null, { sub: b.dataset.sub }) : viewPeople2(v, go, X, { sub: b.dataset.sub }))))
   const B = v.querySelector('#pb')
   try {
     if (sub === 'today') {
@@ -597,10 +598,10 @@ const CC_COS = [
 const CC_TOOLS = [
   ['accounts', 'Accounts', 'live money & Vittiya', 'dollar', '#0D9488'],
   ['desks', 'Create employee interfaces', 'build sections & assign people', 'layout', '#4F46E5'],
-  ['attendance', 'Attendance', 'present & leave', 'calcheck', '#16A34A'],
+  ['attendance', 'Attendance', 'today · week · month · live', 'calcheck', '#16A34A'],
   ['live', 'Live tracking', 'map & field status', 'pin', '#0D9488'],
-  ['old:daily_reports', 'Daily reports', 'end-of-day updates', 'doc', '#2563EB'],
-  ['report', 'Insights', 'trends & performance', 'bars', '#C026D3'],
+  ['dailyreports', 'Daily reports', 'end-of-day updates', 'doc', '#2563EB'],
+  ['insights', 'Insights', 'accounts: sales, profit, money in', 'bars', '#C026D3'],
 ]
 const MOTIVATION = ['Great companies are built one good day at a time.', 'Small wins every day add up to big results.', 'Lead the team today — they follow your energy.',
   'Discipline today, growth tomorrow.', 'Every delivery on time builds a brand.', 'Focus on progress, not perfection.', 'Your team is your biggest asset — check in on them.',
@@ -618,12 +619,13 @@ export function viewCommand(v, go, role = 'boss') {
   <div class="cm-h" id="s2"><i>2</i><div><b>Second step — open one company</b><span>Dashboard → money in → buying → expenses → work</span></div></div>
   <div class="cm-grid cos">${CC_COS.map(([n, i, c, sub], k) => `<button class="cm-co" data-co="${esc(n)}"><span class="cm-n">${k + 1}</span><span class="cm-ic big" style="background:${c}">${ic(i, 26, '#fff')}</span><div class="nm"><b>${esc(n)}</b><span>${esc(sub)}</span></div><span class="cm-go">→</span></button>`).join('')}</div>
   <div class="cm-h" id="s3"><i>+</i><div><b>Tools when you need them</b><span>Accounts, employee interfaces, attendance, tracking and reports</span></div></div>
-  <div class="cm-grid tools">${CC_TOOLS.filter(([k]) => !(hr && k === 'accounts')).map(([k, l, sub, i, c]) => `<button class="cm-row" data-tool="${k}"><span class="cm-ic" style="background:${c}">${ic(i, 20, '#fff')}</span><div class="nm"><b>${l}</b><span>${sub}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div>`
+  <div class="cm-grid tools">${CC_TOOLS.filter(([k]) => !(hr && (k === 'accounts' || k === 'insights'))).map(([k, l, sub, i, c]) => `<button class="cm-row" data-tool="${k}"><span class="cm-ic" style="background:${c}">${ic(i, 20, '#fff')}</span><div class="nm"><b>${l}</b><span>${sub}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div>`
   v.querySelectorAll('[data-jump]').forEach((b) => (b.onclick = () => v.querySelector('#' + b.dataset.jump).scrollIntoView({ behavior: 'smooth' })))
   v.querySelector('[data-go]').onclick = () => go('team', null, { sub: 'today' })
   // HR को पैसे/profit नहीं दिखते — company खोलने पर उस company के desks और लोग
   v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : hr ? (ccState.company = b.dataset.co, saveState(), go('desks')) : go('company', b.dataset.co))))
-  v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'attendance' ? go('team', null, { sub: 'today' }) : go(t, tbl || null) }))
+  v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'insights' ? go('accounts', null, { sub: 'summary' }) : go(t, tbl || null) }))
+  prefetch('/api/admin/employees', '/api/desks', '/api/admin/report?month=' + istDate().slice(0, 7))
   get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not in` }).catch(() => {})
 }
 
@@ -631,6 +633,13 @@ export function viewCommand(v, go, role = 'boss') {
 const STATUS_K = { Active: 'g', Inactive: 'n', Dropped: 'r' }
 const hm = (t) => { const [h, m] = String(t || '').split(':').map(Number); if (isNaN(h)) return '—'; return `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''}${h < 12 ? 'am' : 'pm'}` }
 const docPill = (x) => `<td>${x ? `<span class="doc ${/allot|submit|done|yes/i.test(x) ? 'ok' : 'wait'}">${esc(x)}</span>` : '<span class="doc no">—</span>'}</td>`
+const stOf = (e) => e.status || (e.active ? 'Active' : 'Inactive')
+const nextCode = (list) => 'JD' + (Math.max(1000, ...list.map((e) => Number(String(e.emp_code || '').replace(/^JD/i, '')) || 0)) + 1)
+// Keep the page itself still: only the table scrolls, sized to the screen
+function fitToScreen(el, extra = 12) {
+  const fit = () => { if (!el.isConnected) return removeEventListener('resize', fit); const nav = document.querySelector('.nav'); const navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().height : 0; el.style.maxHeight = Math.max(240, innerHeight - el.getBoundingClientRect().top - navH - extra) + 'px' }
+  fit(); addEventListener('resize', fit)
+}
 export async function viewTeam(v, go, X, opts = {}) {
   const sub = opts.sub || 'dir'
   if (sub === 'today' || sub === 'leave') return viewPeople2(v, go, X, opts, 'team')
@@ -639,90 +648,152 @@ export async function viewTeam(v, go, X, opts = {}) {
   v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => go('team', null, { sub: b.dataset.sub })))
   const B = v.querySelector('#tb')
   try {
-    const rows = async (tbl) => (await get(`/api/legacy/rows?tbl=${tbl}&limit=1000`).catch(() => ({ rows: [] }))).rows
-    const [E, master, sal] = await Promise.all([get('/api/admin/employees'), rows('employee_master'), rows('salary_records')])
-    const mOf = (e) => master.find((m) => e.legacy_id && String(m.personId) === String(e.legacy_id))
-    const salOf = (e) => { if (e.salary_inhand != null) return Number(e.salary_inhand); const s2 = sal.filter((r) => e.legacy_id && String(r.personId) === String(e.legacy_id)).sort((a, b) => String(b.month).localeCompare(String(a.month)))[0]; return Number(s2?.fixedSalary) || Number(mOf(e)?.salaryInHand) || 0 }
+    const E = await get('/api/admin/employees')
+    const all = E.employees
+    const salOf = (e) => Number(e.salary_inhand) || 0
     const lpa = (m) => (m ? (m * 12 / 100000).toFixed(2) + ' LPA' : '—')
-    const empId = (e) => e.emp_code || mOf(e)?.empCode || '—'
-    if (sub === 'org') return orgChart(B, E.employees.filter((e) => e.status !== 'Dropped' && e.active), go)
+    if (sub === 'org') return orgChart(B, all.filter((e) => e.active && e.role !== 'developer'))
     const st = opts.st || 'Active'
-    const list = E.employees.filter((e) => st === 'All' || (e.status || (e.active ? 'Active' : 'Inactive')) === st).sort((a, b) => String(a.joining_date || '9999').localeCompare(String(b.joining_date || '9999')) || String(a.emp_code || '').localeCompare(String(b.emp_code || '')) || a.name.localeCompare(b.name))
-    const q0 = opts.q || ''
+    const list = all.filter((e) => st === 'All' || stOf(e) === st)
+      .sort((a, b) => String(a.joining_date || '9999').localeCompare(String(b.joining_date || '9999')) || String(a.emp_code || '').localeCompare(String(b.emp_code || '')) || a.name.localeCompare(b.name))
+    const again = () => go('team', null, { sub: 'dir', st })
     const paint = (q) => {
-      const L = list.filter((e) => !q || `${e.name} ${e.designation} ${e.username} ${e.phone} ${empId(e)}`.toLowerCase().includes(q.toLowerCase()))
+      const L = list.filter((e) => !q || `${e.name} ${e.designation} ${e.username} ${e.phone} ${e.emp_code}`.toLowerCase().includes(q.toLowerCase()))
       const tot = L.reduce((a, e) => a + salOf(e), 0)
-      B.innerHTML = `<div class="tm-bar"><input class="inp" id="q" placeholder="Search name, ID, phone, username" value="${esc(q)}">
-          <div class="chips">${['Active', 'Inactive', 'Dropped', 'All'].map((x) => `<button class="chip ${st === x ? 'on' : ''}" data-st="${x}">${x} <small>${E.employees.filter((e) => x === 'All' || (e.status || (e.active ? 'Active' : 'Inactive')) === x).length}</small></button>`).join('')}</div>
-          <span class="sp"></span><button class="btn ghost sm" id="xl">⬇ Excel</button><button class="btn dark sm" id="add">+ Add person</button></div>
+      B.innerHTML = `<div class="tm-bar"><input class="inp" id="q" placeholder="Search name, ID, phone" value="${esc(q)}">
+          <div class="chips">${['Active', 'Inactive', 'Dropped', 'All'].map((x) => `<button class="chip ${st === x ? 'on' : ''}" data-st="${x}">${x} <small>${all.filter((e) => x === 'All' || stOf(e) === x).length}</small></button>`).join('')}</div>
+          <span class="sp"></span><button class="btn ghost sm" id="up">⬆ Upload sheet</button><input type="file" id="upf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="xl">⬇ Excel</button><button class="btn dark sm" id="add">+ Add person</button></div>
         <div class="tm-sum"><span><b>${L.length}</b> people</span><span>Monthly salary <b>${inr(tot)}</b></span><span>Yearly <b>${inrL(tot * 12)}</b></span></div>
-        <div class="tm-wrap"><table class="tds"><thead><tr><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="r">Salary in hand</th><th class="r">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th></th></tr></thead><tbody>
-        ${L.map((e) => { const s2 = e.status || (e.active ? 'Active' : 'Inactive'), m = salOf(e)
-          return `<tr data-e="${e.id}"><td><div class="tm-n"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(empId(e))}</span></div></div></td>
-            <td><span class="pill ${STATUS_K[s2]}">${s2}</span></td><td>${esc(e.designation || '—')}<div class="sub">${esc(e.team)}${e.role !== 'employee' ? ' · ' + esc(e.role) : ''}</div></td>
+        <div class="tm-wrap" id="tw"><table class="tds"><thead><tr><th>Emp ID</th><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="r">Salary in hand</th><th class="r">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th></th></tr></thead><tbody>
+        ${L.map((e) => { const m = salOf(e)
+          return `<tr><td><b class="tds-id">${esc(e.emp_code || '—')}</b></td><td><div class="tm-n"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(e.department || e.team)}</span></div></div></td>
+            <td><span class="pill ${STATUS_K[stOf(e)]}">${stOf(e)}</span></td><td>${esc(e.designation || '—')}</td>
             <td>${e.joining_date ? fmtDate(e.joining_date) : '—'}</td><td>${e.exit_date ? fmtDate(e.exit_date) : '—'}</td><td>${e.phone ? '+91 ' + esc(e.phone) : '—'}</td>
             <td>${esc(hm(e.shift_start))} – ${esc(hm(e.shift_end))}</td><td>${esc(e.work_location || '—')}</td>
-            <td class="r"><b>${m ? inr(m) : '—'}</b></td><td class="r">${lpa(m)}</td>${[e.offer_letter, e.appointment_letter, e.documents].map(docPill).join('')}<td><code>${esc(e.username)}</code><div class="sub">password: Edit → नया बनाएं</div></td><td><button class="btn ghost sm" data-ed="${e.id}">Edit</button></td></tr>` }).join('') || '<tr><td colspan="10" class="empty">No one here</td></tr>'}</tbody></table></div>`
+            <td class="r"><b>${m ? inr(m) : '—'}</b></td><td class="r">${lpa(m)}</td>${[e.offer_letter, e.appointment_letter, e.documents].map(docPill).join('')}
+            <td><code>${esc(e.username)}</code><div class="sub">${e.login_mode === 'phone' ? 'password: mobile no.' : e.login_mode === 'locked' ? 'login not set' : 'custom password'}</div></td><td><button class="btn ghost sm" data-ed="${e.id}">Edit</button></td></tr>` }).join('') || '<tr><td colspan="16" class="empty">No one here</td></tr>'}</tbody></table></div>`
+      fitToScreen(B.querySelector('#tw'))
       const qi = B.querySelector('#q'); qi.oninput = () => { const val = qi.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
       B.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => go('team', null, { sub: 'dir', st: b.dataset.st })))
-      B.querySelector('#add').onclick = () => go('staff')
-      B.querySelector('#xl').onclick = () => downloadCsv('jdac-team-directory.csv', [['Emp ID', 'Name', 'Status', 'Designation', 'Joining date', 'Exit date', 'Contact', 'Time', 'City', 'Salary in hand (monthly)', 'Yearly (₹)', 'LPA', 'Offer letter', 'Appointment', 'Documents', 'Tracker username'],
-        ...L.map((e) => [empId(e), e.name, e.status || (e.active ? 'Active' : 'Inactive'), e.designation, e.joining_date, e.exit_date, e.phone, `${hm(e.shift_start)} to ${hm(e.shift_end)}`, e.work_location, salOf(e) || '', salOf(e) * 12 || '', salOf(e) ? (salOf(e) * 12 / 100000).toFixed(2) : '', e.offer_letter, e.appointment_letter, e.documents, e.username])])
-      B.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = () => editPerson(E.employees.find((x) => x.id === Number(b.dataset.ed)), salOf, () => go('team', null, { sub: 'dir', st }))))
+      B.querySelector('#add').onclick = () => editPerson(null, all, again)
+      B.querySelector('#up').onclick = () => B.querySelector('#upf').click()
+      B.querySelector('#upf').onchange = (ev) => uploadSheet(ev.target.files?.[0], again)
+      B.querySelector('#xl').onclick = () => downloadCsv('jdac-team-directory.csv', [['Emp ID', 'Name', 'Status', 'Designation', 'Joining date', 'Exit date', 'Contact', 'Time', 'City', 'Salary in hand', 'LPA', 'Offer letter', 'Appointment', 'Documents', 'Tracker User ID'],
+        ...L.map((e) => [e.emp_code, e.name, stOf(e), e.designation, e.joining_date, e.exit_date, e.phone, `${hm(e.shift_start)} to ${hm(e.shift_end)}`, e.work_location, salOf(e) || '', salOf(e) ? (salOf(e) * 12 / 100000).toFixed(2) : '', e.offer_letter, e.appointment_letter, e.documents, e.username])])
+      B.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = () => editPerson(all.find((x) => x.id === Number(b.dataset.ed)), all, again)))
     }
-    paint(q0)
+    paint(opts.q || '')
   } catch (e) { B.innerHTML = err(e) }
 }
-function editPerson(e, salOf, again) {
+// Upload an Excel / CSV sheet → matched by Emp ID (or name) and updated
+const COLMAP = [[/emp.?id|emp.?code|^id$/i, 'emp_code'], [/^name/i, 'name'], [/status/i, 'status'], [/design/i, 'designation'], [/depart/i, 'department'], [/join/i, 'joining_date'], [/exit|leav/i, 'exit_date'],
+  [/contact|mobile|phone/i, 'phone'], [/time|shift/i, 'time'], [/city|location/i, 'work_location'], [/salary/i, 'salary_inhand'], [/offer/i, 'offer_letter'], [/appoint/i, 'appointment_letter'], [/document/i, 'documents']]
+const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
+function toIso(x) {
+  if (x == null || x === '') return ''
+  if (typeof x === 'number') return new Date(Math.round((x - 25569) * 864e5)).toISOString().slice(0, 10) // Excel date number
+  const s = String(x).trim(); let m
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+  if ((m = s.match(/^(\d{1,2})[-/ ]([A-Za-z]{3})[A-Za-z]*[-/ ,]+(\d{2,4})$/))) return `${m[3].length === 2 ? '20' + m[3] : m[3]}-${String(MON[m[2].toLowerCase()]).padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  if ((m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/))) return `${m[3].length === 2 ? '20' + m[3] : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  return ''
+}
+const to24 = (t) => { const m = String(t).trim().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i); if (!m) return ''; let h = Number(m[1]); if (/pm/i.test(m[3] || '') && h < 12) h += 12; if (/am/i.test(m[3] || '') && h === 12) h = 0; return `${String(h).padStart(2, '0')}:${m[2] || '00'}` }
+async function uploadSheet(file, again) {
+  if (!file) return
+  try {
+    toast('Reading the sheet…')
+    const XLSX = await import(/* @vite-ignore */ 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs')
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' })
+    const hi = raw.findIndex((r) => r.some((c) => /name/i.test(String(c))) && r.some((c) => /status|design|contact|join/i.test(String(c))))
+    if (hi < 0) return toast('Could not find the header row (Name, Status, Designation…)', 'bad')
+    const cols = raw[hi].map((h) => (COLMAP.find(([re]) => re.test(String(h).trim())) || [])[1] || null)
+    const rows = raw.slice(hi + 1).map((r) => { const o = {}; cols.forEach((k, i) => { if (k && !(k in o)) o[k] = r[i] }); return o }).filter((o) => String(o.name || o.emp_code || '').trim())
+      .map((o) => { const [a, b] = String(o.time || '').split(/\s*(?:to|-|–)\s*/i); return { ...o, joining_date: toIso(o.joining_date), exit_date: toIso(o.exit_date), shift_start: a ? to24(a) : '', shift_end: b ? to24(b) : '', phone: String(o.phone || '').replace(/\D/g, '').replace(/^91(\d{10})$/, '$1'), salary_inhand: o.salary_inhand } })
+    if (!rows.length) return toast('No people found in the sheet', 'bad')
+    if (!confirmBox(`Update the directory from "${file.name}"? ${rows.length} rows found. People are matched by Emp ID (or name); new IDs are added as new people.`)) return
+    const r = await post('/api/admin/directory-import', { rows })
+    toast(`Done — ${r.updated} updated, ${r.added} added${r.skipped.length ? ` · ${r.skipped.length} need a check` : ''}`)
+    if (r.skipped.length) setTimeout(() => toast(r.skipped.slice(0, 3).join(' · '), 'bad'), 1800)
+    again()
+  } catch (e) { toast('Could not read the sheet: ' + e.message, 'bad') }
+}
+const confirmBox = (msg) => window.confirm(msg)
+function editPerson(e, all, again) {
+  const isNew = !e
+  e = e || { name: '', status: 'Active', emp_code: nextCode(all), shift_start: '10:00', shift_end: '19:00', work_location: 'Pune HO', team: 'Office' }
   const el = document.createElement('div'); el.className = 'tm-modal'
-  const s2 = e.status || (e.active ? 'Active' : 'Inactive')
-  el.innerHTML = `<div class="tm-bg"></div><form class="tm-card cform"><div class="row" style="grid-column:1/-1"><h2 class="h3">${esc(e.name)}</h2><span class="sp"></span><button type="button" class="link" data-x>Close</button></div>
+  const sel = (n, l) => `<label class="f">${l}<select class="inp" name="${n}">${['', 'Allotted', 'Pending', 'Submitted', 'Not required'].map((x) => `<option ${x === (e[n] || '') ? 'selected' : ''} value="${x}">${x || '—'}</option>`).join('')}</select></label>`
+  el.innerHTML = `<div class="tm-bg"></div><form class="tm-card cform"><div class="row" style="grid-column:1/-1"><h2 class="h3">${isNew ? 'Add person' : esc(e.name)}</h2><span class="sp"></span><button type="button" class="link" data-x>Close</button></div>
+    <label class="f">Emp ID<input class="inp" name="emp_code" value="${esc(e.emp_code || '')}" placeholder="JD1028" required></label>
     <label class="f">Name<input class="inp" name="name" value="${esc(e.name)}" required></label>
-    <label class="f">Status<select class="inp" name="status">${['Active', 'Inactive', 'Dropped'].map((x) => `<option ${x === s2 ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    <label class="f">Status<select class="inp" name="status">${['Active', 'Inactive', 'Dropped'].map((x) => `<option ${x === stOf(e) ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
     <label class="f">Designation<input class="inp" name="designation" value="${esc(e.designation || '')}"></label>
-    <label class="f">Contact (10 digit)<input class="inp" name="phone" value="${esc(e.phone || '')}" inputmode="numeric"></label>
+    <label class="f">Department<input class="inp" name="department" value="${esc(e.department || '')}" list="deps" placeholder="Customer Success"></label>
+    <datalist id="deps">${[...new Set(all.map((x) => x.department).filter(Boolean))].map((d) => `<option>${esc(d)}</option>`).join('')}</datalist>
+    <label class="f">Team<select class="inp" name="team">${['Office', 'Warehouse'].map((x) => `<option ${x === e.team ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    <label class="f">Contact (10 digit)<input class="inp" name="phone" value="${esc(e.phone || '')}" inputmode="numeric" maxlength="10"></label>
     <label class="f">Joining date<input class="inp" type="date" name="joining_date" value="${esc(e.joining_date || '')}"></label>
     <label class="f">Exit date<input class="inp" type="date" name="exit_date" value="${esc(e.exit_date || '')}"></label>
-    <label class="f">Salary in hand (₹ / month)<input class="inp" type="number" min="0" name="salary_inhand" value="${salOf(e) || ''}"></label>
-    <label class="f">Emp ID<input class="inp" name="emp_code" value="${esc(e.emp_code || '')}" placeholder="JD1028"></label>
+    <label class="f">Salary in hand (₹ / month)<input class="inp" type="number" min="0" name="salary_inhand" value="${e.salary_inhand || ''}"></label>
     <label class="f">City<select class="inp" name="work_location">${['Pune HO', 'Pune Camp', 'Goa', 'Mumbai', 'Delhi'].map((x) => `<option ${x === e.work_location ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
     <label class="f">Time from<input class="inp" type="time" name="shift_start" value="${esc(e.shift_start || '10:00')}"></label>
     <label class="f">Time to<input class="inp" type="time" name="shift_end" value="${esc(e.shift_end || '19:00')}"></label>
-    <label class="f">Offer letter<select class="inp" name="offer_letter">${['', 'Allotted', 'Pending', 'Submitted', 'Not required'].map((x) => `<option ${x === (e.offer_letter || '') ? 'selected' : ''} value="${x}">${x || '—'}</option>`).join('')}</select></label>
-    <label class="f">Appointment letter<select class="inp" name="appointment_letter">${['', 'Allotted', 'Pending', 'Submitted', 'Not required'].map((x) => `<option ${x === (e.appointment_letter || '') ? 'selected' : ''} value="${x}">${x || '—'}</option>`).join('')}</select></label>
-    <label class="f">Documents<select class="inp" name="documents">${['', 'Allotted', 'Pending', 'Submitted', 'Not required'].map((x) => `<option ${x === (e.documents || '') ? 'selected' : ''} value="${x}">${x || '—'}</option>`).join('')}</select></label>
-    <label class="f">Tracker username<input class="inp" name="username" value="${esc(e.username)}"></label>
-    <div class="tm-pw" style="grid-column:1/-1"><b>Tracker password</b><span>पुराना password दिखाया नहीं जा सकता (सुरक्षा के लिए छुपा रहता है). नया बनाकर WhatsApp पर भेजें.</span><button type="button" class="btn ghost sm" id="pw">Make new password</button><code id="pwv" hidden></code></div>
-    <div class="sub" style="grid-column:1/-1">Inactive / Dropped करने पर उसका login बंद हो जाता है और Team list से हट जाता है. पुराना data (attendance आदि) रहता है.</div>
-    <button class="btn pri" style="grid-column:1/-1">Save</button></form>`
+    ${sel('offer_letter', 'Offer letter')}${sel('appointment_letter', 'Appointment letter')}${sel('documents', 'Documents')}
+    <div class="tm-pw" style="grid-column:1/-1"><b>JDAC Tracker login</b>
+      <span>User ID = <b id="uid">${esc(isNew ? e.emp_code : e.username)}</b> · Password = their 10-digit mobile number${!isNew && e.login_mode === 'custom' ? ' (currently a custom password is set)' : ''}</span>
+      ${isNew ? '' : `<div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn ghost sm" id="pwm">Use mobile number as password</button><button type="button" class="btn ghost sm" id="pw">Set a custom password</button></div><code id="pwv" hidden></code>`}</div>
+    <div class="sub" style="grid-column:1/-1">Setting Inactive / Dropped closes their login and removes them from the team list. Old data (attendance etc.) is kept.</div>
+    <button class="btn pri" style="grid-column:1/-1">${isNew ? 'Add person' : 'Save'}</button></form>`
   document.body.appendChild(el)
   const close = () => el.remove()
   el.querySelector('.tm-bg').onclick = close; el.querySelector('[data-x]').onclick = close
-  let newPw = null
-  el.querySelector('#pw').onclick = () => { const c = 'abcdefghjkmnpqrstuvwxyz23456789'; newPw = 'JDAC' + Array.from(crypto.getRandomValues(new Uint8Array(5)), (x) => c[x % c.length]).join(''); const p = el.querySelector('#pwv'); p.hidden = false; p.textContent = `${e.username} / ${newPw} — Save दबाने पर लागू होगा` }
+  if (isNew) el.querySelector('[name=emp_code]').oninput = (ev) => (el.querySelector('#uid').textContent = ev.target.value.toUpperCase())
+  let newPw = null, usePhone = false
+  el.querySelector('#pwm')?.addEventListener('click', () => { usePhone = true; newPw = null; const p = el.querySelector('#pwv'); p.hidden = false; p.textContent = `User ID ${e.emp_code || e.username} · password = mobile number — applies when you press Save` })
+  el.querySelector('#pw')?.addEventListener('click', () => { const c = 'abcdefghjkmnpqrstuvwxyz23456789'; newPw = 'JDAC' + Array.from(crypto.getRandomValues(new Uint8Array(5)), (x) => c[x % c.length]).join(''); usePhone = false; const p = el.querySelector('#pwv'); p.hidden = false; p.textContent = `${e.username} / ${newPw} — applies when you press Save` })
   el.querySelector('form').onsubmit = async (ev) => {
-    ev.preventDefault(); const d = Object.fromEntries(new FormData(ev.target))
-    try { await patch('/api/admin/employees/' + e.id, { ...d, ...(newPw ? { new_password: newPw } : {}) }); if (newPw) { navigator.clipboard?.writeText(`JDAC Tracker login\nUsername: ${d.username}\nPassword: ${newPw}`) } toast(newPw ? 'Saved — login details copied' : 'Saved'); close(); again() } catch (er) { toast(er.message, 'bad') }
+    ev.preventDefault(); const d = Object.fromEntries(new FormData(ev.target)); d.emp_code = d.emp_code.trim().toUpperCase()
+    try {
+      if (isNew) {
+        const r = await post('/api/admin/employees', { ...d, username: d.emp_code })
+        if (d.status !== 'Active') { const n = (await get('/api/admin/employees', { fresh: true })).employees.find((x) => x.username === r.username); if (n) await patch('/api/admin/employees/' + n.id, { status: d.status, exit_date: d.exit_date }) }
+        navigator.clipboard?.writeText(`JDAC Tracker login\nUser ID: ${r.username}\nPassword: your 10-digit mobile number`).catch(() => {})
+        toast(`Added — User ID ${r.username}, password = mobile number (copied)`)
+      } else {
+        // Emp ID change also moves the login User ID when it was the Emp ID
+        const body = { ...d, ...(e.username === e.emp_code && d.emp_code && d.emp_code !== e.emp_code ? { username: d.emp_code } : {}), ...(newPw ? { new_password: newPw } : {}), ...(usePhone ? { password_phone: true } : {}) }
+        await patch('/api/admin/employees/' + e.id, body)
+        if (newPw) navigator.clipboard?.writeText(`JDAC Tracker login\nUser ID: ${body.username || e.username}\nPassword: ${newPw}`).catch(() => {})
+        toast(newPw ? 'Saved — login details copied' : 'Saved')
+      }
+      close(); again()
+    } catch (er) { toast(er.message, 'bad') }
   }
 }
-function orgChart(B, emps, go) {
-  const by = (f) => emps.filter(f)
-  const boss = by((e) => e.role === 'boss'), dev = by((e) => e.role === 'developer'), hrs = by((e) => e.role === 'hr')
-  const hrHead = hrs.filter((e) => !/recruit|assist/i.test(e.designation || '')), hrTeam = hrs.filter((e) => /recruit|assist/i.test(e.designation || ''))
-  const staff = by((e) => e.role === 'employee')
-  const groups = {}; for (const e of staff) { const k = e.team === 'Warehouse' ? 'Warehouse & delivery' : (e.department || e.designation || 'Office team').replace(/\b(executive|associate)\b/i, '').trim() || 'Office team'; (groups[k] = groups[k] || []).push(e) }
-  const node = (e, title, cls = '') => `<div class="oc-n ${cls}"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><b>${esc(e.name)}</b><span>${esc(title || e.designation || '')}</span></div>`
-  B.innerHTML = `<section class="card oc"><div class="oc-tree">
-    <div class="oc-lvl">${boss.map((e) => node(e, 'Director', 'top')).join('') || '<div class="oc-n top"><b>Boss</b><span>Director</span></div>'}</div>
-    <div class="oc-line"></div>
-    <div class="oc-lvl two">
-      <div class="oc-col"><div class="oc-tag">HR</div>${hrHead.map((e) => node(e, e.designation || 'HR Manager')).join('')}${hrTeam.length ? `<div class="oc-sub">${hrTeam.map((e) => node(e, e.designation)).join('')}</div>` : ''}</div>
-      ${dev.length ? `<div class="oc-col"><div class="oc-tag">Tech</div>${dev.map((e) => node(e, e.designation || 'Developer')).join('')}</div>` : ''}
-    </div>
-    <div class="oc-line"></div>
-    <div class="oc-tag big">Team · ${staff.length} people</div>
-    <div class="oc-teams">${Object.entries(groups).sort((a, b) => b[1].length - a[1].length).map(([g, l]) => `<div class="oc-team"><div class="oc-th">${esc(g)} <small>${l.length}</small></div>${l.map((e) => `<div class="oc-p"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(e.designation || '')}</span></div></div>`).join('')}</div>`).join('')}</div>
-  </div></section>`
+// Org chart — premium hierarchy: Director → HR → departments (lead first)
+const DEP_STYLE = { Operations: ['#0EA5E9', 'route'], 'Customer Success': ['#8B5CF6', 'chat'], Marketing: ['#EC4899', 'mega'], Accounts: ['#14B8A6', 'dollar'], 'Delivery team': ['#F59E0B', 'truck'], 'Govaa Bazaar Warehouse': ['#22C55E', 'store'], 'Medical sales': ['#EF4444', 'box'] }
+const LEAD_RE = /manager|incharge|head|lead/i
+function orgChart(B, emps) {
+  const boss = emps.filter((e) => e.role === 'boss')
+  const hrs = emps.filter((e) => e.role === 'hr' || e.department === 'HR').sort((a, b) => (LEAD_RE.test(b.designation || '') ? 1 : 0) - (LEAD_RE.test(a.designation || '') ? 1 : 0))
+  const staff = emps.filter((e) => e.role === 'employee' && e.department !== 'HR')
+  const groups = {}; for (const e of staff) (groups[e.department || (e.team === 'Warehouse' ? 'Delivery team' : 'Office team')] ||= []).push(e)
+  const order = ['Operations', 'Customer Success', 'Marketing', 'Accounts', 'Delivery team', 'Govaa Bazaar Warehouse', 'Medical sales']
+  const deps = Object.entries(groups).sort((a, b) => ((order.indexOf(a[0]) + 1 || 99) - (order.indexOf(b[0]) + 1 || 99)))
+  const av = (e, s = 40) => `<span class="oc-av" style="width:${s}px;height:${s}px;background:${avColor(e.id)}">${esc(initials(e.name))}</span>`
+  B.innerHTML = `<section class="oc2">
+    <div class="oc2-top">${boss.map((e) => `<div class="oc2-boss">${av(e, 58)}<div><b>${esc(e.name)}</b><span>Director</span></div></div>`).join('')}</div>
+    <div class="oc2-stem"></div>
+    <div class="oc2-hr"><div class="oc2-lbl">Human Resources</div><div class="oc2-hrrow">${hrs.map((e, i) => `${i ? '<span class="oc2-arrow">→</span>' : ''}<div class="oc2-card ${i ? '' : 'lead'}">${av(e)}<div><b>${esc(e.name)}</b><span>${esc(e.designation || 'HR')}</span></div></div>`).join('')}</div></div>
+    <div class="oc2-stem"></div>
+    <div class="oc2-lbl c">Departments · ${staff.length} people</div>
+    <div class="oc2-deps">${deps.map(([d, l]) => { const [c, i] = DEP_STYLE[d] || ['#64748B', 'grid']; const lead = l.filter((e) => LEAD_RE.test(e.designation || '')), rest = l.filter((e) => !lead.includes(e))
+      return `<div class="oc2-dep" style="--c:${c}"><div class="oc2-dh"><span class="oc2-di">${ic(i, 18, '#fff')}</span><b>${esc(d)}</b><small>${l.length}</small></div>
+        ${lead.map((e) => `<div class="oc2-p lead">${av(e, 34)}<div><b>${esc(e.name)}</b><span>${esc(e.designation || '')}</span></div><em>Lead</em></div>`).join('')}
+        ${rest.map((e) => `<div class="oc2-p">${av(e, 30)}<div><b>${esc(e.name)}</b><span>${esc(e.designation || '')}</span></div></div>`).join('')}</div>` }).join('')}</div>
+  </section>`
 }
 
 // ═════════════════════════ HR & PAYROLL (pehle SalaryMitra) ═════════════════════════

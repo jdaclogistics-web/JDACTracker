@@ -61,7 +61,7 @@ function bindTaskChecks(v, after) {
 export async function renderTasks(v, go) {
   v.innerHTML = '<div class="skel"></div>'
   const h = await loadMyHome()
-  if (!h) { v.innerHTML = '<div class="err">Internet नहीं है</div>'; return }
+  if (!h) { v.innerHTML = '<div class="err">No internet</div>'; return }
   v.innerHTML = `<section class="card"><div class="row"><h2 class="h3">My tasks</h2><span class="sp"></span><span class="sub">${h.up_next.length} open · ${h.tasks_done} done today</span></div>
     <div class="list">${h.up_next.map((t) => taskRow(t) + (t.notes || t.checklist.length ? `<div class="wk-tn">${t.notes ? esc(t.notes) : ''}${t.checklist.map((c) => `<div>${c.done ? '☑' : '☐'} ${esc(c.title)}</div>`).join('')}</div>` : '')).join('') || '<div class="empty">Nothing pending — enjoy the clear day ✨</div>'}</div></section>`
   bindTaskChecks(v, () => renderTasks(v, go))
@@ -78,7 +78,7 @@ export async function renderDesk(v, go, module, name, deskId) {
   if (module === 'simple') return renderSimple(v, go, deskId, name)
   if (module === 'punch') return renderPunch(v, go)
   if (module !== 'cargo') {
-    v.innerHTML = `<button class="link wk-back" id="back">← Home</button><section class="card"><h2 class="h3">${esc(name || module)}</h2><p class="sub">${module === 'ops-later' ? 'Ops desk (pickup to delivery) Om के panel के साथ आएगा।' : 'यह desk अभी admin panel पर खुलता है। App में जल्द आएगा।'}</p></section>`
+    v.innerHTML = `<button class="link wk-back" id="back">← Home</button><section class="card"><h2 class="h3">${esc(name || module)}</h2><p class="sub">${module === 'ops-later' ? 'Ops desk (pickup to delivery) will come with Om’s panel.' : 'This desk opens in the admin panel for now. Coming to the app soon.'}</p></section>`
     v.querySelector('#back').onclick = () => go('home'); return
   }
   v.innerHTML = '<div class="skel"></div><div class="skel"></div>'
@@ -153,7 +153,7 @@ function orderSheet(lead, reload) {
     el.querySelector('#oa').oninput = mk; el.querySelector('#ov').oninput = mk
     el.querySelector('#of').onsubmit = async (e) => {
       e.preventDefault(); const q = (s) => el.querySelector(s).value
-      try { const r = await post('/api/my/cargo-order', { leadId: lead, customerName: q('#oc'), phone: q('#op'), mode: q('#om'), kg: q('#ok'), amount: q('#oa'), vendorCost: q('#ov'), vendorName: q('#ovn'), pickupAddress: q('#opa'), notes: q('#on') }); toast(r.pending ? 'Sent to admin for approval — Booked में approve के बाद जुड़ेगा' : 'Order booked ✓'); close(); reload() } catch (er) { toast(er.message, 'bad') }
+      try { const r = await post('/api/my/cargo-order', { leadId: lead, customerName: q('#oc'), phone: q('#op'), mode: q('#om'), kg: q('#ok'), amount: q('#oa'), vendorCost: q('#ov'), vendorName: q('#ovn'), pickupAddress: q('#opa'), notes: q('#on') }); toast(r.pending ? 'Sent to admin for approval — will be added to Booked after approval' : 'Order booked ✓'); close(); reload() } catch (er) { toast(er.message, 'bad') }
     }
   })
 }

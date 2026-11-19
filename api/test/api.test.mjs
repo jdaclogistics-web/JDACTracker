@@ -13,6 +13,8 @@ const call = async (method, path, body, token) => {
 let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; console.log('  ✔', m) }
 
 const h = await hashPassword('JDAC1234')
+// real-staff data migrations don't apply to the test fixtures
+for (const k of ['mig_people_v1', 'mig_directory_v1', 'mig_org_v2', 'mig_login_v1']) await DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?)').bind(k, 'test').run()
 await DB.prepare("INSERT INTO employees (username, name, phone, pass_hash, role, team, work_location) VALUES ('rahul','Rahul','9876543210',?, 'employee','Warehouse','Pune Camp'), ('nameera','Nameera','9000000001',?, 'hr','Office','Pune HO'), ('darshan','Darshan',NULL,?, 'developer','Office',NULL)").bind(h, h, h).run()
 
 console.log('Login')
@@ -20,7 +22,7 @@ ok((await call('POST', '/api/login', { username: 'rahul', password: 'wrong' })).
 const L = await call('POST', '/api/login', { username: 'Rahul', password: 'JDAC1234', device_id: 'dev-1' })
 ok(L.status === 200 && L.data.token, 'login with +91 format works')
 const T = L.data.token
-const HR = (await call('POST', '/api/login', { username: 'nameera', password: 'JDAC1234' })).data.token
+const HR = (await call('POST', '/api/login', { phone: '9000000001', password: 'JDAC1234' })).data.token
 const DEV = (await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234' })).data.token
 ok((await call('GET', '/api/admin/today', null, T)).status === 403, 'employee cannot open admin')
 
@@ -75,15 +77,16 @@ ok(ph.status === 200 && Buffer.from(ph.data).toString() === 'fakejpegdata', 'HR 
 
 console.log('Roles')
 ok((await call('POST', '/api/admin/employees', { name: 'X', phone: '9111111111', password: 'abcdef', role: 'boss' }, HR)).status === 403, 'HR cannot create a boss login')
-{ const c = await call('POST', '/api/admin/employees', { name: 'Ashish', phone: '9111111111', password: 'abcdef', team: 'Warehouse' }, HR); ok(c.status === 200 && c.data.username === 'ashish', 'HR creates employee login with auto username ' + c.data.username) }
-ok((await call('POST', '/api/login', { username: 'ashish', password: 'abcdef' })).status === 200, 'new employee logs in with username')
+{ const c = await call('POST', '/api/admin/employees', { name: 'Ashish', phone: '9111111111', password: 'abcdef', team: 'Warehouse' }, HR); ok(c.status === 200 && c.data.username === 'JD1001', 'HR creates employee, User ID = next Employee ID ' + c.data.username) }
+{ const c = await call('POST', '/api/admin/employees', { name: 'Imran', phone: '9222222222' }, HR); ok(c.data.username === 'JD1002' && (await call('POST', '/api/login', { username: 'jd1002', password: '9222222222' })).status === 200, 'no password given → mobile number is the password') }
+ok((await call('POST', '/api/login', { username: 'JD1001', password: 'abcdef' })).status === 200, 'new employee logs in with username')
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'dev-phone-A' })).status === 200, 'developer phone A links')
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'dev-phone-B' })).status === 403, 'developer blocked on another phone')
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'web' })).status === 200, 'developer web panel still works')
-{ const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'ashish2', 'duplicate name gets ashish2') }
+{ const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'JD1003', 'Employee IDs keep counting up') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
-ok(sys.status === 200 && sys.data.employees >= 5, 'developer system panel works')
+ok(sys.status === 200 && sys.data.employees === 6, 'developer system panel works')
 
 console.log('End day + correction')
 const E1 = await call('POST', '/api/day/end', { lat: 18.56, lng: 73.86, client_id: 'end1' }, T)
@@ -107,7 +110,7 @@ await runCron(env)
 ok((await DB.prepare("SELECT auto_closed FROM day_sessions WHERE date='2026-01-01'").first()).auto_closed === 1, 'forgotten old day auto-closed')
 console.log('24h auto-logout')
 {
-  const L = await call('POST', '/api/login', { username: 'ashish', password: 'abcdef', device_id: 'ashish-phone' })
+  const L = await call('POST', '/api/login', { username: 'JD1001', password: 'abcdef', device_id: 'ashish-phone' })
   ok(L.status === 200, 'warehouse staff logs in from phone')
   const aid = L.data.me.id
   ok(!!(await DB.prepare('SELECT app_login_at FROM employees WHERE id = ?').bind(aid).first()).app_login_at, 'phone login time saved')
@@ -118,7 +121,7 @@ console.log('24h auto-logout')
   ok((await call('GET', '/api/me', null, L.data.token)).status === 401, 'auto logged out after 24 hours')
   const al = await call('GET', '/api/admin/alerts', null, HR)
   ok(al.data.alerts.some((a) => a.kind === 'auto_logout' && a.emp_id === aid), 'HR dashboard gets auto-logout alert')
-  await call('POST', '/api/login', { username: 'ashish', password: 'abcdef', device_id: 'ashish-phone' })
+  await call('POST', '/api/login', { username: 'JD1001', password: 'abcdef', device_id: 'ashish-phone' })
   ok(!(await call('GET', '/api/admin/alerts', null, HR)).data.alerts.some((a) => a.kind === 'auto_logout' && a.emp_id === aid), 'alert clears when they log in again')
 }
 console.log(`\nALL ${pass} CHECKS PASSED`)

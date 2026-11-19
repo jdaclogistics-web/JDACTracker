@@ -11,9 +11,9 @@ import { flush, queueSize, onQueueChange, lastSyncAt } from './queue.js'
 const app = document.getElementById('app')
 let me = null, session = null, tab = 'home', tabArg = null, tabArg2 = null, tabArg3 = null, busy = false, tick = null, pending = 0
 
-window.addEventListener('jdac-logout', () => { stopTracking(); me = null; renderLogin('Session खत्म — दोबारा login करें') })
+window.addEventListener('jdac-logout', () => { stopTracking(); me = null; renderLogin('Session ended — please log in again') })
 onQueueChange((n) => { pending = n; refreshSync() })
-onTracking((s) => { if (s?.error === 'denied') toast('Location permission बंद है — Settings में Allow करें', 'bad'); refreshSync() })
+onTracking((s) => { if (s?.error === 'denied') toast('Location permission is off — Allow it in Settings', 'bad'); refreshSync() })
 window.addEventListener('online', () => flush())
 
 // ── Boot ────────────────────────────────────────────────────────────────
@@ -48,15 +48,15 @@ function renderLogin(err = '', user = '') {
     <div class="lbrand"><img src="./jdac-logo.png" alt="JDAC — The Logistics Aggregator"><span>Team App</span></div>
     <div class="lcard">
       <h1>Login</h1>
-      <p class="lead">Attendance, tracking और leave — एक ही app में.</p>
+      <p class="lead">Attendance, tracking and leave — in one app.</p>
       <form id="lf" class="lform">
-        <label class="lf">Username<span class="lin">${ic('user', 18)}<input id="lm" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="जैसे rahul" value="${esc(user)}" required></span></label>
+        <label class="lf">User ID (Employee ID)<span class="lin">${ic('user', 18)}<input id="lm" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="e.g. JD1001" value="${esc(user)}" required></span></label>
         <label class="lf">Password<span class="lin">${ic('lock', 18)}<input id="lp" type="password" autocomplete="current-password" placeholder="JDAC####" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 20)}</button></span></label>
         ${err ? `<div class="err">${esc(err)}</div>` : ''}
         <button class="btn lbtn" id="lb">Login</button>
       </form>
     </div>
-    <div class="lnote">${ic('shield', 18, '#FDBA74')}<span>Password office से WhatsApp पर मिलेगा. आपकी team (warehouse / office) admin set करता है — app उसी हिसाब से खुलेगा.</span></div>
+    <div class="lnote">${ic('shield', 18, '#FDBA74')}<span>Your User ID is your Employee ID (e.g. JD1001) and your password is your 10-digit mobile number.</span></div>
   </div>
   </div>`
   askPermissionsOnce()
@@ -89,7 +89,7 @@ function nav() {
 }
 let outArmed = 0
 async function headerLogout() {
-  if (session && !session.end_at && Date.now() - outArmed > 4000) { outArmed = Date.now(); toast('Day अभी खुला है — logout से tracking रुकेगी. Logout के लिए दोबारा दबाएँ', 'bad'); return }
+  if (session && !session.end_at && Date.now() - outArmed > 4000) { outArmed = Date.now(); toast('Your day is still open — logging out stops tracking. Tap again to log out', 'bad'); return }
   await flush(); await stopTracking(); logout(); me = null; session = null; renderLogin()
 }
 function go(t, a = null, b = null, c = null) {
@@ -172,7 +172,7 @@ function renderHome(v) {
     <button class="btn ghost">Save</button></form></details>
   <button class="btn dark" id="end" style="font-size:16px;padding:17px">${ic('stop', 16, '#fff')} End day</button>
   <p class="sub" style="text-align:center;margin:0">End day takes a selfie${wh ? ' and stops tracking' : ''}.</p>
-  ${!isNative() && wh ? `<p class="sub" style="text-align:center;margin:0;color:#B45309">Web version: GPS सिर्फ तब चलेगा जब यह page खुला और screen on हो. पूरे दिन tracking के लिए Android app (APK) use करें.</p>` : ''}
+  ${!isNative() && wh ? `<p class="sub" style="text-align:center;margin:0;color:#B45309">Web version: GPS works only while this page is open and the screen is on. Use the Android app (APK) for full-day tracking.</p>` : ''}
   ${isNative() && wh ? `<button class="link" id="perm" style="align-self:center">${ic('battery', 16)} Tracking stops? Fix battery / location settings</button>` : ''}`
   v.querySelector('#end').onclick = doEnd
   v.querySelector('#perm')?.addEventListener('click', openAppSettings)
@@ -299,17 +299,17 @@ function renderMe(v) {
   <section class="card"><div class="row"><div class="av" style="background:#F59E0B;color:#0B1220;border-radius:50%;width:52px;height:52px;font-size:17px">${esc(initials(me.name))}</div>
     <div class="nm"><b style="font-size:17px">${esc(me.name)}</b><span>${esc(me.designation || '')}</span><span>${esc(me.team)} team${me.work_location ? ' · ' + esc(me.work_location) : ''}</span></div></div>
     <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>@${esc(me.username || '')}</b><span>${me.phone ? '+91 ' + esc(me.phone) : 'username'}</span></div></div></section>
-  ${admin ? `<a class="card tip" href="./admin.html" style="text-decoration:none;color:inherit">${ic('shield', 20, '#6D28D9')}<div><b>Open admin panel</b><p>Dashboard, companies, team, tasks — इसी app में.</p></div></a>` : ''}
+  ${admin ? `<a class="card tip" href="./admin.html" style="text-decoration:none;color:inherit">${ic('shield', 20, '#6D28D9')}<div><b>Open admin panel</b><p>Dashboard, companies, team, tasks — in this app.</p></div></a>` : ''}
   <section class="card" style="padding:4px 14px"><div class="list">
     <button class="li" id="gol">${ic('cal', 20, '#3A4558')}<div class="nm"><b>Leave</b><span>Apply for leave, see status</span></div>${ic('chev', 18, '#9AA4B5')}</button>
     <button class="li" id="gom">${ic('clock', 20, '#3A4558')}<div class="nm"><b>My attendance</b><span>Month calendar</span></div>${ic('chev', 18, '#9AA4B5')}</button>
     ${isNative() ? `<button class="li" id="perm">${ic('battery', 20, '#3A4558')}<div class="nm"><b>Tracking settings</b><span>Battery unrestricted, location always</span></div>${ic('chev', 18, '#9AA4B5')}</button>` : ''}
     <button class="li" id="sync2">${ic('refresh', 20, '#3A4558')}<div class="nm"><b>Send pending data now</b><span>${pending} GPS points waiting${lastSyncAt ? ' · last sent ' + agoText(lastSyncAt) : ''}</span></div></button>
-    <a class="li" href="https://github.com/jdaclogistics-web/JDACTracker/releases/download/apk-latest/JDAC-Tracker.apk" target="_blank" rel="noopener">${ic('download', 20, '#3A4558')}<div class="nm"><b>Download latest APK</b><span>नया phone या app दोबारा install करना हो तो</span></div></a>
-    ${isNative() ? `<button class="li" id="upd">${ic('download', 20, '#3A4558')}<div class="nm"><b>Check for app update</b><span>नया version हो तो अपने आप लग जाएगा</span></div></button>` : ''}
+    <a class="li" href="https://github.com/jdaclogistics-web/JDACTracker/releases/download/apk-latest/JDAC-Tracker.apk" target="_blank" rel="noopener">${ic('download', 20, '#3A4558')}<div class="nm"><b>Download latest APK</b><span>For a new phone or reinstalling the app</span></div></a>
+    ${isNative() ? `<button class="li" id="upd">${ic('download', 20, '#3A4558')}<div class="nm"><b>Check for app update</b><span>A new version installs automatically</span></div></button>` : ''}
     <button class="li" id="out" style="color:#B91C1C">${ic('logout', 20, '#B91C1C')}<div class="nm"><b>Logout</b></div></button></div></section>
   <p class="sub" style="text-align:center">JDAC Tracker · build ${esc(BUILD)}</p>`
-  v.querySelector('#upd')?.addEventListener('click', async () => { toast('Update check हो रहा है…'); await liveUpdate({ onStatus: (t) => toast(t) }); toast('App latest है') })
+  v.querySelector('#upd')?.addEventListener('click', async () => { toast('Checking for update…'); await liveUpdate({ onStatus: (t) => toast(t) }); toast('App is up to date') })
   v.querySelector('#perm')?.addEventListener('click', openAppSettings)
   v.querySelector('#gol').onclick = () => go('leave'); v.querySelector('#gom').onclick = () => go('month')
   v.querySelector('#sync2').onclick = async () => { await flush(); toast(pending ? `${pending} still waiting — no internet?` : 'All data sent'); render() }

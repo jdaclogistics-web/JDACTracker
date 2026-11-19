@@ -16,9 +16,9 @@ export async function liveUpdate({ onStatus } = {}) {
     if (!v?.version || !v?.url || v.version === BUILD) return
     const cur = await Updater.current().catch(() => null)
     if (cur?.bundle?.version === v.version) return
-    onStatus?.('नया update आ रहा है…')
+    onStatus?.('New update downloading…')
     const bundle = await Updater.download({ url: v.url, version: v.version })
-    onStatus?.('Update हो गया — app फिर से खुल रहा है')
+    onStatus?.('Updated — app is restarting')
     await Updater.set(bundle) // app reload होकर नया code चलेगा
   } catch (e) { console.warn('liveUpdate', e) }
 }

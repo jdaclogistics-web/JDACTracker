@@ -23,7 +23,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (x) => ({ '&': '&amp;', '<
 fetch(API + '/api/public/form/' + encodeURIComponent(slug)).then((r) => r.json().then((j) => [r.ok, j])).then(([ok, f]) => {
   if (!ok) { c.innerHTML = '<div class="e">' + esc(f.error || 'Form not found') + '</div>'; return }
   document.title = f.title + ' — JDAC'
-  c.innerHTML = `<h1>${esc(f.icon)} ${esc(f.title)}</h1><p class="s">JDAC team आपसे जल्दी संपर्क करेगी।</p><form id="f">${f.fields.map((q) => `<label>${esc(q.label)}${q.required ? ' *' : ''}${
+  c.innerHTML = `<h1>${esc(f.icon)} ${esc(f.title)}</h1><p class="s">The JDAC team will contact you soon.</p><form id="f">${f.fields.map((q) => `<label>${esc(q.label)}${q.required ? ' *' : ''}${
     q.type === 'choice' ? `<select name="${q.key}" ${q.required ? 'required' : ''}><option value="">—</option>${(q.options || []).map((o) => `<option>${esc(o)}</option>`).join('')}</select>`
     : q.type === 'long' ? `<textarea name="${q.key}" ${q.required ? 'required' : ''}></textarea>`
     : `<input name="${q.key}" type="${{ phone: 'tel', number: 'number', date: 'date' }[q.type] || 'text'}" ${q.type === 'phone' ? 'pattern="[0-9+ ]{10,14}" inputmode="tel"' : ''} ${q.required ? 'required' : ''}>`}</label>`).join('')}<div id="er"></div><button id="b">Submit</button></form>`
@@ -32,9 +32,9 @@ fetch(API + '/api/public/form/' + encodeURIComponent(slug)).then((r) => r.json()
     try {
       const r = await fetch(API + '/api/public/form/' + encodeURIComponent(slug), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(new FormData(e.target))) })
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Error')
-      c.innerHTML = '<div class="ok">✅<b>Thank you!</b>आपका जवाब JDAC तक पहुँच गया है।</div>'
+      c.innerHTML = '<div class="ok">✅<b>Thank you!</b>Your response has reached JDAC.</div>'
     } catch (er) { document.getElementById('er').innerHTML = '<div class="e">' + esc(er.message) + '</div>'; b.disabled = false; b.textContent = 'Submit' }
   }
-}).catch(() => { c.innerHTML = '<div class="e">Internet check करें और दोबारा खोलें</div>' })
+}).catch(() => { c.innerHTML = '<div class="e">Check your internet and open again</div>' })
 </script>
 </body></html>
