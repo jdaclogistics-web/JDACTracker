@@ -630,9 +630,18 @@ on('GET', '/api/cc/chat/file/:id', async (env, req, url, p) => {
 })
 
 // ── Employee: home, desks, Cargo Sales desk ─────────────────────────────────
-on('GET', '/api/my/home', async (env, req) => {
+on('GET', '/api/my/home', async (env, req, url) => {
   const me = await authUser(env, req)
-  return json(myHome(await loadAll(env), me, istDate(), await myDesks(env, me.id)))
+  // Boss / HR / Developer can open any employee's page (read-only) with ?as=<id>; employees only ever see their own
+  let who = me
+  const as = url.searchParams.get('as')
+  if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
+  const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id))
+  if (who !== me) {
+    const day = await env.DB.prepare('SELECT start_at, end_at, total_km FROM day_sessions WHERE emp_id = ? AND date = ?').bind(who.id, istDate()).first()
+    Object.assign(out, { viewing: true, emp_id: who.id, emp_code: who.emp_code || null, team: who.team, phone: who.phone || null, joining_date: who.joining_date || null, day: day || null })
+  }
+  return json(out)
 })
 on('GET', '/api/my/cargo', async (env, req, url) => {
   const me = await authUser(env, req)

@@ -3,7 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import './web.css'
 import L from 'leaflet'
 import { auth, login, logout, get, post, patch, photoUrl } from '@shared/api.js'
-import { viewCC, viewCompany, viewDesk, viewTasks2, viewChat, viewDesks, viewDeskAdmin, viewPeople2, viewAccounts, viewCommand, viewTeam, viewHR } from './cc.js'
+import { viewCC, viewCompany, viewDesk, viewTasks2, viewChat, viewDesks, viewDeskAdmin, viewPeople2, viewAccounts, viewCommand, viewTeam, viewHR, viewEmpPage } from './cc.js'
 import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials, avColor, downloadCsv, minsAgo } from '@shared/util.js'
 
 const app = document.getElementById('app')
@@ -57,7 +57,7 @@ function render() {
   cleanup()
   document.body.classList.add('cmdmode')
   const tabs = ROLE_TABS[me.role]
-  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
+  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old', 'emppage'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
   app.innerHTML = `
   <header class="bar"><img class="blogo" src="./jdac-logo.png" alt="JDAC">
@@ -95,6 +95,7 @@ function render() {
   if (tab === 'people' && boss) return viewPeople2(v, go, X, tabOpts)
   if (tab === 'tasks') return viewTasks2(v, go, tabOpts)
   if (tab === 'chat') return viewChat(v)
+  if (tab === 'emppage') return viewEmpPage(v, tabArg)
   if (tab === 'attendance') return viewAttendance(v, tabOpts, X)
   if (tab === 'dailyreports') return viewDailyReports(v, tabOpts)
   if (tab === 'old' && tabArg) return viewOld(v, tabArg)
@@ -464,7 +465,9 @@ async function viewAttSheet(v, mode = 'month', anchor = istDate()) {
       return ds > today ? ['', 'f'] : ['A', 'a']
     }
     // active staff + anyone who worked in this period (so past months still show people who later left)
-    const emps = reps[0].employees.filter((e) => e.role !== 'developer' && (e.active || dates.some((d) => S.has(`${e.id}|${d}`) || M.has(`${e.id}|${d}`))))
+    // only people who had joined by the end of this period and had not left before it started
+    const worked = (e) => dates.some((d) => S.has(`${e.id}|${d}`) || M.has(`${e.id}|${d}`))
+    const emps = reps[0].employees.filter((e) => e.role !== 'developer' && (e.active || worked(e)) && (worked(e) || ((!e.joining_date || e.joining_date <= dates[dates.length - 1]) && (!e.exit_date || e.exit_date >= dates[0]))))
       .sort((a, b) => String(a.emp_code || 'ZZ').localeCompare(String(b.emp_code || 'ZZ')) || a.name.localeCompare(b.name))
     const presentOn = (ds) => emps.filter((e) => ['p', 'l'].includes(cell(e, ds)[1])).length
     const title = mode === 'week' ? `${fmtDate(dates[0])} – ${fmtDate(dates[6])}` : new Date(dates[0] + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
@@ -472,12 +475,12 @@ async function viewAttSheet(v, mode = 'month', anchor = istDate()) {
     v.innerHTML = `<div class="at-bar"><button class="btn ghost sm" id="prv">‹ Prev</button><b style="font-size:15px">${title}</b><button class="btn ghost sm" id="nxt">Next ›</button>
         ${mode === 'week' ? `<input class="inp" type="date" id="pick" value="${dates[0]}" style="max-width:170px">` : `<input class="inp" type="month" id="pick" value="${dates[0].slice(0, 7)}" style="max-width:170px">`}
         <span class="sp"></span><button class="btn ghost sm" id="csv">${ic('download', 16)} Excel (CSV)</button></div>
-      <div class="at-wrap" id="aw"><section class="card sheet"><table${mode === 'week' ? ' style="width:100%"' : ''}><thead><tr><th>Employee</th>${dates.map((d) => { const w = WD[new Date(d + 'T12:00:00Z').getUTCDay()]; return `<th class="${d === today ? 'td' : ''}">${mode === 'week' ? `${w}<br>${Number(d.slice(8))}` : `${Number(d.slice(8))}<br><small>${w[0]}</small>`}</th>` }).join('')}<th>P</th><th>A</th><th>KM</th></tr></thead><tbody>
+      <div class="at-wrap" id="aw"><section class="card sheet ${mode === 'month' ? 'mon' : ''}"><table style="width:100%"><thead><tr><th>Employee</th>${dates.map((d) => { const w = WD[new Date(d + 'T12:00:00Z').getUTCDay()]; return `<th class="${d === today ? 'td' : ''}">${mode === 'week' ? `${w}<br>${Number(d.slice(8))}` : `${Number(d.slice(8))}<br><small>${w[0]}</small>`}</th>` }).join('')}<th>P</th><th>A</th><th>KM</th></tr></thead><tbody>
       ${emps.map((e) => { let p = 0, a = 0, km = 0; const tds = dates.map((ds) => { const [t, c] = cell(e, ds); if (c === 'p' || c === 'l') p++; if (c === 'h') p += 0.5; if (c === 'a') a++; const s = S.get(`${e.id}|${ds}`); if (s) km += s.total_km || 0; return `<td class="${c} ed" data-e="${e.id}" data-d="${ds}" title="Click to change">${t}</td>` }).join(''); return `<tr><th><span class="tm ${e.team === 'Warehouse' ? 'w' : 'o'}">${e.team[0]}</span>${esc(e.name)}</th>${tds}<td><b>${p}</b></td><td>${a}</td><td>${Math.round(km)}</td></tr>` }).join('')}
       <tr class="tot"><th>Present</th>${dates.map((d) => `<td><b>${d > today ? '' : presentOn(d)}</b></td>`).join('')}<td></td><td></td><td></td></tr>
       </tbody></table></section></div><p class="sub" style="margin:0">P present · L late · ½ half day · V leave · A absent · – week off (Sunday) · <b>Click any box to change attendance</b></p>
       <div id="mk" class="mkpop" hidden></div>`
-    const aw = v.querySelector('#aw'); aw.style.maxHeight = Math.max(260, innerHeight - aw.getBoundingClientRect().top - 110) + 'px'
+    const aw = v.querySelector('#aw'); const fitAw = () => { if (!aw.isConnected) return removeEventListener('resize', fitAw); const nav = document.querySelector('.nav'); const navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().height : 0; aw.style.maxHeight = Math.max(240, innerHeight - aw.getBoundingClientRect().top - navH - 40) + 'px' }; fitAw(); addEventListener('resize', fitAw)
     const re = (a) => viewAttSheet(v, mode, a)
     v.querySelector('#prv').onclick = () => re(step(-1)); v.querySelector('#nxt').onclick = () => re(step(1))
     v.querySelector('#pick').onchange = (e) => e.target.value && re(mode === 'week' ? e.target.value : e.target.value + '-01')

@@ -88,7 +88,7 @@ export function viewCC(v, go, X) {
       const t = await T, s = t.summary
       const notIn = t.rows.filter((r) => r.status === 'absent').map((r) => r.emp.name.split(' ')[0])
       el.innerHTML = `<section class="card" style="cursor:pointer" id="ppl"><div class="row"><h2 class="h3">People today</h2><span class="sp"></span><span class="sub">all companies</span></div>
-        <div class="cc-chips"><span class="pill g">In ${s.in - s.late}</span><span class="pill o">Late ${s.late}</span><span class="pill r">Not in ${s.absent}</span><span class="pill b">Leave ${s.leave}</span></div>
+        <div class="cc-chips"><span class="pill g">In ${s.in - s.late}</span><span class="pill o">Late ${s.late}</span><span class="pill r">Not started ${s.absent}</span><span class="pill b">Leave ${s.leave}</span></div>
         ${notIn.length ? `<div class="sub" style="margin-top:6px">${esc(notIn.slice(0, 3).join(', '))}${notIn.length > 3 ? ` +${notIn.length - 3}` : ''} not checked in</div>` : ''}</section>`
       el.querySelector('#ppl').onclick = () => go('people')
     })
@@ -417,12 +417,13 @@ export async function viewPeople2(v, go, X, opts = {}, tabName = 'people') {
       const chip = (r) => {
         if (r.status === 'leave') return '<span class="pill b">Leave</span>'
         if (r.status === 'off') return '<span class="pill n">Week off</span>'
-        if (!r.session) return r.status === 'marked' ? `<span class="pill n">${esc(r.mark?.status || 'Marked')}</span>` : '<span class="pill r">Not in</span>'
+        if (!r.session) return r.status === 'marked' ? `<span class="pill n">${esc(r.mark?.status || 'Marked')}</span>` : '<span class="pill r">Not started</span>'
         if (r.session.end_at) return `<span class="pill b">Out ${fmtTime(r.session.end_at)}</span>`
         if (r.emp.team === 'Warehouse' && r.status === 'on_duty' && r.session.total_km > 0.3) return '<span class="pill g">On route</span>'
         return r.late ? `<span class="pill o">Late ${fmtTime(r.session.start_at)}</span>` : `<span class="pill g">In ${fmtTime(r.session.start_at)}</span>`
       }
-      B.innerHTML = `<div class="cc-strip"><div class="g"><b>${s.in - s.late}</b><span>In</span></div><div class="o"><b>${s.late}</b><span>Late</span></div><div class="r"><b>${s.absent}</b><span>Not in</span></div><div class="b"><b>${s.leave}</b><span>Leave</span></div></div>
+      const nIn = t.rows.filter((r) => r.session && !r.session.end_at).length, nOut = t.rows.filter((r) => r.session?.end_at).length, nLate = t.rows.filter((r) => r.session && r.late).length
+      B.innerHTML = `<div class="cc-strip five"><div class="g"><b>${nIn}</b><span>In</span></div><div class="o"><b>${nLate}</b><span>Late</span></div><div class="n"><b>${nOut}</b><span>Out</span></div><div class="r"><b>${s.absent}</b><span>Not started</span></div><div class="b"><b>${s.leave}</b><span>Leave</span></div></div>
         <section class="card" style="padding:4px 14px"><div class="list">${t.rows.map((r) => `<button class="li cc-pl" data-emp="${r.emp.id}"><div class="av" style="background:${avColor(r.emp.id)};color:#fff;border-radius:50%;width:34px;height:34px">${esc(initials(r.emp.name))}</div>
           <div class="nm"><b>${esc(r.emp.name)} <span class="sub" style="display:inline">· ${esc(mainDesk[r.emp.id] || r.emp.designation || r.emp.team)}</span></b></div>${chip(r)}</button>`).join('')}</div></section>
         <div class="cc-note y">Tap a name: check-in photo, route, today's report, desks</div>`
@@ -487,18 +488,32 @@ export async function viewTasks2(v, go, opts = {}) {
     const nameOf = (t) => { const e = E.employees.find((x) => String(x.legacy_id) === String(t.assigneeId) || String(x.id) === String(t.assignee_emp)); return e ? e.name : '—' }
     const today = istDate()
     if (sub === 'projects') {
-      if (opts.project) {
-        const p = projects.find((x) => String(x._rid) === String(opts.project) || String(x.id) === String(opts.project))
-        const ts = tasks.filter((t) => String(t.projectId) === String(p?.id ?? opts.project)).sort((a, b) => isDone(a) - isDone(b) || String(a.due || '9').localeCompare(String(b.due || '9')))
-        B.innerHTML = `<button class="link cc-back" id="pb">← Projects</button><section class="card"><div class="row"><h2 class="h3">${esc(p?.name || 'Tasks')}</h2><span class="sp"></span><span class="sub">${ts.filter((t) => !isDone(t)).length} open</span></div>
-          <div class="list">${ts.map((t) => taskLine(t, nameOf, today)).join('') || '<div class="empty">No tasks</div>'}</div></section>${addTaskForm(E.employees, projects, p?.id)}`
-        B.querySelector('#pb').onclick = () => re({ project: null })
-      } else {
-        B.innerHTML = `<section class="card"><div class="list">${projects.filter((p) => !/archiv|closed/i.test(String(p.status))).map((p) => { const ts = tasks.filter((t) => String(t.projectId) === String(p.id)); return `<button class="li" data-p="${esc(p.id)}"><span class="cc-di" style="background:#FEF3C7">📁</span><div class="nm"><b>${esc(p.name)}</b><span>${ts.filter((t) => !isDone(t)).length} open · ${ts.length} total</span></div>${ic('chev', 18, '#9AA4B5')}</button>` }).join('')}
-          <button class="li" data-p="none"><span class="cc-di">🗒️</span><div class="nm"><b>Other tasks</b><span>${tasks.filter((t) => !t.projectId && !isDone(t)).length} open</span></div>${ic('chev', 18, '#9AA4B5')}</button></div></section>${addTaskForm(E.employees, projects)}`
-        B.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => re({ project: b.dataset.p === 'none' ? 'null' : b.dataset.p })))
-      }
-      bindTasks(B, E.employees, () => re({}))
+      const live = projects.filter((p) => !/archiv|closed/i.test(String(p.status)))
+      const sel = opts.project || 'all'
+      const inSel = (t) => sel === 'all' || (sel === 'null' ? !t.projectId : String(t.projectId) === String(sel))
+      const ts = tasks.filter(inSel)
+      const tagLib = {}; for (const t of tasks) for (const g of (Array.isArray(t.tags) ? t.tags : [])) if (g && g.n) tagLib[g.n] = g.c
+      const projName = (id) => live.find((p) => String(p.id) === String(id))?.name || ''
+      const cnt = (f) => tasks.filter((t) => f(t) && !isDone(t)).length
+      B.innerHTML = `<div class="kb-chips">${[['all', 'All projects', cnt(() => true)], ...live.map((p) => [String(p.id), p.name, cnt((t) => String(t.projectId) === String(p.id))]), ['null', 'Other tasks', cnt((t) => !t.projectId)]]
+          .map(([k, l, n]) => `<button class="${sel === k ? 'on' : ''}" data-p="${esc(k)}">${esc(l)}<small>${n}</small></button>`).join('')}</div>
+        <div class="kb-bar"><span class="sub" style="margin:0">Drag a card to move it · tap a card to edit, add tags or change stage</span><span class="sp"></span><button class="btn dark sm" id="kadd">+ Add task</button></div>
+        <div class="kb" id="kb">${KB_COLS.map(([k, l, c]) => { const L = ts.filter((t) => stageOf(t) === k).sort((a, b) => String(a.due || '9').localeCompare(String(b.due || '9')))
+          return `<div class="kb-col" data-col="${k}" style="--c:${c}"><div class="kb-h"><i></i><b>${l}</b><small>${L.length}</small></div><div class="kb-list">${(k === 'Completed' ? L.slice(-40).reverse() : L).map((t) => kbCard(t, nameOf, today, sel === 'all' ? projName(t.projectId) : '')).join('') || '<div class="kb-empty">Drop here</div>'}</div></div>` }).join('')}</div>`
+      const kb = B.querySelector('#kb'); kb.style.maxHeight = Math.max(320, innerHeight - kb.getBoundingClientRect().top - (document.querySelector('.nav')?.getBoundingClientRect().height || 0) - 14) + 'px'
+      B.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => re({ project: b.dataset.p })))
+      const setStage = async (rid, st) => { try { await patch('/api/legacy/rows', { tbl: 'tasks', id: rid, data: { status: st, ...(st === 'Completed' ? { closedAt: nowIso() } : {}) } }); re({}) } catch (e) { toast(e.message, 'bad') } }
+      B.querySelectorAll('.kb-card').forEach((c) => {
+        c.ondragstart = (e) => { e.dataTransfer.setData('text/plain', c.dataset.rid); c.classList.add('drag') }
+        c.ondragend = () => c.classList.remove('drag')
+        c.onclick = () => taskEditor(tasks.find((t) => String(t._rid) === c.dataset.rid), E.employees, live, tagLib, () => re({}))
+      })
+      B.querySelectorAll('.kb-col').forEach((col) => {
+        col.ondragover = (e) => { e.preventDefault(); col.classList.add('over') }
+        col.ondragleave = () => col.classList.remove('over')
+        col.ondrop = (e) => { e.preventDefault(); col.classList.remove('over'); const rid = e.dataTransfer.getData('text/plain'); const t = tasks.find((x) => String(x._rid) === rid); if (t && stageOf(t) !== col.dataset.col) setStage(rid, col.dataset.col) }
+      })
+      B.querySelector('#kadd').onclick = () => taskEditor(null, E.employees, live, tagLib, () => re({}), sel !== 'all' && sel !== 'null' ? sel : '')
     } else if (sub === 'calendar') {
       const month = opts.month || today.slice(0, 7)
       const first = new Date(month + '-01T00:00:00Z'), days = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate(), pad = (first.getUTCDay() + 6) % 7
@@ -507,7 +522,12 @@ export async function viewTasks2(v, go, opts = {}) {
       const prev = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() - 1, 1)).toISOString().slice(0, 7), next = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 1)).toISOString().slice(0, 7)
       B.innerHTML = `<section class="card"><div class="row"><button class="link" data-m="${prev}">‹</button><h2 class="h3 sp" style="text-align:center">${fmtDate(month + '-01', { month: 'long', year: 'numeric' })}</h2><button class="link" data-m="${next}">›</button></div>
         <div class="cc-cal">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => `<i>${d}</i>`).join('')}${'<span></span>'.repeat(pad)}${Array.from({ length: days }, (_, i) => { const d = `${month}-${String(i + 1).padStart(2, '0')}`, n = (due[d] || []).length; return `<button data-day="${d}" class="${d === sel ? 'on' : ''} ${d === today ? 'td' : ''}">${i + 1}${n ? `<em>${n}</em>` : ''}</button>` }).join('')}</div></section>
-        <section class="card"><h2 class="h3">${fmtDate(sel)}</h2><div class="list">${(due[sel] || []).map((t) => taskLine(t, nameOf, today)).join('') || '<div class="empty">No tasks due</div>'}</div></section>`
+        <section class="card"><h2 class="h3">${fmtDate(sel)}</h2><div class="list">${(due[sel] || []).map((t) => taskLine(t, nameOf, today)).join('') || '<div class="empty">No tasks due</div>'}</div></section>
+        ${(() => { const inM = tasks.filter((t) => String(t.createdAt || '').startsWith(month) || String(t.due || '').startsWith(month)); const pj = projects.filter((p) => String(p.createdAt || '').startsWith(month))
+          const groups = {}; for (const t of inM) (groups[projects.find((p) => String(p.id) === String(t.projectId))?.name || 'Other tasks'] ||= []).push(t)
+          return `<section class="card"><div class="row"><h2 class="h3">All work this month</h2><span class="sp"></span><span class="sub" style="margin:0">${inM.length} tasks · ${inM.filter((t) => stageOf(t) === 'Completed').length} completed${pj.length ? ` · ${pj.length} new projects` : ''}</span></div>
+            ${pj.length ? `<div class="kb-tags" style="margin:8px 0">${pj.map((p) => `<span class="kb-tag" style="--t:#4338CA">📁 ${esc(p.name)}</span>`).join('')}</div>` : ''}
+            ${Object.entries(groups).map(([g, L]) => `<div class="dr-day">${esc(g)} · ${L.length}</div><div class="list">${L.map((t) => taskLine(t, nameOf, today)).join('')}</div>`).join('') || '<div class="empty">No tasks this month</div>'}</section>` })()}`
       B.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => re({ month: b.dataset.m, day: b.dataset.m + '-01' })))
       B.querySelectorAll('[data-day]').forEach((b) => (b.onclick = () => re({ month, day: b.dataset.day })))
       bindTasks(B, E.employees, () => re({}))
@@ -519,6 +539,49 @@ export async function viewTasks2(v, go, opts = {}) {
       B.innerHTML = `<section class="card"><div class="cc-tl">${items.map((x) => `<div><i></i><b>${esc(x.task || 'Task')}</b><span>${esc(x.text)}${x.who ? ' · ' + esc(x.who) : ''} · ${esc(x.at.slice(0, 16))}</span></div>`).join('') || '<div class="empty">Nothing yet</div>'}</div></section>`
     }
   } catch (e) { B.innerHTML = err(e) }
+}
+// ── Kanban: To do · Planning · Stuck · Completed ──
+const KB_COLS = [['To do', 'To do', '#64748B'], ['Planning', 'Planning', '#2563EB'], ['Stuck', 'Stuck', '#DC2626'], ['Completed', 'Completed', '#16A34A']]
+const stageOf = (t) => { const s = String(t.status || ''); if (/done|closed|complete/i.test(s)) return 'Completed'; if (/stuck/i.test(s)) return 'Stuck'; if (/plan|progress/i.test(s)) return 'Planning'; return 'To do' }
+const TAG_COLORS = ['#2563EB', '#16A34A', '#DC2626', '#F59E0B', '#8B5CF6', '#EC4899', '#0D9488', '#EA580C', '#475569', '#0EA5E9']
+const tagHtml = (g) => `<span class="kb-tag" style="--t:${esc(g.c || '#475569')}">${esc(g.n)}</span>`
+const nowIso = () => new Date().toISOString()
+const kbCard = (t, nameOf, today, proj) => { const od = stageOf(t) !== 'Completed' && t.due && String(t.due).slice(0, 10) < today; const who = nameOf(t)
+  return `<div class="kb-card" draggable="true" data-rid="${esc(t._rid)}">${(Array.isArray(t.tags) && t.tags.length) ? `<div class="kb-tags">${t.tags.map(tagHtml).join('')}</div>` : ''}<b>${esc(t.title)}</b>
+    <div class="kb-meta">${who !== '—' ? `<span class="kb-av" style="background:${avColor(who.length)}">${esc(initials(who))}</span>${esc(who.split(' ')[0])}` : ''}${t.due ? `<span class="${od ? 'od' : ''}">📅 ${fmtDate(String(t.due).slice(0, 10), { day: 'numeric', month: 'short' })}</span>` : ''}${/high/i.test(t.priority || '') ? '<span class="hi">High</span>' : ''}</div>
+    ${proj ? `<div class="kb-proj">${esc(proj)}</div>` : ''}</div>` }
+function taskEditor(t, emps, projects, tagLib, again, pid = '') {
+  const isNew = !t; t = t || { title: '', status: 'To do', projectId: pid, due: istDate(), priority: 'Normal', tags: [] }
+  let tags = (Array.isArray(t.tags) ? t.tags : []).map((g) => ({ ...g }))
+  const assignee = emps.find((e) => String(e.legacy_id) === String(t.assigneeId) || String(e.id) === String(t.assignee_emp))
+  const el = document.createElement('div'); el.className = 'tm-modal'
+  el.innerHTML = `<div class="tm-bg"></div><form class="tm-card cform"><div class="row" style="grid-column:1/-1"><h2 class="h3">${isNew ? 'New task' : 'Edit task'}</h2><span class="sp"></span><button type="button" class="link" data-x>Close</button></div>
+    <label class="f" style="grid-column:1/-1">Title<input class="inp" name="title" value="${esc(t.title)}" required maxlength="120"></label>
+    <label class="f">Stage<select class="inp" name="status">${KB_COLS.map(([k]) => `<option ${stageOf(t) === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+    <label class="f">Assign to<select class="inp" name="emp"><option value="">—</option>${emps.filter((e) => e.active).map((e) => `<option value="${e.id}" ${assignee?.id === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label>
+    <label class="f">Project<select class="inp" name="projectId"><option value="">—</option>${projects.map((p) => `<option value="${esc(p.id)}" ${String(p.id) === String(t.projectId) ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <label class="f">Due<input class="inp" type="date" name="due" value="${esc(String(t.due || '').slice(0, 10))}"></label>
+    <label class="f">Priority<select class="inp" name="priority">${['Normal', 'High', 'Low'].map((x) => `<option ${x === t.priority ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    <label class="f">Notes<input class="inp" name="notes" value="${esc(t.notes || '')}"></label>
+    <div style="grid-column:1/-1" class="kb-tagbox"><b>Tags</b><div id="tg"></div>
+      <div class="kb-newtag"><input class="inp" id="tn" placeholder="New tag — e.g. CSE, GovaaBazaar, Urgent" maxlength="24" list="taglib"><datalist id="taglib">${Object.keys(tagLib).map((n) => `<option>${esc(n)}</option>`).join('')}</datalist>
+        <div class="kb-sw">${TAG_COLORS.map((c, i) => `<button type="button" data-c="${c}" class="${i ? '' : 'on'}" style="background:${c}"></button>`).join('')}<label class="kb-custom" title="Custom colour"><input type="color" id="tc" value="#2563EB">🎨</label></div>
+        <button type="button" class="btn ghost sm" id="ta">Add tag</button></div></div>
+    <button class="btn pri" style="grid-column:1/-1">${isNew ? 'Add task' : 'Save'}</button></form>`
+  document.body.appendChild(el)
+  const close = () => el.remove(); el.querySelector('.tm-bg').onclick = close; el.querySelector('[data-x]').onclick = close
+  let color = TAG_COLORS[0]
+  const paintTags = () => { el.querySelector('#tg').innerHTML = tags.map((g, i) => `<span class="kb-tag" style="--t:${esc(g.c)}">${esc(g.n)}<button type="button" data-rm="${i}">×</button></span>`).join('') || '<span class="sub" style="margin:0">No tags yet</span>'; el.querySelectorAll('[data-rm]').forEach((b) => (b.onclick = () => { tags.splice(Number(b.dataset.rm), 1); paintTags() })) }
+  paintTags()
+  el.querySelectorAll('[data-c]').forEach((b) => (b.onclick = () => { color = b.dataset.c; el.querySelectorAll('[data-c]').forEach((x) => x.classList.toggle('on', x === b)) }))
+  el.querySelector('#tc').oninput = (e) => { color = e.target.value; el.querySelectorAll('[data-c]').forEach((x) => x.classList.remove('on')) }
+  el.querySelector('#tn').oninput = (e) => { if (tagLib[e.target.value]) color = tagLib[e.target.value] }
+  el.querySelector('#ta').onclick = () => { const n = el.querySelector('#tn').value.trim(); if (!n) return; if (!tags.some((g) => g.n.toLowerCase() === n.toLowerCase())) tags.push({ n, c: color }); el.querySelector('#tn').value = ''; paintTags() }
+  el.querySelector('form').onsubmit = async (ev) => {
+    ev.preventDefault(); const d = Object.fromEntries(new FormData(ev.target)); const emp = emps.find((x) => String(x.id) === d.emp)
+    const data = { title: d.title, status: d.status, assigneeId: emp?.legacy_id ?? null, assignee_emp: emp?.id ?? null, projectId: d.projectId ? Number(d.projectId) || d.projectId : null, due: d.due, priority: d.priority, notes: d.notes, tags, ...(d.status === 'Completed' && stageOf(t) !== 'Completed' ? { closedAt: nowIso() } : {}) }
+    try { if (isNew) await post('/api/legacy/rows', { tbl: 'tasks', data: { ...data, type: 'One-time' } }); else await patch('/api/legacy/rows', { tbl: 'tasks', id: t._rid, data }); toast(isNew ? 'Task added' : 'Saved'); close(); again() } catch (er) { toast(er.message, 'bad') }
+  }
 }
 const taskLine = (t, nameOf, today) => { const done = /done|closed|complete/i.test(String(t.status)); const od = !done && t.due && String(t.due).slice(0, 10) < today
   return `<div class="li"><button class="ck ${done ? 'on' : ''}" data-done="${esc(t._rid)}" data-v="${done ? 0 : 1}" aria-label="Done">${done ? '✓' : ''}</button><div class="nm"><b style="${done ? 'text-decoration:line-through;color:#94A3B8' : ''}">${esc(t.title)}</b><span>${esc(nameOf(t))} · ${t.due ? 'due ' + fmtDate(String(t.due).slice(0, 10)) : 'no due date'}${t.repeat && t.repeat !== 'None' ? ' · 🔁 ' + esc(t.repeat) : ''}${t.priority ? ' · ' + esc(t.priority) : ''}</span></div>${od ? '<span class="pill r">overdue</span>' : ''}</div>` }
@@ -544,7 +607,7 @@ async function formsView(B, re, opts, all) {
     const { answers } = await get(`/api/forms/${f.id}/answers`)
     const link = PUBLIC_BASE + f.slug
     B.innerHTML = `<button class="link cc-back" id="fb">← Forms</button><div class="cc-top"><b>${esc(f.icon)} ${esc(f.title)}</b><span class="sp"></span><button class="cc-sw2 ${f.status === 'live' ? 'on' : ''}" id="st">${f.status === 'live' ? 'Live' : 'Draft'}</button></div>
-      <section class="card cc-kv"><div><span>Answers go to</span><b>${f.project_name ? 'Project: ' + esc(f.project_name) : '—'}</b></div><div><span>Each answer becomes</span><b>${{ lead: 'New lead', task: 'New task', entry: 'Entry' }[f.becomes]}</b></div></section>
+      <section class="card cc-kv"><div><span>Project</span><b>${f.project_name ? esc(f.project_name) : '—'}</b></div><div><span>Each answer becomes a new</span><b>${{ lead: 'Lead', task: 'Task', entry: 'Entry' }[f.becomes]}</b></div></section>
       <section class="card"><h2 class="h3">Public link</h2><code class="cc-link">${esc(link)}</code><div class="two" style="margin-top:10px"><button class="btn dark sm" id="cp" style="width:100%">Copy link</button><a class="btn pri sm" style="width:100%" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(f.title + ' — ' + link)}">Share on WhatsApp</a></div></section>
       <section class="card"><div class="row"><h2 class="h3">Latest answers</h2><span class="sp"></span><span class="sub">${answers.length}</span></div><div class="list">${answers.map((a) => `<div class="li"><div class="nm"><b>${esc(Object.values(a.data).filter(Boolean).slice(0, 3).join(' · '))}</b><span>${esc(String(a.created_at).slice(0, 16).replace('T', ' '))}${a.result ? ' · → ' + esc(a.result.split(':')[0]) : ''}</span></div></div>`).join('') || '<div class="empty">No answers yet</div>'}</div></section>`
     B.querySelector('#fb').onclick = () => re({ form: null })
@@ -557,9 +620,9 @@ async function formsView(B, re, opts, all) {
     const qs = [{ label: 'Your name', type: 'text', required: true }, { label: 'Phone', type: 'phone', required: true }]
     const paint = () => {
       B.innerHTML = `<button class="link cc-back" id="fb">← Forms</button><form id="nf" class="stack">
-        <section class="card cform"><label class="f">Form name<input class="inp" id="t" required placeholder="e.g. Pickup request"></label><label class="f">Icon<input class="inp" id="ic" value="📝" maxlength="4"></label>
-          <label class="f">Answers go to project<select class="inp" id="pj"><option value="">—</option>${projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>
-          <label class="f">Each answer becomes<select class="inp" id="bc"><option value="lead">New lead</option><option value="task">New task</option><option value="entry">Entry (just saved)</option></select></label></section>
+        <section class="card cform"><label class="f">Form name<input class="inp" id="t" required placeholder="e.g. Pickup request"></label>
+          <label class="f">Which project are the answers for?<select class="inp" id="pj"><option value="">—</option>${projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>
+          <label class="f">Each answer becomes a new<select class="inp" id="bc"><option value="lead">Lead</option><option value="task">Task</option><option value="entry">Entry (just saved)</option></select></label></section>
         <section class="card"><h2 class="h3">Questions</h2><div class="stack" style="margin-top:8px">${qs.map((q, i) => `<div class="cc-fr"><span>${i + 1}</span><input class="inp" data-l="${i}" value="${esc(q.label)}" placeholder="Question"><select class="inp" data-t="${i}">${['text', 'phone', 'number', 'date', 'choice', 'long'].map((t) => `<option ${q.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
           ${q.type === 'choice' ? `<input class="inp" data-o="${i}" value="${esc(q.options || '')}" placeholder="A / B / C">` : ''}<label class="chk"><input type="checkbox" data-r="${i}" ${q.required ? 'checked' : ''}>req</label><button type="button" class="link" data-x="${i}">✕</button></div>`).join('')}</div>
           <button type="button" class="btn ghost sm" id="aq" style="margin-top:8px">+ Add question</button></section>
@@ -571,13 +634,13 @@ async function formsView(B, re, opts, all) {
       B.querySelectorAll('[data-x]').forEach((b) => (b.onclick = () => { sync(); qs.splice(Number(b.dataset.x), 1); paint() }))
       B.querySelector('#nf').onsubmit = async (e) => {
         e.preventDefault(); sync(); const pj = B.querySelector('#pj')
-        try { await post('/api/forms', { title: B.querySelector('#t').value, icon: B.querySelector('#ic').value, project_id: pj.value, project_name: pj.value ? pj.selectedOptions[0].textContent : '', becomes: B.querySelector('#bc').value, fields: qs }); toast('Form live — link ready'); re({ newform: false }) } catch (er) { toast(er.message, 'bad') }
+        try { await post('/api/forms', { title: B.querySelector('#t').value, icon: '📝', project_id: pj.value, project_name: pj.value ? pj.selectedOptions[0].textContent : '', becomes: B.querySelector('#bc').value, fields: qs }); toast('Form live — link ready'); re({ newform: false }) } catch (er) { toast(er.message, 'bad') }
       }
     }
     return paint()
   }
   B.innerHTML = `<div class="cc-note">Forms are for people outside the company — share the public link. Internal work uses Desks.</div>
-    <div class="list cc-desks">${forms.map((f) => `<button class="cc-desk" data-f="${f.id}"><span class="cc-di">${esc(f.icon)}</span><div class="nm"><b>${esc(f.title)}</b><span>→ ${f.project_name ? 'project ' + esc(f.project_name) : 'no project'} · ${f.answers} answers</span></div><span class="pill ${f.status === 'live' ? 'g' : 'n'}">${f.status === 'live' ? 'Live' : 'Draft'}</span></button>`).join('') || '<section class="card empty">No forms yet</section>'}</div>
+    <div class="list cc-desks">${forms.map((f) => `<button class="cc-desk" data-f="${f.id}"><span class="cc-di">${esc(f.icon)}</span><div class="nm"><b>${esc(f.title)}</b><span>${f.project_name ? esc(f.project_name) : 'No project'} · ${f.answers} answers</span></div><span class="pill ${f.status === 'live' ? 'g' : 'n'}">${f.status === 'live' ? 'Live' : 'Draft'}</span></button>`).join('') || '<section class="card empty">No forms yet</section>'}</div>
     <button class="cc-dash" id="nf">+ New form</button>`
   B.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => re({ form: Number(b.dataset.f) })))
   B.querySelector('#nf').onclick = () => re({ newform: true })
@@ -626,7 +689,7 @@ export function viewCommand(v, go, role = 'boss') {
   v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : hr ? (ccState.company = b.dataset.co, saveState(), go('desks')) : go('company', b.dataset.co))))
   v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'insights' ? go('accounts', null, { sub: 'summary' }) : go(t, tbl || null) }))
   prefetch('/api/admin/employees', '/api/desks', '/api/admin/report?month=' + istDate().slice(0, 7))
-  get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not in` }).catch(() => {})
+  get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not started` }).catch(() => {})
 }
 
 // ═════════════════════════ TEAM (Directory sheet + Org chart) ═════════════════════════
@@ -664,14 +727,14 @@ export async function viewTeam(v, go, X, opts = {}) {
           <div class="chips">${['Active', 'Inactive', 'Dropped', 'All'].map((x) => `<button class="chip ${st === x ? 'on' : ''}" data-st="${x}">${x} <small>${all.filter((e) => x === 'All' || stOf(e) === x).length}</small></button>`).join('')}</div>
           <span class="sp"></span><button class="btn ghost sm" id="up">⬆ Upload sheet</button><input type="file" id="upf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="xl">⬇ Excel</button><button class="btn dark sm" id="add">+ Add person</button></div>
         <div class="tm-sum"><span><b>${L.length}</b> people</span><span>Monthly salary <b>${inr(tot)}</b></span><span>Yearly <b>${inrL(tot * 12)}</b></span></div>
-        <div class="tm-wrap" id="tw"><table class="tds"><thead><tr><th>Emp ID</th><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="num">Salary in hand</th><th class="num">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th></th></tr></thead><tbody>
+        <div class="tm-wrap" id="tw"><table class="tds"><thead><tr><th>Emp ID</th><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="num">Salary in hand</th><th class="num">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th>View · Edit</th></tr></thead><tbody>
         ${L.map((e) => { const m = salOf(e)
           return `<tr><td><b class="tds-id">${esc(e.emp_code || '—')}</b></td><td><div class="tm-n"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(e.department || e.team)}</span></div></div></td>
             <td><span class="pill ${STATUS_K[stOf(e)]}">${stOf(e)}</span></td><td>${esc(e.designation || '—')}</td>
             <td>${e.joining_date ? fmtDate(e.joining_date) : '—'}</td><td>${e.exit_date ? fmtDate(e.exit_date) : '—'}</td><td>${e.phone ? '+91 ' + esc(e.phone) : '—'}</td>
             <td>${esc(hm(e.shift_start))} – ${esc(hm(e.shift_end))}</td><td>${esc(e.work_location || '—')}</td>
             <td class="num"><b>${m ? inr(m) : '—'}</b></td><td class="num">${lpa(m)}</td>${[e.offer_letter, e.appointment_letter, e.documents].map(docPill).join('')}
-            <td><code>${esc(e.username)}</code><div class="sub">${e.login_mode === 'phone' ? 'password: mobile no.' : e.login_mode === 'locked' ? 'login not set' : 'custom password'}</div></td><td><button class="btn ghost sm" data-ed="${e.id}">Edit</button></td></tr>` }).join('') || '<tr><td colspan="16" class="empty">No one here</td></tr>'}</tbody></table></div>`
+            <td><code>${esc(e.username)}</code><div class="sub">${e.login_mode === 'phone' ? 'password: mobile no.' : e.login_mode === 'locked' ? 'login not set' : 'custom password'}</div></td><td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn ghost sm" data-vw="${e.id}" title="View ${esc(e.name)}'s page" aria-label="View page">👁</button><button class="btn ghost sm" data-ed="${e.id}">Edit</button></div></td></tr>` }).join('') || '<tr><td colspan="16" class="empty">No one here</td></tr>'}</tbody></table></div>`
       fitToScreen(B.querySelector('#tw'))
       const qi = B.querySelector('#q'); qi.oninput = () => { const val = qi.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
       B.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => go('team', null, { sub: 'dir', st: b.dataset.st })))
@@ -681,6 +744,7 @@ export async function viewTeam(v, go, X, opts = {}) {
       B.querySelector('#xl').onclick = () => downloadCsv('jdac-team-directory.csv', [['Emp ID', 'Name', 'Status', 'Designation', 'Joining date', 'Exit date', 'Contact', 'Time', 'City', 'Salary in hand', 'LPA', 'Offer letter', 'Appointment', 'Documents', 'Tracker User ID'],
         ...L.map((e) => [e.emp_code, e.name, stOf(e), e.designation, e.joining_date, e.exit_date, e.phone, `${hm(e.shift_start)} to ${hm(e.shift_end)}`, e.work_location, salOf(e) || '', salOf(e) ? (salOf(e) * 12 / 100000).toFixed(2) : '', e.offer_letter, e.appointment_letter, e.documents, e.username])])
       B.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = () => editPerson(all.find((x) => x.id === Number(b.dataset.ed)), all, again)))
+      B.querySelectorAll('[data-vw]').forEach((b) => (b.onclick = () => go('emppage', Number(b.dataset.vw))))
     }
     paint(opts.q || '')
   } catch (e) { B.innerHTML = err(e) }
@@ -832,4 +896,31 @@ export async function viewHR(v, go, opts = {}) {
     B.innerHTML = `<section class="card"><div class="cc-todo">${[['employee_master', 'Employee master'], ['salary_records', 'Salary records'], ['hr_employees', 'HR billing — candidates'], ['hr_invoices', 'HR billing — invoices'], ['hr_companies', 'HR clients'], ['expense_claims', 'Expense claims'], ['notices', 'Notices']].map(([t, l]) => `<button data-t="${t}"><b>${l}</b><span>open records · add / edit</span></button>`).join('')}</div></section>`
     B.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => go('old', b.dataset.t)))
   } catch (e) { B.innerHTML = err(e) }
+}
+
+// ═════════════════════════ EMPLOYEE PAGE (what the employee sees — read-only for Boss / HR) ═════════════════════════
+export async function viewEmpPage(v, id) {
+  v.innerHTML = skel
+  try {
+    const h = await get('/api/my/home?as=' + id)
+    const hr = Number(new Date(Date.now() + 330 * 60000).getUTCHours())
+    const greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening'
+    const pct = h.tasks_total ? Math.round((h.tasks_done / h.tasks_total) * 100) : 100
+    const dayTxt = !h.day ? 'Not started' : h.day.end_at ? '✅ Closed' : '🟢 Working'
+    const icons = { cargo: '🚚', bookings: '📒', collections: '💰', punch: '🧾', social: '📣', perf: '📈', fmcg: '🛒', 'jupiter-orders': '🏥', 'accounts-entry': '📊', simple: '📝' }
+    v.innerHTML = `<div class="ep-view">
+      <div class="ep-note">👁 Viewing ${esc(h.name)}'s page (read-only) — this is what they see in their app${h.emp_code ? ' · ' + esc(h.emp_code) : ''}</div>
+      <section class="ep-hero"><div class="ep-top"><span class="av">${esc(initials(h.name))}</span><div><b>${greet}, ${esc(h.name.split(' ')[0])} 👋</b><span>${esc(h.designation || h.team || '')}</span></div><span class="ep-st">${dayTxt}</span></div>
+        <div class="ep-prog">🏆 ${pct}%<span class="bar"><i style="width:${pct}%"></i></span>${h.tasks_done}/${h.tasks_total} tasks</div>
+        <div class="ep-stats"><div><b>${h.entries}</b><span>entries</span></div><div><b>${h.day ? (h.day.total_km || 0).toFixed(1) : '0'}</b><span>km</span></div><div><b>${h.overdue}</b><span>overdue</span></div></div></section>
+      <section class="ep-card"><h3>Your work, in order</h3><p class="sub">Start the day, finish tasks, fill your section, then submit.</p>
+        <div class="ep-steps"><div><i>▶️</i>1. Start day</div><div><i>📋</i>2. Tasks</div><div><i>🗂️</i>3. Sections</div><div><i>📅</i>4. Calendar</div></div></section>
+      <section class="ep-card ep-desks"><h3>Desks</h3><p class="sub">Only the work the boss gave appears here.</p>
+        ${h.desks.map((d) => `<div class="ep-row"><span class="ic">${icons[d.module] || d.icon || '🗂️'}</span><div><b>${esc(d.name)}</b><span>${esc(d.description || d.company || '')}</span></div><span class="pill n">Open</span></div>`).join('') || '<div class="empty">No desks switched on</div>'}</section>
+      <section class="ep-card"><div class="row"><h3>⏭ Up next</h3><span class="sp"></span><span class="sub" style="margin:0">${h.up_next.length} open</span></div>
+        ${h.up_next.slice(0, 8).map((t) => `<div class="ep-row"><span class="ic" style="background:#EEF2FF">📌</span><div><b>${esc(t.title)}</b><span>${t.due ? 'due ' + fmtDate(t.due) : 'no due date'}${t.priority ? ' · ' + esc(t.priority) : ''}</span></div>${t.due && t.due < istDate() ? '<span class="pill r">overdue</span>' : ''}</div>`).join('') || '<p class="sub">Nothing pending — enjoy the clear day ✨</p>'}</section>
+      <section class="ep-card"><div class="row"><h3>My projects</h3><span class="sp"></span><span class="sub" style="margin:0">${h.projects.length}</span></div>
+        ${h.projects.map((p) => `<div class="ep-row"><span class="ic">📁</span><div><b>${esc(p.name)}</b><span>${p.open} open tasks · ${p.members} members</span></div></div>`).join('') || '<p class="sub">No projects</p>'}</section>
+    </div>`
+  } catch (e) { v.innerHTML = err(e) }
 }
