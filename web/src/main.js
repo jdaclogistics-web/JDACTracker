@@ -9,9 +9,9 @@ import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials,
 const app = document.getElementById('app')
 let me = null, tab = 'home', tabArg = null, tabOpts = {}, timer = null, map = null
 const ROLE_TABS = {
-  hr: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['people', 'Attendance', 'cal', 1], ['live', 'Live map', 'pin', 1], ['leaves', 'Leave', 'check', 1], ['staff', 'Employees', 'users', 1], ['report', 'Month sheet', 'download', 1], ['old', 'HR records', 'grid', 1]],
-  boss: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Staff & logins', 'lock', 1], ['report', 'Insights', 'download', 1], ['old', 'Records', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
-  developer: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Logins', 'lock', 1], ['report', 'Insights', 'download', 1], ['old', 'Records', 'grid', 1], ['system', 'System', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
+  hr: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['attendance', 'Attendance', 'cal', 1], ['live', 'Live map', 'pin', 1], ['leaves', 'Leave', 'check', 1], ['staff', 'Employees', 'users', 1], ['report', 'Month sheet', 'download', 1], ['old', 'HR records', 'grid', 1]],
+  boss: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Staff & logins', 'lock', 1], ['attendance', 'Attendance', 'cal', 1], ['old', 'Records', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
+  developer: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Logins', 'lock', 1], ['attendance', 'Attendance', 'cal', 1], ['old', 'Records', 'grid', 1], ['system', 'System', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
 }
 const ROLE_LABEL = { hr: 'HR panel', boss: 'Boss panel', developer: 'Developer · main access' }
 const ROLE_ACCENT = { hr: '#7C3AED', boss: '#059669', developer: '#0E7490' }
@@ -57,7 +57,7 @@ function render() {
   cleanup()
   document.body.classList.add('cmdmode')
   const tabs = ROLE_TABS[me.role]
-  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
+  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
   app.innerHTML = `
   <header class="bar"><img class="blogo" src="./jdac-logo.png" alt="JDAC">

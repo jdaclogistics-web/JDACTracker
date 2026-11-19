@@ -664,13 +664,13 @@ export async function viewTeam(v, go, X, opts = {}) {
           <div class="chips">${['Active', 'Inactive', 'Dropped', 'All'].map((x) => `<button class="chip ${st === x ? 'on' : ''}" data-st="${x}">${x} <small>${all.filter((e) => x === 'All' || stOf(e) === x).length}</small></button>`).join('')}</div>
           <span class="sp"></span><button class="btn ghost sm" id="up">⬆ Upload sheet</button><input type="file" id="upf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="xl">⬇ Excel</button><button class="btn dark sm" id="add">+ Add person</button></div>
         <div class="tm-sum"><span><b>${L.length}</b> people</span><span>Monthly salary <b>${inr(tot)}</b></span><span>Yearly <b>${inrL(tot * 12)}</b></span></div>
-        <div class="tm-wrap" id="tw"><table class="tds"><thead><tr><th>Emp ID</th><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="r">Salary in hand</th><th class="r">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th></th></tr></thead><tbody>
+        <div class="tm-wrap" id="tw"><table class="tds"><thead><tr><th>Emp ID</th><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="num">Salary in hand</th><th class="num">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th></th></tr></thead><tbody>
         ${L.map((e) => { const m = salOf(e)
           return `<tr><td><b class="tds-id">${esc(e.emp_code || '—')}</b></td><td><div class="tm-n"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(e.department || e.team)}</span></div></div></td>
             <td><span class="pill ${STATUS_K[stOf(e)]}">${stOf(e)}</span></td><td>${esc(e.designation || '—')}</td>
             <td>${e.joining_date ? fmtDate(e.joining_date) : '—'}</td><td>${e.exit_date ? fmtDate(e.exit_date) : '—'}</td><td>${e.phone ? '+91 ' + esc(e.phone) : '—'}</td>
             <td>${esc(hm(e.shift_start))} – ${esc(hm(e.shift_end))}</td><td>${esc(e.work_location || '—')}</td>
-            <td class="r"><b>${m ? inr(m) : '—'}</b></td><td class="r">${lpa(m)}</td>${[e.offer_letter, e.appointment_letter, e.documents].map(docPill).join('')}
+            <td class="num"><b>${m ? inr(m) : '—'}</b></td><td class="num">${lpa(m)}</td>${[e.offer_letter, e.appointment_letter, e.documents].map(docPill).join('')}
             <td><code>${esc(e.username)}</code><div class="sub">${e.login_mode === 'phone' ? 'password: mobile no.' : e.login_mode === 'locked' ? 'login not set' : 'custom password'}</div></td><td><button class="btn ghost sm" data-ed="${e.id}">Edit</button></td></tr>` }).join('') || '<tr><td colspan="16" class="empty">No one here</td></tr>'}</tbody></table></div>`
       fitToScreen(B.querySelector('#tw'))
       const qi = B.querySelector('#q'); qi.oninput = () => { const val = qi.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
