@@ -146,3 +146,20 @@ body.cmdmode .bar .bt b{font-size:15.5px;letter-spacing:.2px}
 .cm-n{width:28px;height:28px;font-size:13px}.cm-go{width:34px;height:34px}
 body.cmdmode .bar .blogo{height:34px}body.cmdmode .bar .bt b{font-size:14.5px}body.cmdmode .bar .bt span{font-size:11.5px}
 .shell.cmd .main{gap:10px}
+
+/* Desktop view: चौड़ा layout, वही design */
+.cm-grid{display:flex;flex-direction:column;gap:10px}
+@media (min-width:900px){
+  .shell.cmd .main{max-width:1180px;padding:22px 28px calc(110px + env(safe-area-inset-bottom));gap:14px}
+  body.cmdmode .bar{padding-left:max(28px,calc((100vw - 1180px)/2 + 28px));padding-right:max(28px,calc((100vw - 1180px)/2 + 28px))}
+  .cm-hero{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:auto auto 1fr;column-gap:28px;padding:28px 30px}
+  .cm-hero .cm-k{grid-column:1}.cm-hero h1{grid-column:1;font-size:30px}.cm-hero p{grid-column:1;font-size:14.5px}
+  .cm-hero .cm-3{grid-column:2;grid-row:1/4;align-self:center}.cm-3 button{font-size:13.5px;padding:18px 6px}.cm-3 i{width:30px;height:30px;font-size:14px}
+  .cm-h{margin-top:14px}.cm-h b{font-size:18px}.cm-h span{font-size:13.5px}
+  .cm-grid{display:grid;gap:14px}.cm-grid.cos{grid-template-columns:repeat(3,minmax(0,1fr))}.cm-grid.tools{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cm-co{padding:18px 16px}.cm-co .nm b{font-size:17px}.cm-row{padding:16px}
+  .cm-row:hover,.cm-co:hover{border-color:#CBD5E1;box-shadow:0 6px 18px rgba(11,18,32,.08)}
+  .shell.cmd .nav.side{justify-content:center;gap:40px}.shell.cmd .nav.side button{flex:0 0 96px}
+  .cc-top,.cc-tabs{max-width:none}
+}
+@media (min-width:1300px){.cm-grid.cos{grid-template-columns:repeat(5,minmax(0,1fr))}.cm-grid.cos .cm-co{flex-direction:column;align-items:flex-start;position:relative;padding-top:20px}.cm-grid.cos .cm-n{position:absolute;top:14px;right:14px}.cm-grid.cos .cm-go{display:none}}
