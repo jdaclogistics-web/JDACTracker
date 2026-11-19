@@ -955,9 +955,19 @@ async function payrollView(B, go, opts) {
   B.querySelector('#xl').onclick = () => downloadCsv(`JDAC-payroll-${m}.csv`, [['Emp ID', 'Month', 'Name', 'Fixed', 'DA local/day', 'DA Ex HQ/day', 'Up-country DA/day', 'Mobile', 'TA/km', 'Working days', 'Half days', 'Salary', 'Half-day amt', 'DA local days', 'DA local amt', 'DA HQ days', 'DA HQ amt', 'Up-country days', 'Up-country amt', 'Total km', 'KM amt', 'Incentives/expenses', 'Last month salary', 'Advance/deduction', 'Total', 'Paid', 'Pending', 'Note'],
     ...rows.map((r) => { const c = payCalc(r, dim), d = r.data, R = r.rates; return [r.emp_code, monthLabel(m), r.name, R.fixed, R.da_local, R.da_hq, R.da_up, R.mobile, R.ta, d.working_days, d.half_days, Math.round(c.salary), Math.round(c.half), d.da_local_days, Math.round(c.daL), d.da_hq_days, Math.round(c.daH), d.da_up_days, Math.round(c.daU), d.km, Math.round(c.kmAmt), d.incentives, d.last_month || 0, d.advance, c.total, c.paid, c.pending, d.note] })])
 }
-function salarySlip(r, m, dim) {
+const assetData = {}
+async function loadAsset(f) {
+  if (assetData[f]) return assetData[f]
+  try { const b = await (await fetch(new URL('./' + f, location.href).href)).blob(); assetData[f] = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b) }) } catch { assetData[f] = '' }
+  return assetData[f]
+}
+// load logo + signature early so the slip opens with them
+setTimeout(() => { loadAsset('jdac-logo-color.png'); loadAsset('sign-hr.png') }, 3000)
+async function salarySlip(r, m, dim) {
+  const w = window.open('', '_blank') // open first (pop-up blockers), fill after images are ready
+  const [logo, sign] = await Promise.all([loadAsset('jdac-logo-color.png'), loadAsset('sign-hr.png')])
   const c = payCalc(r, dim), d = r.data, R = r.rates
-  const asset = (f) => new URL('./' + f, location.href).href
+  const asset = (f) => (f === 'sign-hr.png' ? sign : logo)
   const n = (x) => Math.round(N0(x)).toLocaleString('en-IN')
   const perDay = N0(R.fixed) / dim
   const mm = new Date(m + '-01T12:00:00Z').toLocaleDateString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(' ', ' / ')
@@ -998,7 +1008,6 @@ function salarySlip(r, m, dim) {
     <div class="sig"><div><small>Checked and authorised by</small><img src="${asset('sign-hr.png')}" alt="Signature"><b>${COMPANY.hr}</b>, ${COMPANY.hrRole}</div><div><small>Employee signature</small><div style="height:62px"></div>${esc(r.name)}</div></div>
     <div class="foot">Computer-generated salary slip · JDAC Tracker</div></div>
   <button class="pbtn" onclick="print()">Download / Print (Save as PDF)</button></body></html>`
-  const w = window.open('', '_blank')
   if (w) { w.document.write(html); w.document.close(); return }
   const el = document.createElement('div'); el.className = 'tm-modal'
   el.innerHTML = `<div class="tm-bg"></div><div class="tm-card" style="max-width:860px;padding:0;overflow:hidden"><iframe style="width:100%;height:82vh;border:0"></iframe></div>`
