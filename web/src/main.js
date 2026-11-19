@@ -466,7 +466,7 @@ async function viewAttSheet(v, mode = 'month', anchor = istDate()) {
     // active staff + anyone who worked in this period (so past months still show people who later left)
     // only people who had joined by the end of this period and had not left before it started
     const worked = (e) => dates.some((d) => S.has(`${e.id}|${d}`) || M.has(`${e.id}|${d}`))
-    const emps = reps[0].employees.filter((e) => e.role !== 'developer' && (e.active || worked(e)) && (worked(e) || ((!e.joining_date || e.joining_date <= dates[dates.length - 1]) && (!e.exit_date || e.exit_date >= dates[0]))))
+    const emps = reps[0].employees.filter((e) => e.role !== 'developer' && e.role !== 'boss' && (e.active || worked(e)) && (worked(e) || ((!e.joining_date || e.joining_date <= dates[dates.length - 1]) && (!e.exit_date || e.exit_date >= dates[0]))))
       .sort((a, b) => String(a.emp_code || 'ZZ').localeCompare(String(b.emp_code || 'ZZ')) || a.name.localeCompare(b.name))
     const presentOn = (ds) => emps.filter((e) => ['p', 'l'].includes(cell(e, ds)[1])).length
     const title = mode === 'week' ? `${fmtDate(dates[0])} – ${fmtDate(dates[6])}` : new Date(dates[0] + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
