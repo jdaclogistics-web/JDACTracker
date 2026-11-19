@@ -67,21 +67,9 @@ export async function renderTasks(v, go) {
   bindTaskChecks(v, () => renderTasks(v, go))
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────
-export async function renderChat(v, project = '') {
-  v.innerHTML = '<div class="skel"></div>'
-  try {
-    const c = await get('/api/cc/chat')
-    const msgs = c.messages.filter((m) => !project || m.projectId === project).slice(0, 80).reverse()
-    v.innerHTML = `<section class="card wk-chat"><div class="row"><h2 class="h3">Chat</h2><span class="sp"></span>
-      <select class="inp" id="cp" style="width:auto;padding:8px">${'<option value="">All</option>' + c.projects.map((p) => `<option value="${esc(p.id)}" ${project === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
-      <div class="wk-msgs" id="msgs">${msgs.map((m) => `<div class="wk-msg ${m.sender === c.me ? 'me' : ''}"><span>${esc(m.sender)} · ${esc(String(m.at).slice(5, 16))}</span><p>${esc(m.body)}</p></div>`).join('') || '<div class="empty">No messages</div>'}</div>
-      <form id="cf" class="row" style="margin-top:10px"><input class="inp" id="cm" placeholder="Message…" autocomplete="off"><button class="btn pri sm">Send</button></form></section>`
-    const box = v.querySelector('#msgs'); box.scrollTop = box.scrollHeight
-    v.querySelector('#cp').onchange = (e) => renderChat(v, e.target.value)
-    v.querySelector('#cf').onsubmit = async (e) => { e.preventDefault(); const t = v.querySelector('#cm').value.trim(); if (!t) return; try { await post('/api/cc/chat', { body: t, projectId: project || null }); renderChat(v, project) } catch (er) { toast(er.message, 'bad') } }
-  } catch (e) { v.innerHTML = `<div class="err">${esc(e.message)}</div>` }
-}
+// ── Chat ──
+import { renderChatUI, injectChatCss } from '@shared/chat.js'
+export function renderChat(v, project = '') { injectChatCss(); return renderChatUI(v, project ? { group: project } : {}) }
 
 // ── Desks ─────────────────────────────────────────────────────────────────
 export async function renderDesk(v, go, module, name, deskId) {

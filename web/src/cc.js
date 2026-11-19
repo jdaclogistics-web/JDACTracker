@@ -1,6 +1,7 @@
 // Boss / Developer screens: Home (8 blocks), Company page (Overview · Desks · Accounts), Desks, People, Tasks, Chat, Accounts
 import { get, post, patch } from '@shared/api.js'
 import { esc, ic, fmtDate, fmtTime, toast, initials, avColor, istDate, downloadCsv } from '@shared/util.js'
+import { renderChatUI, injectChatCss } from '@shared/chat.js'
 
 const inr = (n) => (n ? '₹' + Math.round(n).toLocaleString('en-IN') : '₹0')
 const inrL = (n) => (Math.abs(n) >= 100000 ? '₹' + (n / 100000).toFixed(n >= 1e6 ? 1 : 2).replace(/\.?0+$/, '') + 'L' : inr(n))
@@ -582,22 +583,7 @@ async function formsView(B, re, opts, all) {
 }
 
 // ═════════════════════════ CHAT ═════════════════════════
-let chatProject = ''
-export async function viewChat(v) {
-  v.innerHTML = skel
-  try {
-    const c = await get('/api/cc/chat')
-    const msgs = c.messages.filter((m) => !chatProject || m.projectId === chatProject).slice().reverse()
-    v.innerHTML = `<section class="card cc-chat"><div class="row"><h2 class="h3">Chat</h2><span class="sp"></span>
-      <select class="inp" id="cp" style="width:auto;padding:8px"><option value="">All groups</option>${c.projects.map((p) => `<option value="${p.id}" ${chatProject === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
-      <div class="cc-msgs" id="msgs">${msgs.map((m) => `<div class="cc-msg ${m.sender === c.me ? 'me' : ''}"><span>${esc(m.sender)} · ${esc(m.project)} · ${esc(String(m.at).slice(0, 16))}</span><p>${esc(m.body)}</p></div>`).join('') || '<div class="empty">No messages</div>'}</div>
-      <form id="cf" class="row" style="margin-top:10px"><input class="inp" id="cm" placeholder="Message…" autocomplete="off"><button class="btn pri sm">Send</button></form></section>`
-    const box = v.querySelector('#msgs'); box.scrollTop = box.scrollHeight
-    v.querySelector('#cp').onchange = (e) => { chatProject = e.target.value; viewChat(v) }
-    v.querySelector('#cf').onsubmit = async (e) => { e.preventDefault(); const t = v.querySelector('#cm').value.trim(); if (!t) return; try { await post('/api/cc/chat', { body: t, projectId: chatProject || null }); viewChat(v) } catch (er) { toast(er.message, 'bad') } }
-  } catch (e) { v.innerHTML = err(e) }
-}
-
+export function viewChat(v) { injectChatCss(); return renderChatUI(v) }
 
 // ═════════════════════════ COMMAND CENTRE (old JDAC look — Dashboard) ═════════════════════════
 export const HR_CO = 'JDAC HR & Payroll'
@@ -616,10 +602,15 @@ const CC_TOOLS = [
   ['old:daily_reports', 'Daily reports', 'end-of-day updates', 'doc', '#2563EB'],
   ['report', 'Insights', 'trends & performance', 'bars', '#C026D3'],
 ]
+const MOTIVATION = ['Great companies are built one good day at a time.', 'Small wins every day add up to big results.', 'Lead the team today — they follow your energy.',
+  'Discipline today, growth tomorrow.', 'Every delivery on time builds a brand.', 'Focus on progress, not perfection.', 'Your team is your biggest asset — check in on them.',
+  'Today’s effort is tomorrow’s profit.', 'Make it happen, then make it better.', 'Customers remember how fast and how well we served them.',
+  'Strong teams win together.', 'Plan the work, then work the plan.', 'Start strong, finish stronger.', 'Growth happens outside the comfort zone.']
+const motivation = () => MOTIVATION[Math.floor((Date.now() + 330 * 60000) / 864e5) % MOTIVATION.length]
 export function viewCommand(v, go, role = 'boss') {
   const hr = role === 'hr'
   v.innerHTML = `
-  <section class="cm-hero"><div class="cm-k">JDAC COMMAND CENTRE</div><h1>Start here, then open one company</h1>
+  <section class="cm-hero"><div class="cm-k">JDAC COMMAND CENTRE</div><h1>${esc(motivation())}</h1>
     <p>First see today's team. Second open the company you want to manage. Everything else stays below as a tool.</p>
     <div class="cm-3"><button data-jump="s1"><i>1</i>See team</button><button data-jump="s2"><i>2</i>Open company</button><button data-jump="s3"><i>3</i>Use tools</button></div></section>
   <div class="cm-h" id="s1"><i>1</i><div><b>First step — see today's team</b><span>Who started, who is working, who needs a push</span></div></div>
@@ -636,39 +627,92 @@ export function viewCommand(v, go, role = 'boss') {
   get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not in` }).catch(() => {})
 }
 
-// ═════════════════════════ TEAM (ID, salary, phone, login) ═════════════════════════
+// ═════════════════════════ TEAM (Directory sheet + Org chart) ═════════════════════════
+const STATUS_K = { Active: 'g', Inactive: 'n', Dropped: 'r' }
 export async function viewTeam(v, go, X, opts = {}) {
   const sub = opts.sub || 'dir'
-  if (sub !== 'dir') return viewPeople2(v, go, X, opts, 'team')
+  if (sub === 'today' || sub === 'leave') return viewPeople2(v, go, X, opts, 'team')
   v.innerHTML = `<div class="cc-top"><b>Team</b><span class="sp"></span></div>
     <div class="cc-tabs">${[['today', 'Today'], ['dir', 'Directory'], ['leave', 'Leave'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="tb">${skel}</div>`
   v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => go('team', null, { sub: b.dataset.sub })))
   const B = v.querySelector('#tb')
   try {
     const rows = async (tbl) => (await get(`/api/legacy/rows?tbl=${tbl}&limit=1000`).catch(() => ({ rows: [] }))).rows
-    const [E, D, master, sal] = await Promise.all([get('/api/admin/employees'), get('/api/desks').catch(() => ({ desks: [] })), rows('employee_master'), rows('salary_records')])
+    const [E, master, sal] = await Promise.all([get('/api/admin/employees'), rows('employee_master'), rows('salary_records')])
     const mOf = (e) => master.find((m) => e.legacy_id && String(m.personId) === String(e.legacy_id))
-    const sOf = (e) => sal.filter((r) => e.legacy_id && String(r.personId) === String(e.legacy_id)).sort((a, b) => String(b.month).localeCompare(String(a.month)))[0]
-    const salary = (e) => { const s = sOf(e), m = mOf(e); const v2 = Number(s?.fixedSalary) || Number(m?.salaryInHand) || 0; return v2 ? inr(v2) : '—' }
-    const paint = (q = '') => {
-      const list = E.employees.filter((e) => e.active && (!q || `${e.name} ${e.designation} ${e.username} ${e.phone} ${mOf(e)?.empCode || ''}`.toLowerCase().includes(q.toLowerCase())))
-      B.innerHTML = `<div class="row"><input class="inp" id="q" placeholder="Search name, ID, phone" value="${esc(q)}" style="max-width:320px"><span class="sp"></span><span class="sub">${list.length} active</span><button class="btn ghost sm" id="add">+ Add</button></div>
-        <section class="card" style="padding:4px 14px"><div class="list">${list.map((e) => { const m = mOf(e), mine = D.desks.filter((d) => d.people.some((p) => p.id === e.id))
-          return `<details class="staff"><summary class="li"><div class="av" style="background:${avColor(e.id)};color:#fff;border-radius:50%">${esc(initials(e.name))}</div><div class="nm"><b>${esc(e.name)}</b><span>${esc(m?.empCode || 'EMP-' + e.id)} · ${esc(e.designation || e.team)}</span></div><div class="rc"><b>${salary(e)}</b><span class="km">${e.phone ? '+91 ' + esc(e.phone) : 'no phone'}</span></div></summary>
-            <div class="cc-kv"><div><span>Employee ID</span><b>${esc(m?.empCode || 'EMP-' + e.id)}</b></div><div><span>Salary (monthly)</span><b>${salary(e)}</b></div><div><span>Phone</span><b>${e.phone ? '+91 ' + esc(e.phone) : '—'}</b></div>
-              <div><span>Login username</span><b>@${esc(e.username)}</b></div><div><span>Password</span><b>hidden — reset from Edit</b></div><div><span>Role · team</span><b>${esc(e.role)} · ${esc(e.team)}</b></div>
-              <div><span>Shift</span><b>${esc(e.shift_start)}–${esc(e.shift_end)}</b></div><div><span>Joining</span><b>${e.joining_date ? fmtDate(e.joining_date) : m?.joiningDate ? fmtDate(String(m.joiningDate).slice(0, 10)) : '—'}</b></div><div><span>Phone linked</span><b>${e.device_linked ? 'Yes' : 'No'}</b></div></div>
-            <b style="font-size:13px">Desks</b><div class="cc-dsw">${D.desks.filter((d) => d.kind !== 'later').map((d) => { const on = mine.includes(d); return `<button class="cc-sw2 ${on ? 'on' : ''}" data-d="${d.id}" data-e="${e.id}" data-on="${on ? 1 : 0}">${esc(d.icon || '')} ${esc(d.name)}</button>` }).join('')}</div>
-            <button class="btn dark sm" data-edit="1" style="margin-bottom:12px">Edit details / reset password</button></details>` }).join('')}</div></section>`
-      B.querySelector('#q').oninput = (ev) => { const val = ev.target.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
+    const salOf = (e) => { if (e.salary_inhand != null) return Number(e.salary_inhand); const s2 = sal.filter((r) => e.legacy_id && String(r.personId) === String(e.legacy_id)).sort((a, b) => String(b.month).localeCompare(String(a.month)))[0]; return Number(s2?.fixedSalary) || Number(mOf(e)?.salaryInHand) || 0 }
+    const lpa = (m) => (m ? (m * 12 / 100000).toFixed(2) + ' LPA' : '—')
+    const empId = (e) => mOf(e)?.empCode || 'JDAC-' + String(e.id).padStart(3, '0')
+    if (sub === 'org') return orgChart(B, E.employees.filter((e) => e.status !== 'Dropped' && e.active), go)
+    const st = opts.st || 'Active'
+    const list = E.employees.filter((e) => st === 'All' || (e.status || (e.active ? 'Active' : 'Inactive')) === st).sort((a, b) => a.name.localeCompare(b.name))
+    const q0 = opts.q || ''
+    const paint = (q) => {
+      const L = list.filter((e) => !q || `${e.name} ${e.designation} ${e.username} ${e.phone} ${empId(e)}`.toLowerCase().includes(q.toLowerCase()))
+      const tot = L.reduce((a, e) => a + salOf(e), 0)
+      B.innerHTML = `<div class="tm-bar"><input class="inp" id="q" placeholder="Search name, ID, phone, username" value="${esc(q)}">
+          <div class="chips">${['Active', 'Inactive', 'Dropped', 'All'].map((x) => `<button class="chip ${st === x ? 'on' : ''}" data-st="${x}">${x} <small>${E.employees.filter((e) => x === 'All' || (e.status || (e.active ? 'Active' : 'Inactive')) === x).length}</small></button>`).join('')}</div>
+          <span class="sp"></span><button class="btn ghost sm" id="xl">⬇ Excel</button><button class="btn dark sm" id="add">+ Add person</button></div>
+        <div class="tm-sum"><span><b>${L.length}</b> people</span><span>Monthly salary <b>${inr(tot)}</b></span><span>Yearly <b>${inrL(tot * 12)}</b></span></div>
+        <div class="tm-wrap"><table class="tm"><thead><tr><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th class="r">Salary in hand</th><th class="r">LPA</th><th>Tracker login</th><th></th></tr></thead><tbody>
+        ${L.map((e) => { const s2 = e.status || (e.active ? 'Active' : 'Inactive'), m = salOf(e)
+          return `<tr data-e="${e.id}"><td><div class="tm-n"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(empId(e))}</span></div></div></td>
+            <td><span class="pill ${STATUS_K[s2]}">${s2}</span></td><td>${esc(e.designation || '—')}<div class="sub">${esc(e.team)}${e.role !== 'employee' ? ' · ' + esc(e.role) : ''}</div></td>
+            <td>${e.joining_date ? fmtDate(e.joining_date) : '—'}</td><td>${e.exit_date ? fmtDate(e.exit_date) : '—'}</td><td>${e.phone ? '+91 ' + esc(e.phone) : '—'}</td>
+            <td class="r"><b>${m ? inr(m) : '—'}</b></td><td class="r">${lpa(m)}</td><td><code>${esc(e.username)}</code><div class="sub">password: reset करके दें</div></td><td><button class="btn ghost sm" data-ed="${e.id}">Edit</button></td></tr>` }).join('') || '<tr><td colspan="10" class="empty">No one here</td></tr>'}</tbody></table></div>`
+      const qi = B.querySelector('#q'); qi.oninput = () => { const val = qi.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
+      B.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => go('team', null, { sub: 'dir', st: b.dataset.st })))
       B.querySelector('#add').onclick = () => go('staff')
-      B.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => go('staff')))
-      B.querySelectorAll('[data-d]').forEach((b) => (b.onclick = async () => {
-        try { await post('/api/desks/access', { desk_id: Number(b.dataset.d), emp_id: Number(b.dataset.e), enabled: b.dataset.on !== '1' }); b.dataset.on = b.dataset.on === '1' ? '0' : '1'; b.classList.toggle('on'); toast('Saved') } catch (e) { toast(e.message, 'bad') }
-      }))
+      B.querySelector('#xl').onclick = () => downloadCsv('jdac-team-directory.csv', [['Employee ID', 'Name', 'Status', 'Designation', 'Team', 'Joining date', 'Exit date', 'Contact', 'Salary in hand (monthly)', 'LPA', 'Tracker username'],
+        ...L.map((e) => [empId(e), e.name, e.status || (e.active ? 'Active' : 'Inactive'), e.designation, e.team, e.joining_date, e.exit_date, e.phone, salOf(e) || '', salOf(e) ? (salOf(e) * 12 / 100000).toFixed(2) : '', e.username])])
+      B.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = () => editPerson(E.employees.find((x) => x.id === Number(b.dataset.ed)), salOf, () => go('team', null, { sub: 'dir', st }))))
     }
-    paint()
+    paint(q0)
   } catch (e) { B.innerHTML = err(e) }
+}
+function editPerson(e, salOf, again) {
+  const el = document.createElement('div'); el.className = 'tm-modal'
+  const s2 = e.status || (e.active ? 'Active' : 'Inactive')
+  el.innerHTML = `<div class="tm-bg"></div><form class="tm-card cform"><div class="row" style="grid-column:1/-1"><h2 class="h3">${esc(e.name)}</h2><span class="sp"></span><button type="button" class="link" data-x>Close</button></div>
+    <label class="f">Name<input class="inp" name="name" value="${esc(e.name)}" required></label>
+    <label class="f">Status<select class="inp" name="status">${['Active', 'Inactive', 'Dropped'].map((x) => `<option ${x === s2 ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    <label class="f">Designation<input class="inp" name="designation" value="${esc(e.designation || '')}"></label>
+    <label class="f">Contact (10 digit)<input class="inp" name="phone" value="${esc(e.phone || '')}" inputmode="numeric"></label>
+    <label class="f">Joining date<input class="inp" type="date" name="joining_date" value="${esc(e.joining_date || '')}"></label>
+    <label class="f">Exit date<input class="inp" type="date" name="exit_date" value="${esc(e.exit_date || '')}"></label>
+    <label class="f">Salary in hand (₹ / month)<input class="inp" type="number" min="0" name="salary_inhand" value="${salOf(e) || ''}"></label>
+    <label class="f">Tracker username<input class="inp" name="username" value="${esc(e.username)}"></label>
+    <div class="tm-pw" style="grid-column:1/-1"><b>Tracker password</b><span>पुराना password दिखाया नहीं जा सकता (सुरक्षा के लिए छुपा रहता है). नया बनाकर WhatsApp पर भेजें.</span><button type="button" class="btn ghost sm" id="pw">Make new password</button><code id="pwv" hidden></code></div>
+    <div class="sub" style="grid-column:1/-1">Inactive / Dropped करने पर उसका login बंद हो जाता है और Team list से हट जाता है. पुराना data (attendance आदि) रहता है.</div>
+    <button class="btn pri" style="grid-column:1/-1">Save</button></form>`
+  document.body.appendChild(el)
+  const close = () => el.remove()
+  el.querySelector('.tm-bg').onclick = close; el.querySelector('[data-x]').onclick = close
+  let newPw = null
+  el.querySelector('#pw').onclick = () => { const c = 'abcdefghjkmnpqrstuvwxyz23456789'; newPw = 'JDAC' + Array.from(crypto.getRandomValues(new Uint8Array(5)), (x) => c[x % c.length]).join(''); const p = el.querySelector('#pwv'); p.hidden = false; p.textContent = `${e.username} / ${newPw} — Save दबाने पर लागू होगा` }
+  el.querySelector('form').onsubmit = async (ev) => {
+    ev.preventDefault(); const d = Object.fromEntries(new FormData(ev.target))
+    try { await patch('/api/admin/employees/' + e.id, { ...d, ...(newPw ? { new_password: newPw } : {}) }); if (newPw) { navigator.clipboard?.writeText(`JDAC Tracker login\nUsername: ${d.username}\nPassword: ${newPw}`) } toast(newPw ? 'Saved — login details copied' : 'Saved'); close(); again() } catch (er) { toast(er.message, 'bad') }
+  }
+}
+function orgChart(B, emps, go) {
+  const by = (f) => emps.filter(f)
+  const boss = by((e) => e.role === 'boss'), dev = by((e) => e.role === 'developer'), hrs = by((e) => e.role === 'hr')
+  const hrHead = hrs.filter((e) => !/recruit|assist/i.test(e.designation || '')), hrTeam = hrs.filter((e) => /recruit|assist/i.test(e.designation || ''))
+  const staff = by((e) => e.role === 'employee')
+  const groups = {}; for (const e of staff) { const k = e.team === 'Warehouse' ? 'Warehouse & delivery' : (e.department || e.designation || 'Office team').replace(/\b(executive|associate)\b/i, '').trim() || 'Office team'; (groups[k] = groups[k] || []).push(e) }
+  const node = (e, title, cls = '') => `<div class="oc-n ${cls}"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><b>${esc(e.name)}</b><span>${esc(title || e.designation || '')}</span></div>`
+  B.innerHTML = `<section class="card oc"><div class="oc-tree">
+    <div class="oc-lvl">${boss.map((e) => node(e, 'Director', 'top')).join('') || '<div class="oc-n top"><b>Boss</b><span>Director</span></div>'}</div>
+    <div class="oc-line"></div>
+    <div class="oc-lvl two">
+      <div class="oc-col"><div class="oc-tag">HR</div>${hrHead.map((e) => node(e, e.designation || 'HR Manager')).join('')}${hrTeam.length ? `<div class="oc-sub">${hrTeam.map((e) => node(e, e.designation)).join('')}</div>` : ''}</div>
+      ${dev.length ? `<div class="oc-col"><div class="oc-tag">Tech</div>${dev.map((e) => node(e, e.designation || 'Developer')).join('')}</div>` : ''}
+    </div>
+    <div class="oc-line"></div>
+    <div class="oc-tag big">Team · ${staff.length} people</div>
+    <div class="oc-teams">${Object.entries(groups).sort((a, b) => b[1].length - a[1].length).map(([g, l]) => `<div class="oc-team"><div class="oc-th">${esc(g)} <small>${l.length}</small></div>${l.map((e) => `<div class="oc-p"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(e.designation || '')}</span></div></div>`).join('')}</div>`).join('')}</div>
+  </div></section>`
 }
 
 // ═════════════════════════ HR & PAYROLL (pehle SalaryMitra) ═════════════════════════

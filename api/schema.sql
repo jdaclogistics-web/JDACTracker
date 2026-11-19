@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS employees (
   device_id     TEXT,
   token_version INTEGER NOT NULL DEFAULT 0,             -- बढ़ाने पर सारे पुराने login बंद
   app_login_at  TEXT,                                   -- GPS वाले phone login का समय (24 घंटे बाद auto-logout)
+  status        TEXT,                                   -- Active / Inactive / Dropped
+  exit_date     TEXT,
+  salary_inhand REAL,
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   CHECK (phone IS NULL OR length(phone) = 10),
   CHECK (length(username) BETWEEN 3 AND 30)

@@ -28,7 +28,7 @@ function cors(env, req) {
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...extra } })
 async function body(req) { try { return await req.json() } catch { return {} } }
 const tracked = (e) => e.team === 'Warehouse' || !!e.live_track
-const pub = (e) => e && ({ id: e.id, legacy_id: e.legacy_id ?? null, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id })
+const pub = (e) => e && ({ id: e.id, legacy_id: e.legacy_id ?? null, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id, status: e.status || (e.active ? 'Active' : 'Inactive'), exit_date: e.exit_date || null, salary_inhand: e.salary_inhand ?? null })
 
 async function audit(env, actor, action, tbl, rowId, oldData, newData) {
   await env.DB.prepare('INSERT INTO audit_log (actor, action, tbl, row_id, old_data, new_data) VALUES (?,?,?,?,?,?)')
@@ -413,7 +413,13 @@ on('PATCH', '/api/admin/employees/:id', async (env, req, url, params) => {
   const patch = {}
   if ('username' in b && b.username) { const u = String(b.username).trim().toLowerCase().replace(/\s+/g, ''); if (!/^[a-z0-9._-]{3,30}$/.test(u)) throw bad('Username में सिर्फ अंग्रेज़ी अक्षर/नंबर (बिना space)'); patch.username = u }
   if ('phone' in b) { const ph = b.phone ? phone10(b.phone) : ''; if (ph && ph.length !== 10) throw bad('Mobile 10 अंक'); patch.phone = ph || null }
-  for (const k of ['name', 'designation', 'department', 'work_location', 'shift_start', 'shift_end', 'joining_date']) if (k in b) patch[k] = b[k] === '' ? null : b[k]
+  for (const k of ['name', 'designation', 'department', 'work_location', 'shift_start', 'shift_end', 'joining_date', 'exit_date']) if (k in b) patch[k] = b[k] === '' ? null : b[k]
+  if ('salary_inhand' in b) patch.salary_inhand = b.salary_inhand === '' || b.salary_inhand == null ? null : Math.max(0, Number(b.salary_inhand) || 0)
+  if ('status' in b && Number(params.id) !== me.id) {
+    const st = ['Active', 'Inactive', 'Dropped'].includes(b.status) ? b.status : 'Active'
+    patch.status = st; patch.active = st === 'Active' ? 1 : 0
+    if (st !== 'Active' && e.active) patch.token_version = (patch.token_version ?? e.token_version) + 1
+  }
   if ('team' in b) patch.team = b.team === 'Warehouse' ? 'Warehouse' : 'Office'
   if ('live_track' in b) patch.live_track = b.live_track ? 1 : 0
   if ('role' in b && b.role !== e.role) {
@@ -533,21 +539,46 @@ on('GET', '/api/cc/company', async (env, req, url) => {
   const { results: desks } = await env.DB.prepare("SELECT d.id, d.name, d.icon, d.description, d.kind, d.module, (SELECT COUNT(*) FROM desk_access a JOIN employees e ON e.id = a.emp_id WHERE a.desk_id = d.id AND a.enabled = 1 AND e.active = 1) people FROM desks d WHERE d.company = ? AND d.active = 1 ORDER BY d.kind = 'later', d.id").bind(name).all()
   return json(companyPage(D, emps, istDate(), name, range, desks, await cargoCses(env)))
 })
-on('GET', '/api/cc/chat', async (env, req) => {
+// Chat groups: 📢 Announcements (सब देखते हैं, सिर्फ admin लिखते हैं), 💬 General, हर project
+on('GET', '/api/cc/chat', async (env, req, url) => {
   const me = await authUser(env, req)
   const D = await loadAll(env)
-  const projects = new Map(D.projects.map((p) => [String(p.id), p.name]))
-  const msgs = D.chat_messages.filter((m) => !m.deletedAt || m.deletedAt === 'None').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 200)
-  return json({ me: me.name, messages: msgs.map((m) => ({ id: m._rid, project: projects.get(String(m.projectId)) || 'Team', projectId: String(m.projectId || ''), sender: m.senderName, body: m.body, at: m.createdAt })),
-    projects: D.projects.map((p) => ({ id: String(p.id), name: p.name })) })
+  const group = url.searchParams.get('group') || 'general'
+  const projects = D.projects.filter((p) => !/archiv|closed/i.test(String(p.status))).map((p) => ({ id: String(p.id), name: p.name }))
+  const groups = [{ id: 'ann', name: 'Announcements', icon: '📢', everyone: true }, { id: 'general', name: 'General', icon: '💬' }, ...projects.map((p) => ({ ...p, icon: '📁' }))]
+  const inGroup = (m) => (group === 'ann' ? m.channel === 'ann' : group === 'general' ? m.channel !== 'ann' && !m.projectId : m.channel !== 'ann' && String(m.projectId || '') === group)
+  const msgs = D.chat_messages.filter((m) => (!m.deletedAt || m.deletedAt === 'None') && inGroup(m)).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).slice(-200)
+  const counts = {}; for (const m of D.chat_messages) { const k = m.channel === 'ann' ? 'ann' : m.projectId ? String(m.projectId) : 'general'; counts[k] = (counts[k] || 0) + 1 }
+  return json({ me: me.name, me_id: me.id, can_announce: ADMIN_ROLES.includes(me.role), group, groups: groups.map((g) => ({ ...g, count: counts[g.id] || 0 })),
+    messages: msgs.map((m) => ({ id: m._rid, sender: m.senderName, sender_emp: m.emp_id || null, body: m.body, kind: m.kind || 'text', file: m.fileId || null, file_name: m.fileName || null, file_mime: m.fileMime || null, file_size: m.fileSize || null, at: m.createdAt })) })
 })
 on('POST', '/api/cc/chat', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
-  const text = String(b.body || '').trim().slice(0, 2000); if (!text) throw bad('Message लिखें')
+  const group = String(b.group || 'general')
+  if (group === 'ann' && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'Announcements में सिर्फ Boss / HR लिख सकते हैं')
+  const text = String(b.body || '').replace(/\r/g, '').trim().slice(0, 4000)
+  let file = null
+  if (b.file && b.file.data) {
+    const data = String(b.file.data)
+    if (data.length > 950000) throw bad('File बहुत बड़ी है — 700 KB तक भेजें')
+    const mime = String(b.file.mime || 'application/octet-stream').slice(0, 80), name = String(b.file.name || 'file').slice(0, 120)
+    const r = await env.DB.prepare('INSERT INTO chat_files (name, mime, size, data, by_emp) VALUES (?,?,?,?,?) RETURNING id').bind(name, mime, Math.round(data.length * 0.75), data, me.id).first()
+    file = { id: r.id, name, mime, size: Math.round(data.length * 0.75) }
+  }
+  if (!text && !file) throw bad('Message लिखें')
   const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
-  const d = { id, projectId: b.projectId || null, senderId: me.legacy_id || null, senderName: me.name, body: text, kind: 'text', createdAt: nowLocal(), emp_id: me.id }
+  const kind = file ? (b.kind === 'voice' ? 'voice' : 'file') : 'text'
+  const d = { id, projectId: group !== 'ann' && group !== 'general' ? (Number(group) || group) : null, channel: group === 'ann' ? 'ann' : null, senderId: me.legacy_id || null, senderName: me.name, body: text, kind,
+    fileId: file?.id || null, fileName: file?.name || null, fileMime: file?.mime || null, fileSize: file?.size || null, createdAt: nowLocal(), emp_id: me.id }
   await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind('chat_messages', id, JSON.stringify(d)).run()
   dropCache(); return json({ ok: true })
+})
+on('GET', '/api/cc/chat/file/:id', async (env, req, url, p) => {
+  await authUser(env, req)
+  const f = await env.DB.prepare('SELECT name, mime, data FROM chat_files WHERE id = ?').bind(Number(p.id)).first()
+  if (!f) throw new HttpError(404, 'File नहीं मिली')
+  const bin = Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0))
+  return new Response(bin, { headers: { 'Content-Type': f.mime, 'Content-Disposition': `inline; filename="${encodeURIComponent(f.name)}"`, 'Cache-Control': 'private, max-age=86400' } })
 })
 
 // ── Employee: home, desks, Cargo Sales desk ─────────────────────────────────
@@ -802,6 +833,18 @@ async function runMigrations(env) {
   const mark = (k) => env.DB.prepare('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)').bind(k, new Date().toISOString()).run()
   if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = 'app_login_at'").first())) {
     await env.DB.prepare('ALTER TABLE employees ADD COLUMN app_login_at TEXT').run()
+  }
+  for (const [col, def] of [['status', 'TEXT'], ['exit_date', 'TEXT'], ['salary_inhand', 'REAL']]) {
+    if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('employees') WHERE name = ?").bind(col).first())) await env.DB.prepare(`ALTER TABLE employees ADD COLUMN ${col} ${def}`).run()
+  }
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_files (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, mime TEXT, size INTEGER, data TEXT NOT NULL, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`).run()
+  if (!(await done('mig_people_v1'))) {
+    // Org chart: Director = "Boss"; Snehal = HR Recruiter; Atul ने company छोड़ी (list से हटाओ — record रहता है)
+    await env.DB.prepare("UPDATE employees SET name = 'Boss', designation = 'Director' WHERE role = 'boss'").run()
+    await env.DB.prepare("UPDATE employees SET designation = 'HR Recruiter' WHERE name LIKE 'Snehal%'").run()
+    await env.DB.prepare("UPDATE employees SET active = 0, status = 'Inactive', token_version = token_version + 1 WHERE name LIKE 'Atul%' AND role = 'employee'").run()
+    await env.DB.prepare("UPDATE employees SET status = CASE WHEN active = 1 THEN 'Active' ELSE 'Inactive' END WHERE status IS NULL").run()
+    await mark('mig_people_v1')
   }
   for (const q of DESK_TABLES) { try { await env.DB.prepare(q).run() } catch (e) { console.error('desk table', e?.message) } }
   if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }

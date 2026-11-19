@@ -18,6 +18,9 @@ const ROLE_ACCENT = { hr: '#7C3AED', boss: '#059669', developer: '#0E7490' }
 
 window.addEventListener('jdac-logout', () => { me = null; renderLogin('Session expired — login again') })
 
+const navStack = []
+function goBack() { const p = navStack.pop(); if (p) { tab = p.tab; tabArg = p.tabArg; tabOpts = p.tabOpts } else { tab = 'home'; tabArg = null; tabOpts = {} } render(); window.scrollTo(0, 0) }
+window.addEventListener('popstate', () => { if (me) goBack() })
 function doLogout() { logout(); me = null; tab = 'home'; renderLogin() }
 function cleanup() { clearInterval(timer); timer = null; if (map) { map.remove(); map = null } }
 
@@ -64,9 +67,21 @@ function render() {
   <div class="shell cmd"><nav class="nav side" aria-label="Panel">${tabs.map(([k, l, i, more, big]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''} ${more ? 'more' : ''} ${big ? 'big' : ''}" style="${tab === k && !big ? `color:${acc}` : ''}">${big ? `<span class="fab">${ic(i, 26, '#fff')}</span>` : ic(i, 22)}<span>${l}</span></button>`).join('')}</nav>
   <main class="main" id="view"></main></div>`
   document.getElementById('out').onclick = doLogout
-  app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { if (b.dataset.tab === 'logout') return doLogout(); tab = b.dataset.tab; tabArg = null; tabOpts = {}; render() }))
-  const v = document.getElementById('view')
-  const go = (t, arg = null, opts = {}) => { tab = t; tabArg = arg; tabOpts = opts || {}; render(); window.scrollTo(0, 0) }
+  app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { if (b.dataset.tab === 'logout') return doLogout(); navStack.length = 0; tab = b.dataset.tab; tabArg = null; tabOpts = {}; render() }))
+  const v0 = document.getElementById('view')
+  const go = (t, arg = null, opts = {}) => {
+    navStack.push({ tab, tabArg, tabOpts }); if (navStack.length > 30) navStack.shift()
+    try { history.pushState({ jdac: navStack.length }, '') } catch { /* */ }
+    tab = t; tabArg = arg; tabOpts = opts || {}; render(); window.scrollTo(0, 0)
+  }
+  // Tools / अंदर के pages पर "← Back" — जहाँ से आए थे वहीं लौटो
+  const FOOT = ['home', 'tasks', 'chat', 'team'], OWN_BACK = ['company', 'hr', 'desk', 'deskadmin']
+  let v = v0
+  if (!FOOT.includes(tab) && !OWN_BACK.includes(tab) && !(tab === 'desks' && (tabOpts.desk || tabOpts.create))) {
+    v0.insertAdjacentHTML('afterbegin', `<div class="bk-bar"><button id="bk">← Back</button></div><div id="view2" class="stack"></div>`)
+    v = document.getElementById('view2')
+    document.getElementById('bk').onclick = goBack
+  }
   const X = { setTimer: (t) => { timer = t }, openRoute }
   const boss = me.role !== 'hr'
   if (tab === 'home') return viewCommand(v, go, me.role)
