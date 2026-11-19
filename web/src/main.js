@@ -3,14 +3,15 @@ import 'leaflet/dist/leaflet.css'
 import './web.css'
 import L from 'leaflet'
 import { auth, login, logout, get, post, patch, photoUrl } from '@shared/api.js'
+import { viewCC, viewCompany, viewDesk, viewTasks, viewChat } from './cc.js'
 import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials, avColor, downloadCsv, minsAgo } from '@shared/util.js'
 
 const app = document.getElementById('app')
-let me = null, tab = 'home', timer = null, map = null
+let me = null, tab = 'home', tabArg = null, timer = null, map = null
 const ROLE_TABS = {
-  hr: [['home', 'Home', 'home'], ['people', 'Attendance', 'cal'], ['live', 'Live map', 'pin'], ['leaves', 'Leave', 'check'], ['staff', 'Employees', 'users'], ['report', 'Month sheet', 'download'], ['old', 'HR records', 'grid']],
-  boss: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Staff', 'user'], ['report', 'Reports', 'download'], ['biz', 'Business', 'chart'], ['old', 'Records', 'grid'], ['audit', 'Audit', 'shield']],
-  developer: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Logins', 'lock'], ['report', 'Reports', 'download'], ['biz', 'Business', 'chart'], ['old', 'Records', 'grid'], ['system', 'System', 'grid'], ['audit', 'Audit', 'shield']],
+  hr: [['home', 'Home', 'home'], ['people', 'Attendance', 'cal'], ['live', 'Live map', 'pin'], ['leaves', 'Leave', 'check'], ['staff', 'Employees', 'users'], ['report', 'Month sheet', 'download'], ['old', 'HR records', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat']],
+  boss: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['biz', 'Accounts', 'chart'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Staff', 'user'], ['report', 'Reports', 'download'], ['old', 'Records', 'grid'], ['audit', 'Audit', 'shield']],
+  developer: [['home', 'Home', 'home'], ['people', 'People', 'users'], ['biz', 'Accounts', 'chart'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat'], ['live', 'Live map', 'pin'], ['leaves', 'Approvals', 'check'], ['staff', 'Logins', 'lock'], ['report', 'Reports', 'download'], ['old', 'Records', 'grid'], ['system', 'System', 'grid'], ['audit', 'Audit', 'shield']],
 }
 const ROLE_LABEL = { hr: 'HR panel', boss: 'Boss panel', developer: 'Developer · main access' }
 const ROLE_ACCENT = { hr: '#7C3AED', boss: '#059669', developer: '#0E7490' }
@@ -51,17 +52,24 @@ function renderLogin(err = '') {
 function render() {
   cleanup()
   const tabs = ROLE_TABS[me.role]
-  if (!tabs.some((t) => t[0] === tab)) tab = 'home'
+  if (!tabs.some((t) => t[0] === tab) && !(['company', 'desk'].includes(tab) && me.role !== 'hr')) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
   app.innerHTML = `
-  <header class="bar"><div class="av" style="background:${acc};color:#fff;border-radius:50%">${esc(initials(me.name))}</div>
-    <div class="bt"><b>${esc(me.name)}</b><span>${ROLE_LABEL[me.role]} · ${fmtDate(istDate())}</span></div>
+  <header class="bar"><img class="blogo" src="./jdac-logo.png" alt="JDAC">
+    <div class="bt"><b>${me.role === 'hr' ? esc(me.name) : 'JDAC SALES PVT LTD'}</b><span>${me.role === 'hr' ? '' : esc(me.name) + ' · '}${ROLE_LABEL[me.role]} · ${fmtDate(istDate())}</span></div>
     <button class="ibtn" id="out" aria-label="Logout">${ic('logout', 18)}</button></header>
   <div class="shell"><nav class="nav side" aria-label="Panel">${tabs.map(([k, l, i]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}" style="${tab === k ? `color:${acc}` : ''}">${ic(i, 22)}<span>${l}</span></button>`).join('')}</nav>
   <main class="main" id="view"></main></div>`
   document.getElementById('out').onclick = () => { logout(); me = null; tab = 'home'; renderLogin() }
-  app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render() }))
+  app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; tabArg = null; render() }))
   const v = document.getElementById('view')
+  const go = (t, arg = null) => { tab = t; tabArg = arg; render(); window.scrollTo(0, 0) }
+  if (tab === 'home' && me.role !== 'hr') return viewCC(v, go, get('/api/admin/today'))
+  if (tab === 'company') return viewCompany(v, go, tabArg)
+  if (tab === 'desk') return viewDesk(v, go, tabArg)
+  if (tab === 'tasks') return viewTasks(v)
+  if (tab === 'chat') return viewChat(v)
+  if (tab === 'old' && tabArg) return viewOld(v, tabArg)
   ;({ home: viewHome, people: viewPeople, live: viewLive, leaves: viewLeaves, staff: viewStaff, report: viewReport, biz: viewBiz, old: viewOld, system: viewSystem, audit: viewAudit }[tab])(v)
 }
 const loading = (v) => { v.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>' }

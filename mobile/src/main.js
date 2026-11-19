@@ -5,10 +5,11 @@ import { esc, istDate, istShift, fmtTime, fmtDate, duration, agoText, toast, ic,
 import { liveUpdate, BUILD } from './liveupdate.js'
 import { currentPosition, takeSelfie, deviceId, isNative, openAppSettings, askPermissionsOnce } from './native.js'
 import { startTracking, stopTracking, setFieldMode, trackingState, onTracking } from './tracking.js'
+import { homeBlocks, bindHome, loadMyHome, myHomeData, renderTasks, renderChat, renderDesk } from './work.js'
 import { flush, queueSize, onQueueChange, lastSyncAt } from './queue.js'
 
 const app = document.getElementById('app')
-let me = null, session = null, tab = 'home', busy = false, tick = null, pending = 0
+let me = null, session = null, tab = 'home', tabArg = null, tabArg2 = null, busy = false, tick = null, pending = 0
 
 window.addEventListener('jdac-logout', () => { stopTracking(); me = null; renderLogin('Session खत्म — दोबारा login करें') })
 onQueueChange((n) => { pending = n; refreshSync() })
@@ -71,27 +72,41 @@ function renderLogin(err = '', user = '') {
 // ── Shell ───────────────────────────────────────────────────────────────
 function header() {
   const open = session && !session.end_at
-  const st = !session ? ['Not started', 'n'] : open ? ['On duty', 'g'] : ['Day closed', 'b']
-  const hr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false })
-  const greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening'
-  return `<header class="bar"><div class="av" style="background:#F59E0B;color:#0B1220;border-radius:50%">${esc(initials(me?.name))}</div>
-    <div class="bt"><b>${greet}, ${esc((me?.name || '').split(' ')[0])}</b><span>${esc([me?.designation, me?.work_location].filter(Boolean).join(' · ') || me?.team || '')}</span></div>
-    <span class="pill ${st[1]}">${st[0]}</span></header>`
+  const h = myHomeData
+  return `<header class="bar wk-bar"><img class="blogo" src="./jdac-logo.png" alt="JDAC">
+    <div class="bt"><b>${esc((me?.name || '').split(' ')[0])}</b><span>${fmtDate(istDate(), { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+    <div class="wk-hc"><b>${h ? `${h.tasks_done}/${h.tasks_total}` : '–'}</b><span>tasks</span></div><div class="wk-hc"><b>${h ? h.entries : '–'}</b><span>entries</span></div>
+    <span class="wk-st ${open ? 'on' : ''}">${!session ? 'Not started' : open ? '● Open' : '✅ Closed'}</span>
+    <button class="ibtn" id="hout" aria-label="Logout">${ic('logout', 18)}</button></header>`
 }
 function nav() {
-  const t = (k, label, icn) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${ic(icn, 22)}${label}</button>`
-  return `<nav class="nav" aria-label="Main">${t('home', 'Home', 'home')}${t('leave', 'Leave', 'cal')}${t('month', 'Attendance', 'clock')}${t('me', 'Me', 'user')}</nav>`
+  const t = (k, label, icn) => `<button data-tab="${k}" class="${tab === k || (k === 'home' && tab === 'desk') ? 'on' : ''}">${ic(icn, 22)}${label}</button>`
+  return `<nav class="nav" aria-label="Main">${t('home', 'Home', 'home')}${t('tasks', 'Tasks', 'task')}${t('chat', 'Chat', 'chat')}${t('leave', 'Leave', 'cal')}${t('me', 'Me', 'user')}</nav>`
+}
+function go(t, a = null, b = null) {
+  if (t === 'start') { document.getElementById('day')?.scrollIntoView({ behavior: 'smooth' }); return }
+  if (t === 'desks') { document.getElementById('desks')?.scrollIntoView({ behavior: 'smooth' }); return }
+  tab = t; tabArg = a; tabArg2 = b; render(); window.scrollTo(0, 0)
 }
 function render() {
   clearInterval(tick)
   if (!me) return renderLogin()
   app.innerHTML = header() + '<main class="main" id="view"></main>' + nav()
-  app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render() }))
+  app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => go(b.dataset.tab)))
+  document.getElementById('hout').onclick = () => go('me')
   const v = document.getElementById('view')
   if (tab === 'leave') return renderLeave(v)
   if (tab === 'month') return renderMonth(v)
   if (tab === 'me') return renderMe(v)
-  return renderHome(v)
+  if (tab === 'tasks') return renderTasks(v, go)
+  if (tab === 'chat') return renderChat(v, tabArg || '')
+  if (tab === 'desk') return renderDesk(v, go, tabArg, tabArg2)
+  v.innerHTML = '<div id="day" class="stack"></div><div id="wk" class="stack"></div>'
+  const wk = document.getElementById('wk')
+  const paint = () => { if (!document.body.contains(wk)) return; wk.innerHTML = homeBlocks(myHomeData, session, go); bindHome(wk, go) }
+  paint()
+  loadMyHome().then(() => { paint(); const hb = document.querySelector('.wk-bar'); if (hb && myHomeData) { const x = document.createElement('div'); x.innerHTML = header(); hb.replaceWith(x.firstElementChild); document.getElementById('hout').onclick = () => go('me') } })
+  return renderHome(document.getElementById('day'))
 }
 
 // ── Home ────────────────────────────────────────────────────────────────

@@ -175,6 +175,7 @@ async function flushPendingPhotos(env, limit = 20) {
 
 
 
+
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
 const NO_SIGNAL_MIN = 10
 const TOKEN_DAYS = 90
@@ -198,7 +199,7 @@ function cors(env, req) {
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...extra } })
 async function body(req) { try { return await req.json() } catch { return {} } }
 const tracked = (e) => e.team === 'Warehouse' || !!e.live_track
-const pub = (e) => e && ({ id: e.id, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id })
+const pub = (e) => e && ({ id: e.id, legacy_id: e.legacy_id ?? null, username: e.username, live_track: !!e.live_track, name: e.name, phone: e.phone, role: e.role, team: e.team, designation: e.designation, department: e.department, work_location: e.work_location, shift_start: e.shift_start, shift_end: e.shift_end, joining_date: e.joining_date, active: !!e.active, device_linked: !!e.device_id })
 
 async function audit(env, actor, action, tbl, rowId, oldData, newData) {
   await env.DB.prepare('INSERT INTO audit_log (actor, action, tbl, row_id, old_data, new_data) VALUES (?,?,?,?,?,?)')
@@ -678,6 +679,107 @@ on('PATCH', '/api/legacy/rows', async (env, req) => {
   const d = { ...prev, ...cleanData(b.data), id: prev.id, updatedAt: nowIso(), updatedBy_name: me.name }
   await env.DB.prepare('UPDATE legacy_records SET data = ? WHERE tbl = ? AND legacy_id = ?').bind(JSON.stringify(d), b.tbl, String(b.id)).run()
   await audit(env, me.id, 'record_edit', b.tbl, String(b.id), prev, d)
+  return json({ ok: true })
+})
+
+
+// ── Command Centre (Boss / Developer) + company pages ─────────────────────────
+const activeEmps = async (env) => (await env.DB.prepare('SELECT id, name, team, role, designation, legacy_id, active FROM employees').all()).results
+on('GET', '/api/cc/home', async (env, req, url) => {
+  const me = await authUser(env, req); needAdmin(me)
+  if (me.role === 'hr') throw new HttpError(403, 'Boss / Developer only')
+  const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
+  const range = ['today', 'week', 'month'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'month'
+  return json(homeSummary(D, emps, istDate(), range, url.searchParams.get('company') || 'All'))
+})
+on('GET', '/api/cc/company', async (env, req, url) => {
+  const me = await authUser(env, req); needAdmin(me)
+  if (me.role === 'hr') throw new HttpError(403, 'Boss / Developer only')
+  const name = url.searchParams.get('name') || ''
+  if (!COMPANIES.includes(name)) throw bad('company?')
+  const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
+  return json(companyPage(D, emps, istDate(), name))
+})
+on('GET', '/api/cc/chat', async (env, req) => {
+  const me = await authUser(env, req)
+  const D = await loadAll(env)
+  const projects = new Map(D.projects.map((p) => [String(p.id), p.name]))
+  const msgs = D.chat_messages.filter((m) => !m.deletedAt || m.deletedAt === 'None').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 200)
+  return json({ me: me.name, messages: msgs.map((m) => ({ id: m._rid, project: projects.get(String(m.projectId)) || 'Team', projectId: String(m.projectId || ''), sender: m.senderName, body: m.body, at: m.createdAt })),
+    projects: D.projects.map((p) => ({ id: String(p.id), name: p.name })) })
+})
+on('POST', '/api/cc/chat', async (env, req) => {
+  const me = await authUser(env, req); const b = await body(req)
+  const text = String(b.body || '').trim().slice(0, 2000); if (!text) throw bad('Message लिखें')
+  const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
+  const d = { id, projectId: b.projectId || null, senderId: me.legacy_id || null, senderName: me.name, body: text, kind: 'text', createdAt: nowLocal(), emp_id: me.id }
+  await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind('chat_messages', id, JSON.stringify(d)).run()
+  dropCache(); return json({ ok: true })
+})
+
+// ── Employee: home, desks, Cargo Sales desk ─────────────────────────────────
+on('GET', '/api/my/home', async (env, req) => {
+  const me = await authUser(env, req)
+  return json(myHome(await loadAll(env), me, istDate()))
+})
+on('GET', '/api/my/cargo', async (env, req, url) => {
+  const me = await authUser(env, req)
+  let who = me
+  const as = url.searchParams.get('as')
+  if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
+  const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
+  return json({ for: who.name, ...cargoDesk(D, who, emps, istDate()) })
+})
+const legacyPut = async (env, tbl, d) => {
+  const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
+  await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind(tbl, id, JSON.stringify({ id, ...d })).run()
+  dropCache(); return id
+}
+const legacyGet = async (env, tbl, id) => {
+  const r = await env.DB.prepare('SELECT data FROM legacy_records WHERE tbl = ? AND legacy_id = ?').bind(tbl, String(id)).first()
+  return r ? JSON.parse(r.data) : null
+}
+const legacySet = async (env, tbl, id, d) => { await env.DB.prepare('UPDATE legacy_records SET data = ? WHERE tbl = ? AND legacy_id = ?').bind(JSON.stringify(d), tbl, String(id)).run(); dropCache() }
+const nowLocal = () => new Date(Date.now() + 330 * 60000).toISOString().replace('T', ' ').slice(0, 19)
+on('POST', '/api/my/lead-log', async (env, req) => {
+  const me = await authUser(env, req); const b = await body(req)
+  const lead = await legacyGet(env, 'ad_leads', b.leadId); if (!lead) throw new HttpError(404, 'Lead नहीं मिला')
+  const outcome = String(b.outcome || '').slice(0, 60); if (!outcome) throw bad('Result चुनें')
+  await legacyPut(env, 'cse_call_logs', { personId: me.legacy_id || null, emp_id: me.id, leadId: lead.id, outcome, note: String(b.note || '').slice(0, 500), nextFollowUp: b.next || null, createdAt: nowLocal() })
+  const stage = String(b.stage || '').slice(0, 60)
+  const upd = { ...lead, lastActivityAt: nowLocal(), updatedAt: nowLocal(), ...(b.next ? { nextFollowUp: b.next } : {}), ...(stage ? { stage, stageChangedAt: nowLocal() } : {}) }
+  await legacySet(env, 'ad_leads', b.leadId, upd)
+  await audit(env, me.id, 'lead_log', 'ad_leads', String(b.leadId), { stage: lead.stage }, { stage: upd.stage, outcome })
+  return json({ ok: true })
+})
+on('POST', '/api/my/cargo-quote', async (env, req) => {
+  const me = await authUser(env, req); const b = await body(req)
+  const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer का नाम')
+  const L = Number(b.lengthCm) || 0, W = Number(b.breadthCm) || 0, H = Number(b.heightCm) || 0, kg = Number(b.actualKg) || 0
+  const vol = Math.round((L * W * H / 5000) * 100) / 100, charge = Math.max(kg, vol), rate = Number(b.rate) || 0
+  const id = await legacyPut(env, 'cargo_quotes', { date: istDate(), personId: me.legacy_id || null, emp_id: me.id, cseName: me.name, leadId: b.leadId || null, customerName: name, phone: String(b.phone || ''),
+    pickupPincode: String(b.pickupPincode || ''), dropPincode: String(b.dropPincode || ''), actualKg: kg, lengthCm: L, breadthCm: W, heightCm: H, volumetricKg: vol, chargeableKg: charge, rate, total: Math.round(charge * rate), status: 'Sent', createdAt: nowLocal() })
+  if (b.leadId) { const l = await legacyGet(env, 'ad_leads', b.leadId); if (l) await legacySet(env, 'ad_leads', b.leadId, { ...l, stage: 'Quotation Sent', lastActivityAt: nowLocal(), stageChangedAt: nowLocal() }) }
+  return json({ ok: true, id, volumetricKg: vol, chargeableKg: charge, total: Math.round(charge * rate) })
+})
+on('POST', '/api/my/cargo-order', async (env, req) => {
+  const me = await authUser(env, req); const b = await body(req)
+  const name = String(b.customerName || '').trim(); if (!name) throw bad('Customer का नाम')
+  const amount = Number(b.amount) || 0; if (amount <= 0) throw bad('Amount डालें')
+  const vendorCost = Number(b.vendorCost) || 0
+  const markupPct = vendorCost > 0 ? Math.round(((amount - vendorCost) / vendorCost) * 100) : null
+  const id = await legacyPut(env, 'cargo_orders', { date: istDate(), customerName: name, phone: String(b.phone || ''), mode: String(b.mode || 'Road Cargo'), kg: Number(b.kg) || 0, amount, stage: 'Booking',
+    personId: me.legacy_id || null, emp_id: me.id, cseName: me.name, leadId: b.leadId || null, notes: String(b.notes || '').slice(0, 500), pickupAddress: String(b.pickupAddress || ''), consigneeName: String(b.consigneeName || ''),
+    vendorName: String(b.vendorName || ''), vendorCost, markupPct, approvalStatus: markupPct != null && markupPct < 40 ? 'pending' : '', createdAt: nowLocal() })
+  if (b.leadId) { const l = await legacyGet(env, 'ad_leads', b.leadId); if (l) await legacySet(env, 'ad_leads', b.leadId, { ...l, stage: 'Booking', converted: 1, revenue: amount, lastActivityAt: nowLocal(), stageChangedAt: nowLocal() }) }
+  await audit(env, me.id, 'cargo_order', 'cargo_orders', id, null, { amount, markupPct })
+  return json({ ok: true, id, markupPct })
+})
+on('POST', '/api/my/task-done', async (env, req) => {
+  const me = await authUser(env, req); const b = await body(req)
+  const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task नहीं मिला')
+  if (String(t.assigneeId) !== String(me.legacy_id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'यह आपका task नहीं है')
+  await legacySet(env, 'tasks', b.id, { ...t, status: b.done === false ? 'Open' : 'Done', closedAt: b.done === false ? null : nowLocal() })
   return json({ ok: true })
 })
 
