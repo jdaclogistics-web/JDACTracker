@@ -222,3 +222,4 @@ table.tds{border-collapse:separate;border-spacing:0;width:100%;min-width:1080px;
 .dr{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;gap:12px}.dr+.dr{margin-top:8px}
 .dr .av{width:36px;height:36px;border-radius:50%;color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .dr b{font-size:14px}.dr .k{font-size:11px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-top:6px}.dr p{margin:2px 0 0;font-size:13.5px;white-space:pre-wrap}
+.mkpop[hidden]{display:none!important}
