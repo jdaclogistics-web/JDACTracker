@@ -492,7 +492,7 @@ async function viewAttSheet(v, mode = 'month', anchor = istDate()) {
     // fit the whole sheet in the screen: row height shrinks to fit everyone; only scrolls if there are too many people
     const fitAw = () => { if (!aw.isConnected) return removeEventListener('resize', fitAw); const nav = document.querySelector('.nav'); const navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().height : 0
       const avail = innerHeight - aw.getBoundingClientRect().top - navH - 44; const rows = emps.length + 3
-      aw.style.setProperty('--rh', Math.max(24, Math.min(mode === 'week' ? 44 : 34, Math.floor(avail / rows))) + 'px'); aw.style.maxHeight = Math.max(240, avail) + 'px' }
+      const rh = Math.max(18, Math.min(mode === 'week' ? 44 : 34, Math.floor((avail - 70) / (emps.length + 1)))); aw.style.setProperty('--rh', rh + 'px'); aw.classList.toggle('tight', rh < 24); aw.style.maxHeight = Math.max(240, avail) + 'px' }
     fitAw(); addEventListener('resize', fitAw)
     const re = (a) => viewAttSheet(v, mode, a)
     v.querySelector('#prv').onclick = () => re(step(-1)); v.querySelector('#nxt').onclick = () => re(step(1))

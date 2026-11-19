@@ -294,3 +294,6 @@ button.ac:hover{outline:2px solid #2563EB;outline-offset:1px}
 .ep-day{margin-top:10px;background:#F8FAFC;border-radius:12px;padding:10px;font-size:13px}
 .ep-kv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.ep-kv div{background:#F8FAFC;border-radius:10px;padding:8px 10px}.ep-kv span{display:block;font-size:11px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.05em}.ep-kv b{font-size:13.5px}
 .ep-row .ck{width:24px;height:24px;border-radius:7px;border:2px solid #CBD5E1;background:#fff;cursor:pointer;flex:none}.ep-row .ck:hover{border-color:#059669}
+.att2 td.sv{background:transparent!important}
+.at2.tight .eav{display:none}.at2.tight .att2 .en b{font-size:12px}.at2.tight .ac{font-size:10.5px;border-radius:5px}.at2.tight .att2 tbody th.emp{padding-left:12px}
+.at2.tight .en small{display:none}.at2.tight .att2.week .ac{height:calc(var(--rh) - 4px)}
