@@ -223,13 +223,14 @@ async function invoicesList(A, company, filter, again) {
   }))
 }
 export async function viewAccounts(v, go, opts = {}, viewBiz) {
-  const sub = opts.sub || 'invoices'
+  const sub = opts.sub || 'summary'
   v.innerHTML = `<div class="cc-top"><b>Accounts</b><span class="sp"></span>${switcher('acsw')}</div>
-    <div class="chips">${[['invoices', 'Invoices & payments'], ['vittiya', 'Live money · Vittiya']].map(([k, l]) => `<button class="chip ${sub === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div><div id="acb">${skel}</div>`
+    <div class="chips">${[['summary', 'Group summary'], ['invoices', 'Invoices & payments'], ['vittiya', 'Live money · Vittiya']].map(([k, l]) => `<button class="chip ${sub === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div><div id="acb">${skel}</div>`
   v.querySelector('#acsw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewAccounts(v, go, opts, viewBiz) }
   v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => viewAccounts(v, go, { ...opts, sub: b.dataset.sub }, viewBiz)))
   const A = v.querySelector('#acb')
   if (sub === 'vittiya') return viewBiz(A)
+  if (sub === 'summary') return viewCC(A, go, opts.X || { setTimer: () => {} })
   try { await invoicesList(A, ccState.company === 'All' ? null : ccState.company, opts.filter, () => viewAccounts(v, go, opts, viewBiz)) } catch (e) { A.innerHTML = err(e) }
 }
 
@@ -399,12 +400,12 @@ export async function viewDesk(v, go, empId) {
 }
 
 // ═════════════════════════ PEOPLE ═════════════════════════
-export async function viewPeople2(v, go, X, opts = {}) {
+export async function viewPeople2(v, go, X, opts = {}, tabName = 'people') {
   const sub = opts.sub || 'today'
-  v.innerHTML = `<div class="cc-top"><b>People</b><span class="sp"></span>${switcher('psw')}</div>
+  v.innerHTML = `<div class="cc-top"><b>${tabName === 'team' ? 'Team' : 'People'}</b><span class="sp"></span>${switcher('psw')}</div>
     <div class="cc-tabs">${[['today', 'Today'], ['dir', 'Directory'], ['leave', 'Leave'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="pb">${skel}</div>`
-  v.querySelector('#psw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewPeople2(v, go, X, opts) }
-  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => viewPeople2(v, go, X, { sub: b.dataset.sub })))
+  v.querySelector('#psw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewPeople2(v, go, X, opts, tabName) }
+  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => (tabName === 'team' ? go('team', null, { sub: b.dataset.sub }) : viewPeople2(v, go, X, { sub: b.dataset.sub }))))
   const B = v.querySelector('#pb')
   try {
     if (sub === 'today') {
@@ -595,4 +596,113 @@ export async function viewChat(v) {
     v.querySelector('#cp').onchange = (e) => { chatProject = e.target.value; viewChat(v) }
     v.querySelector('#cf').onsubmit = async (e) => { e.preventDefault(); const t = v.querySelector('#cm').value.trim(); if (!t) return; try { await post('/api/cc/chat', { body: t, projectId: chatProject || null }); viewChat(v) } catch (er) { toast(er.message, 'bad') } }
   } catch (e) { v.innerHTML = err(e) }
+}
+
+
+// ═════════════════════════ COMMAND CENTRE (old JDAC look — Dashboard) ═════════════════════════
+export const HR_CO = 'JDAC HR & Payroll'
+const CC_COS = [
+  ['JDAC Studios', 'mega', '#4F46E5', 'Websites, social media and performance marketing'],
+  [HR_CO, 'wallet', '#16A34A', 'HR, payroll and employee records'],
+  ['GovaaBazaar', 'store', '#EA580C', 'FMCG orders, stock, purchases and sales'],
+  ['Jupiter Equipment', 'box', '#2563EB', 'Equipment orders, delivery, rentals and vendors'],
+  ['JDAC Logistics', 'truck', '#E11D48', 'Lead journey, bookings, collections and expenses'],
+]
+const CC_TOOLS = [
+  ['accounts', 'Accounts', 'live money & Vittiya', 'wallet', '#0D9488'],
+  ['desks', 'Create employee interfaces', 'build desks & assign people', 'grid', '#4F46E5'],
+  ['attendance', 'Attendance', 'present & leave', 'cal', '#16A34A'],
+  ['live', 'Live tracking', 'map & field status', 'pin', '#0D9488'],
+  ['old:daily_reports', 'Daily reports', 'end-of-day updates', 'doc', '#2563EB'],
+  ['report', 'Insights', 'trends & performance', 'chart', '#9333EA'],
+]
+export function viewCommand(v, go) {
+  v.innerHTML = `
+  <section class="cm-hero"><div class="cm-k">JDAC COMMAND CENTRE</div><h1>Start here, then open one company</h1>
+    <p>First see today's team. Second open the company you want to manage. Everything else stays below as a tool.</p>
+    <div class="cm-3"><button data-jump="s1"><i>1</i>See team</button><button data-jump="s2"><i>2</i>Open company</button><button data-jump="s3"><i>3</i>Use tools</button></div></section>
+  <div class="cm-h" id="s1"><i>1</i><div><b>First step — see today's team</b><span>Who started, who is working, who needs a push</span></div></div>
+  <button class="cm-row" data-go="team-today"><span class="cm-ic" style="background:#7C3AED">${ic('route', 20, '#fff')}</span><div class="nm"><b>Who's doing what</b><span id="wdw">today's team view</span></div>${ic('chev', 18, '#9AA4B5')}</button>
+  <div class="cm-h" id="s2"><i>2</i><div><b>Second step — open one company</b><span>Dashboard → money in → buying → expenses → work</span></div></div>
+  ${CC_COS.map(([n, i, c, sub], k) => `<button class="cm-co" data-co="${esc(n)}"><span class="cm-n">${k + 1}</span><span class="cm-ic big" style="background:${c}">${ic(i, 26, '#fff')}</span><div class="nm"><b>${esc(n)}</b><span>${esc(sub)}</span></div><span class="cm-go">→</span></button>`).join('')}
+  <div class="cm-h" id="s3"><i>+</i><div><b>Tools when you need them</b><span>Accounts, employee interfaces, attendance, tracking and reports</span></div></div>
+  ${CC_TOOLS.map(([k, l, sub, i, c]) => `<button class="cm-row" data-tool="${k}"><span class="cm-ic" style="background:${c}">${ic(i, 20, '#fff')}</span><div class="nm"><b>${l}</b><span>${sub}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}`
+  v.querySelectorAll('[data-jump]').forEach((b) => (b.onclick = () => v.querySelector('#' + b.dataset.jump).scrollIntoView({ behavior: 'smooth' })))
+  v.querySelector('[data-go]').onclick = () => go('team', null, { sub: 'today' })
+  v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : go('company', b.dataset.co))))
+  v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'attendance' ? go('team', null, { sub: 'today' }) : go(t, tbl || null) }))
+  get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not in` }).catch(() => {})
+}
+
+// ═════════════════════════ TEAM (ID, salary, phone, login) ═════════════════════════
+export async function viewTeam(v, go, X, opts = {}) {
+  const sub = opts.sub || 'dir'
+  if (sub !== 'dir') return viewPeople2(v, go, X, opts, 'team')
+  v.innerHTML = `<div class="cc-top"><b>Team</b><span class="sp"></span></div>
+    <div class="cc-tabs">${[['today', 'Today'], ['dir', 'Directory'], ['leave', 'Leave'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="tb">${skel}</div>`
+  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => go('team', null, { sub: b.dataset.sub })))
+  const B = v.querySelector('#tb')
+  try {
+    const rows = async (tbl) => (await get(`/api/legacy/rows?tbl=${tbl}&limit=1000`).catch(() => ({ rows: [] }))).rows
+    const [E, D, master, sal] = await Promise.all([get('/api/admin/employees'), get('/api/desks').catch(() => ({ desks: [] })), rows('employee_master'), rows('salary_records')])
+    const mOf = (e) => master.find((m) => e.legacy_id && String(m.personId) === String(e.legacy_id))
+    const sOf = (e) => sal.filter((r) => e.legacy_id && String(r.personId) === String(e.legacy_id)).sort((a, b) => String(b.month).localeCompare(String(a.month)))[0]
+    const salary = (e) => { const s = sOf(e), m = mOf(e); const v2 = Number(s?.fixedSalary) || Number(m?.salaryInHand) || 0; return v2 ? inr(v2) : '—' }
+    const paint = (q = '') => {
+      const list = E.employees.filter((e) => e.active && (!q || `${e.name} ${e.designation} ${e.username} ${e.phone} ${mOf(e)?.empCode || ''}`.toLowerCase().includes(q.toLowerCase())))
+      B.innerHTML = `<div class="row"><input class="inp" id="q" placeholder="Search name, ID, phone" value="${esc(q)}" style="max-width:320px"><span class="sp"></span><span class="sub">${list.length} active</span><button class="btn ghost sm" id="add">+ Add</button></div>
+        <section class="card" style="padding:4px 14px"><div class="list">${list.map((e) => { const m = mOf(e), mine = D.desks.filter((d) => d.people.some((p) => p.id === e.id))
+          return `<details class="staff"><summary class="li"><div class="av" style="background:${avColor(e.id)};color:#fff;border-radius:50%">${esc(initials(e.name))}</div><div class="nm"><b>${esc(e.name)}</b><span>${esc(m?.empCode || 'EMP-' + e.id)} · ${esc(e.designation || e.team)}</span></div><div class="rc"><b>${salary(e)}</b><span class="km">${e.phone ? '+91 ' + esc(e.phone) : 'no phone'}</span></div></summary>
+            <div class="cc-kv"><div><span>Employee ID</span><b>${esc(m?.empCode || 'EMP-' + e.id)}</b></div><div><span>Salary (monthly)</span><b>${salary(e)}</b></div><div><span>Phone</span><b>${e.phone ? '+91 ' + esc(e.phone) : '—'}</b></div>
+              <div><span>Login username</span><b>@${esc(e.username)}</b></div><div><span>Password</span><b>hidden — reset from Edit</b></div><div><span>Role · team</span><b>${esc(e.role)} · ${esc(e.team)}</b></div>
+              <div><span>Shift</span><b>${esc(e.shift_start)}–${esc(e.shift_end)}</b></div><div><span>Joining</span><b>${e.joining_date ? fmtDate(e.joining_date) : m?.joiningDate ? fmtDate(String(m.joiningDate).slice(0, 10)) : '—'}</b></div><div><span>Phone linked</span><b>${e.device_linked ? 'Yes' : 'No'}</b></div></div>
+            <b style="font-size:13px">Desks</b><div class="cc-dsw">${D.desks.filter((d) => d.kind !== 'later').map((d) => { const on = mine.includes(d); return `<button class="cc-sw2 ${on ? 'on' : ''}" data-d="${d.id}" data-e="${e.id}" data-on="${on ? 1 : 0}">${esc(d.icon || '')} ${esc(d.name)}</button>` }).join('')}</div>
+            <button class="btn dark sm" data-edit="1" style="margin-bottom:12px">Edit details / reset password</button></details>` }).join('')}</div></section>`
+      B.querySelector('#q').oninput = (ev) => { const val = ev.target.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
+      B.querySelector('#add').onclick = () => go('staff')
+      B.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => go('staff')))
+      B.querySelectorAll('[data-d]').forEach((b) => (b.onclick = async () => {
+        try { await post('/api/desks/access', { desk_id: Number(b.dataset.d), emp_id: Number(b.dataset.e), enabled: b.dataset.on !== '1' }); b.dataset.on = b.dataset.on === '1' ? '0' : '1'; b.classList.toggle('on'); toast('Saved') } catch (e) { toast(e.message, 'bad') }
+      }))
+    }
+    paint()
+  } catch (e) { B.innerHTML = err(e) }
+}
+
+// ═════════════════════════ HR & PAYROLL (pehle SalaryMitra) ═════════════════════════
+export async function viewHR(v, go, opts = {}) {
+  const sub = opts.sub || 'employees'
+  v.innerHTML = `<button class="link cc-back" id="back">← Dashboard</button>
+    <section class="cc-co" style="background:linear-gradient(120deg,#16A34A,#047857)"><div class="row"><span class="cc-coi">${ic('wallet', 22, '#fff')}</span><div class="sp"><b>${HR_CO}</b><span>HR, payroll and employee records</span></div></div><div class="cc-4 w" id="hrk"></div></section>
+    <div class="cc-tabs">${[['employees', 'Employees'], ['payroll', 'Payroll'], ['billing', 'HR billing'], ['records', 'Records']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="hb">${skel}</div>`
+  v.querySelector('#back').onclick = () => go('home')
+  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => go('hr', null, { sub: b.dataset.sub })))
+  const B = v.querySelector('#hb')
+  const rows = async (tbl) => { const out = []; for (let o = 0; ; o += 1000) { const r = await get(`/api/legacy/rows?tbl=${tbl}&limit=1000&offset=${o}`).catch(() => ({ rows: [], total: 0 })); out.push(...r.rows); if (out.length >= r.total) return out } }
+  try {
+    const [E, sal, inv, hre] = await Promise.all([get('/api/admin/employees'), rows('salary_records'), rows('hr_invoices'), rows('hr_employees')])
+    const months = [...new Set(sal.map((s) => String(s.month)))].sort().reverse()
+    const last = months[0]
+    const lastTot = sal.filter((s) => String(s.month) === last).reduce((a, s) => a + (Number(s.fixedSalary) || 0), 0)
+    v.querySelector('#hrk').innerHTML = `<div><b>${E.employees.filter((e) => e.active).length}</b><span>Employees</span></div><div><b>${inrL(lastTot)}</b><span>Payroll ${esc(last || '')}</span></div><div><b>${hre.length}</b><span>Placed (billing)</span></div><div><b>${inrL(inv.reduce((a, i) => a + (Number(i.total) || 0), 0))}</b><span>HR billed</span></div>`
+    if (sub === 'employees') { B.innerHTML = '<div id="tm"></div>'; return viewTeam(B.querySelector('#tm'), go, {}, { sub: 'dir' }) }
+    if (sub === 'payroll') {
+      const m = opts.month || last
+      const list = sal.filter((s) => String(s.month) === m)
+      B.innerHTML = `<div class="row"><select class="inp sm2" id="pm">${months.map((x) => `<option ${x === m ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><span class="sp"></span><b>${inr(list.reduce((a, s) => a + (Number(s.fixedSalary) || 0), 0))}</b><button class="btn ghost sm" id="xl">⬇ Excel</button></div>
+        <section class="card"><table class="cc-tbl"><thead><tr><th>Emp</th><th>Department</th><th class="r">Fixed</th><th class="r">DA</th><th class="r">TA</th></tr></thead><tbody>
+        ${list.map((s) => `<tr><td><b>${esc((E.employees.find((e) => String(e.legacy_id) === String(s.personId)) || {}).name || s.empCode || s.personId)}</b><div class="sub">${esc(s.empCode || '')} · ${esc(s.designation || '')}</div></td><td>${esc(s.department || '')}</td><td class="r">${inr(Number(s.fixedSalary) || 0)}</td><td class="r">${inr(Number(s.daLocalRate) || 0)}</td><td class="r">${inr(Number(s.taRate) || 0)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">No payroll for this month</td></tr>'}</tbody></table>
+        <div class="sub" style="margin-top:6px">Payroll processing is on hold — this shows the salary records already on file.</div></section>`
+      B.querySelector('#pm').onchange = (e) => go('hr', null, { sub: 'payroll', month: e.target.value })
+      B.querySelector('#xl').onclick = () => downloadCsv(`payroll-${m}.csv`, [['Emp code', 'Name', 'Department', 'Designation', 'Fixed', 'DA local', 'TA'], ...list.map((s) => [s.empCode, (E.employees.find((e) => String(e.legacy_id) === String(s.personId)) || {}).name, s.department, s.designation, s.fixedSalary, s.daLocalRate, s.taRate])])
+      return
+    }
+    if (sub === 'billing') {
+      B.innerHTML = `<section class="card"><div class="row"><h2 class="h3">HR billing invoices</h2><span class="sp"></span><span class="sub">${inv.length}</span></div><div class="list">${inv.sort((a, b) => String(b.invoiceDate).localeCompare(String(a.invoiceDate))).map((i) => `<div class="li"><div class="nm"><b>${esc(i.invoiceNo)}</b><span>${fmtDate(String(i.invoiceDate).slice(0, 10))} · due ${fmtDate(String(i.dueDate).slice(0, 10))}</span></div><div class="rc"><b>${inr(Number(i.total))}</b><span class="pill ${/paid/i.test(i.status) ? 'g' : 'o'}">${esc(i.status === 'sent' ? 'Unpaid' : i.status)}</span></div></div>`).join('') || '<div class="empty">No invoices</div>'}</div></section>
+        <section class="card"><div class="row"><h2 class="h3">Placed candidates</h2><span class="sp"></span><span class="sub">${hre.length}</span></div><div class="list">${hre.slice(0, 100).map((e) => `<div class="li"><div class="nm"><b>${esc(e.name)}</b><span>${esc(e.empId || '')} · ${esc(e.designation || '')} · joined ${e.joiningDate ? fmtDate(String(e.joiningDate).slice(0, 10)) : '—'}</span></div><b>${inr(Number(e.monthlySalary) || 0)}</b></div>`).join('')}</div></section>`
+      return
+    }
+    B.innerHTML = `<section class="card"><div class="cc-todo">${[['employee_master', 'Employee master'], ['salary_records', 'Salary records'], ['hr_employees', 'HR billing — candidates'], ['hr_invoices', 'HR billing — invoices'], ['hr_companies', 'HR clients'], ['expense_claims', 'Expense claims'], ['notices', 'Notices']].map(([t, l]) => `<button data-t="${t}"><b>${l}</b><span>open records · add / edit</span></button>`).join('')}</div></section>`
+    B.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => go('old', b.dataset.t)))
+  } catch (e) { B.innerHTML = err(e) }
 }

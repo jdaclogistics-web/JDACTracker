@@ -17,13 +17,17 @@ onTracking((s) => { if (s?.error === 'denied') toast('Location permission बं
 window.addEventListener('online', () => flush())
 
 // ── Boot ────────────────────────────────────────────────────────────────
+const ADMIN_HOME = ['boss', 'hr']
+const goAdmin = () => { if (me && ADMIN_HOME.includes(me.role) && !new URLSearchParams(location.search).has('staff')) { location.replace('./admin.html'); return true } return false }
 async function boot() {
   if (!auth.token) return renderLogin()
   me = auth.me
+  if (goAdmin()) return
   pending = await queueSize()
   render() // cached profile से तुरंत screen
   try {
     const r = await get('/api/me'); me = r.me
+    if (goAdmin()) return
     const d = await get('/api/day/today'); session = d.session
     await syncTracking()
   } catch (e) { if (!(e instanceof ApiError) || e.status !== 0) { /* 401 handled */ } }
@@ -80,8 +84,13 @@ function header() {
     <button class="ibtn" id="hout" aria-label="Logout">${ic('logout', 18)}</button></header>`
 }
 function nav() {
-  const t = (k, label, icn) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${ic(icn, 22)}${label}</button>`
-  return `<nav class="nav" aria-label="Main">${t('home', 'Home', 'home')}${t('desk', 'Desk', 'grid')}${t('tasks', 'Tasks', 'task')}${t('chat', 'Chat', 'chat')}${t('me', 'Me', 'user')}</nav>`
+  const t = (k, label, icn) => `<button data-tab="${k}" class="${tab === k || (k === 'home' && tab === 'desk') ? 'on' : ''}">${ic(icn, 22)}${label}</button>`
+  return `<nav class="nav" aria-label="Main">${t('home', 'Home', 'home')}${t('tasks', 'Tasks', 'task')}${t('chat', 'Chat', 'chat')}${t('me', 'Me', 'user')}</nav>`
+}
+let outArmed = 0
+async function headerLogout() {
+  if (session && !session.end_at && Date.now() - outArmed > 4000) { outArmed = Date.now(); toast('Day अभी खुला है — logout से tracking रुकेगी. Logout के लिए दोबारा दबाएँ', 'bad'); return }
+  await flush(); await stopTracking(); logout(); me = null; session = null; renderLogin()
 }
 function go(t, a = null, b = null, c = null) {
   if (t === 'start') { document.getElementById('day')?.scrollIntoView({ behavior: 'smooth' }); return }
@@ -93,7 +102,7 @@ function render() {
   if (!me) return renderLogin()
   app.innerHTML = header() + '<main class="main" id="view"></main>' + nav()
   app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => go(b.dataset.tab)))
-  document.getElementById('hout').onclick = () => go('me')
+  document.getElementById('hout').onclick = headerLogout
   const v = document.getElementById('view')
   if (tab === 'leave') return renderLeave(v)
   if (tab === 'month') return renderMonth(v)
@@ -105,7 +114,7 @@ function render() {
   const wk = document.getElementById('wk')
   const paint = () => { if (!document.body.contains(wk)) return; wk.innerHTML = homeBlocks(myHomeData, session, go); bindHome(wk, go) }
   paint()
-  loadMyHome().then(() => { paint(); const hb = document.querySelector('.wk-bar'); if (hb && myHomeData) { const x = document.createElement('div'); x.innerHTML = header(); hb.replaceWith(x.firstElementChild); document.getElementById('hout').onclick = () => go('me') } })
+  loadMyHome().then(() => { paint(); const hb = document.querySelector('.wk-bar'); if (hb && myHomeData) { const x = document.createElement('div'); x.innerHTML = header(); hb.replaceWith(x.firstElementChild); document.getElementById('hout').onclick = headerLogout } })
   return renderHome(document.getElementById('day'))
 }
 
@@ -290,7 +299,7 @@ function renderMe(v) {
   <section class="card"><div class="row"><div class="av" style="background:#F59E0B;color:#0B1220;border-radius:50%;width:52px;height:52px;font-size:17px">${esc(initials(me.name))}</div>
     <div class="nm"><b style="font-size:17px">${esc(me.name)}</b><span>${esc(me.designation || '')}</span><span>${esc(me.team)} team${me.work_location ? ' · ' + esc(me.work_location) : ''}</span></div></div>
     <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>@${esc(me.username || '')}</b><span>${me.phone ? '+91 ' + esc(me.phone) : 'username'}</span></div></div></section>
-  ${admin ? `<section class="card tip">${ic('shield', 20, '#6D28D9')}<div><b>Admin panel</b><p>HR / Boss / Developer panels open on the web panel link shared by office.</p></div></section>` : ''}
+  ${admin ? `<a class="card tip" href="./admin.html" style="text-decoration:none;color:inherit">${ic('shield', 20, '#6D28D9')}<div><b>Open admin panel</b><p>Dashboard, companies, team, tasks — इसी app में.</p></div></a>` : ''}
   <section class="card" style="padding:4px 14px"><div class="list">
     <button class="li" id="gol">${ic('cal', 20, '#3A4558')}<div class="nm"><b>Leave</b><span>Apply for leave, see status</span></div>${ic('chev', 18, '#9AA4B5')}</button>
     <button class="li" id="gom">${ic('clock', 20, '#3A4558')}<div class="nm"><b>My attendance</b><span>Month calendar</span></div>${ic('chev', 18, '#9AA4B5')}</button>

@@ -31,10 +31,10 @@ export function homeBlocks(h, session, go) {
       <span class="pill ${session ? (session.end_at ? 'b' : 'g') : 'n'}">${session ? (session.end_at ? '✅ Closed' : '● Open') : 'Not started'}</span></div>
     <div class="wk-prog"><span>🏆 ${pct}%</span><i><em style="width:${pct}%"></em></i><span>${pct >= 100 ? 'champion day! 🏆' : pct >= 50 ? 'keep going' : 'let’s start'}</span></div>
     <div class="tiles t3"><div class="tile hd"><b>${h.entries}</b><span>entries</span></div><div class="tile hd"><b>${km}</b><span>km</span></div><div class="tile hd"><b>${h.overdue}</b><span>overdue</span></div></div></section>
-  <section class="card"><h2 class="h3">Your work, in order</h2><div class="sub">Start the day, finish tasks, work your desk.</div>
+  <section class="card"><h2 class="h3">Your work, in order</h2><div class="sub">Start the day, finish tasks, fill your section, then submit.</div>
     <div class="wk-steps">
       <button data-go="start"><span>▶️</span><b>1. Start day</b></button><button data-go="tasks"><span>📋</span><b>2. Tasks</b></button>
-      <button data-go="desks"><span>🗂️</span><b>3. Desks</b></button><button data-go="month"><span>📅</span><b>4. Calendar</b></button></div></section>
+      <button data-go="desks"><span>🗂️</span><b>3. Sections</b></button><button data-go="month"><span>📅</span><b>4. Calendar</b></button></div></section>
   <section class="card" id="desks"><div class="wk-dh"><h2 class="h3">Desks</h2><div class="sub">Only the work your boss gave you appears here.</div></div>
     <div class="list">${h.desks.map((d) => `<button class="li" data-desk="${esc(d.module)}" data-name="${esc(d.name)}" data-id="${esc(d.id)}"><span class="wk-di">${esc(d.icon || '🗂️')}</span><div class="nm"><b>${esc(d.name)}</b><span>${esc(d.description)}</span></div><span class="pill n">OPEN</span></button>`).join('') || '<div class="empty">No desk assigned yet</div>'}</div></section>
   <section class="card"><div class="row"><h2 class="h3">⏭️ Up next for you</h2><span class="sp"></span><button class="link" data-go="tasks">all tasks →</button></div>
@@ -90,8 +90,8 @@ export async function renderDesk(v, go, module, name, deskId) {
   if (module === 'simple') return renderSimple(v, go, deskId, name)
   if (module === 'punch') return renderPunch(v, go)
   if (module !== 'cargo') {
-    v.innerHTML = `<button class="link wk-back" id="back">← Desks</button><section class="card"><h2 class="h3">${esc(name || module)}</h2><p class="sub">${module === 'ops-later' ? 'Ops desk (pickup to delivery) Om के panel के साथ आएगा।' : 'यह desk अभी admin panel पर खुलता है। App में जल्द आएगा।'}</p></section>`
-    v.querySelector('#back').onclick = () => go('desk'); return
+    v.innerHTML = `<button class="link wk-back" id="back">← Home</button><section class="card"><h2 class="h3">${esc(name || module)}</h2><p class="sub">${module === 'ops-later' ? 'Ops desk (pickup to delivery) Om के panel के साथ आएगा।' : 'यह desk अभी admin panel पर खुलता है। App में जल्द आएगा।'}</p></section>`
+    v.querySelector('#back').onclick = () => go('home'); return
   }
   v.innerHTML = '<div class="skel"></div><div class="skel"></div>'
   let d
@@ -113,7 +113,7 @@ export async function renderDesk(v, go, module, name, deskId) {
   <section class="card"><h2 class="h3">My lead journey</h2><div class="wk-j">${Object.entries(d.journey).map(([k, n], i) => `<button data-j="${esc(k)}" class="j${i}"><b>${n}</b><span>${k === 'New' ? '🆕 New' : esc(k)}</span></button>`).join('')}</div>
     <div class="wk-j3"><button data-sub="orders">${ic('task', 18)}My orders</button><button data-sub="customers">${ic('users', 18)}Customers</button><button data-sub="perf">${ic('chart', 18)}Performance</button></div></section>
   <section class="card"><h2 class="h3">🏆 Team leaderboard — profit this month</h2><div class="list">${d.leaderboard.map((x) => `<div class="li"><b style="width:20px">${x.rank}</b><div class="nm"><b style="color:${x.name === d.for ? '#BE123C' : 'inherit'}">${esc(x.name)}${x.name === d.for ? ' (you)' : ''}</b></div><span class="sub">${x.orders} orders${x.profit != null ? ` · profit <b>${inr(x.profit)}</b>${x.avg_markup != null ? ' · ' + x.avg_markup + '%' : ''}` : ''}</span></div>`).join('')}</div></section>`
-  v.querySelector('#back').onclick = () => go('desk')
+  v.querySelector('#back').onclick = () => go('home')
   const reload = () => renderDesk(v, go, module, name)
   v.querySelectorAll('[data-log]').forEach((b) => (b.onclick = () => logSheet(b.dataset.log, b.dataset.ph, b.dataset.nm, reload)))
   v.querySelector('#neworder').onclick = () => orderSheet(null, reload)
@@ -205,7 +205,7 @@ async function renderBookings(v, go, errMsg = '') {
   let r
   try { r = await get('/api/bookings') } catch (e) { v.innerHTML = `<div class="err">${esc(e.message)}</div>`; return }
   const today = istDate(), mine = r.rows.filter((x) => x.date === today)
-  v.innerHTML = `<button class="link wk-back" id="back">← Desks</button>
+  v.innerHTML = `<button class="link wk-back" id="back">← Home</button>
   <section class="wk-bk"><div><b>${inr(r.totals.today)}</b><span>Today</span></div><div><b>${inr(r.totals.week)}</b><span>This week</span></div><div><b>${inr(r.totals.month)}</b><span>This month</span></div></section>
   <section class="card"><h2 class="h3">Add booking</h2><form id="bf" class="stack" style="margin-top:10px">
     <label class="f">Date<input class="inp" type="date" id="bd" value="${today}" max="${today}" required></label>
@@ -216,7 +216,7 @@ async function renderBookings(v, go, errMsg = '') {
     <div class="list">${mine.map((x) => `<div class="li wk-lead"><div class="nm"><b>${esc(x.booking_no)}</b><span>${fmtDate(x.date)} · ${new Date(x.created_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })}</span></div><b>${inr(x.amount)}</b><button class="pill o wk-ed" data-ed="${x.id}" data-no="${esc(x.booking_no)}" data-amt="${x.amount}">Edit</button></div>`).join('') || '<div class="empty">No bookings today</div>'}</div>
     <div class="wk-y">Edit or delete only today · after that, admin only</div></section>
   ${r.rows.filter((x) => x.date !== today).length ? `<section class="card"><h2 class="h3">Earlier this month</h2><div class="list">${r.rows.filter((x) => x.date !== today).slice(0, 60).map((x) => `<div class="li"><div class="nm"><b>${esc(x.booking_no)}</b><span>${fmtDate(x.date)}</span></div><b>${inr(x.amount)}</b></div>`).join('')}</div></section>` : ''}`
-  v.querySelector('#back').onclick = () => go('desk')
+  v.querySelector('#back').onclick = () => go('home')
   v.querySelector('#bf').onsubmit = async (e) => {
     e.preventDefault()
     try { await post('/api/bookings', { date: v.querySelector('#bd').value, booking_no: v.querySelector('#bn').value.trim(), amount: v.querySelector('#ba').value }); toast('Booking saved ✓'); renderBookings(v, go) }
@@ -235,10 +235,10 @@ async function renderPunch(v, go) {
   v.innerHTML = '<div class="skel"></div>'
   let d
   try { d = await get('/api/my/cargo') } catch (e) { v.innerHTML = `<div class="err">${esc(e.message)}</div>`; return }
-  v.innerHTML = `<button class="link wk-back" id="back">← Desks</button>
+  v.innerHTML = `<button class="link wk-back" id="back">← Home</button>
     <button class="wk-new" id="neworder" style="border:0;border-radius:16px;padding:16px;font-weight:800;font-size:16px;color:#fff">＋ Punch new order</button>
     <section class="card"><h2 class="h3">My orders</h2><div class="list">${d.orders.map((o) => `<div class="li"><div class="nm"><b>${esc(o.customer)} · ${inr(o.amount)}</b><span>${fmtDate(o.date)} · ${esc(o.mode)} · ${o.kg} kg${o.markup != null ? ' · markup ' + o.markup + '%' : ''}</span></div><span class="pill ${/pending/i.test(o.approval) ? 'o' : /rejected/i.test(o.approval) ? 'r' : 'n'}">${/pending/i.test(o.approval) ? 'Pending approval' : /rejected/i.test(o.approval) ? 'Rejected' : esc(o.stage)}</span></div>`).join('') || '<div class="empty">No orders yet</div>'}</div></section>`
-  v.querySelector('#back').onclick = () => go('desk')
+  v.querySelector('#back').onclick = () => go('home')
   v.querySelector('#neworder').onclick = () => orderSheet(null, () => renderPunch(v, go))
 }
 
@@ -252,12 +252,12 @@ async function renderSimple(v, go, id, name) {
     : f.type === 'photo' ? `<input class="inp" type="file" accept="image/*" capture="environment" data-photo="${f.key}">`
     : `<input class="inp" name="${f.key}" type="${f.type === 'money' || f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}" ${f.type === 'money' ? 'step="0.01" min="0"' : ''}>`
   const total = r.entries.filter((x) => x.date.slice(0, 7) === istDate().slice(0, 7)).reduce((a, x) => a + x.amount, 0)
-  v.innerHTML = `<button class="link wk-back" id="back">← Desks</button>
+  v.innerHTML = `<button class="link wk-back" id="back">← Home</button>
     <section class="card"><div class="row"><h2 class="h3">${esc(r.desk.icon || '✍️')} ${esc(r.desk.name)}</h2><span class="sp"></span>${F.some((f) => f.type === 'money') ? `<span class="pill g">${inr(total)} this month</span>` : ''}</div>
       <form id="sf" class="wk-form"><label class="f wide">Date<input class="inp" type="date" name="_date" value="${istDate()}" max="${istDate()}"></label>
       ${F.map((f) => `<label class="f wide">${esc(f.label)}${input(f)}</label>`).join('')}<button class="btn pri wide">Save entry</button></form></section>
     <section class="card"><h2 class="h3">My entries</h2><div class="list">${r.entries.slice(0, 50).map((x) => `<div class="li"><div class="nm"><b>${esc(F.filter((f) => f.type !== 'photo').map((f) => x.data[f.key]).filter((y) => y !== '' && y != null).slice(0, 3).join(' · ') || 'Entry')}</b><span>${fmtDate(x.date)}</span></div>${x.amount ? `<b>${inr(x.amount)}</b>` : ''}</div>`).join('') || '<div class="empty">No entries yet</div>'}</div></section>`
-  v.querySelector('#back').onclick = () => go('desk')
+  v.querySelector('#back').onclick = () => go('home')
   v.querySelector('#sf').onsubmit = async (e) => {
     e.preventDefault()
     const fd = new FormData(e.target), data = {}

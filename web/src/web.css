@@ -109,3 +109,18 @@ details.card summary{list-style:none;cursor:pointer;display:flex;align-items:cen
 .cc-org{display:flex;flex-direction:column;gap:14px}.cc-orow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.cc-oc{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:6px 10px}.cc-oc b{display:block;font-size:13px}.cc-oc span{font-size:11.5px;color:var(--mut)}
 .cc-dash2{border:2px dashed #CBD5E1}.sm2{width:auto;padding:8px}
 .stack{display:flex;flex-direction:column;gap:12px}
+
+/* ── Command Centre (old JDAC look) ── */
+.bar .parent{font-style:normal;background:#78350F;color:#FDE68A;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700;margin-left:4px}
+.cm-hero{background:linear-gradient(135deg,#0B1730,#0F2A2E 60%,#0E3B33);color:#fff;border-radius:24px;padding:20px 18px}
+.cm-k{font-size:12px;letter-spacing:.18em;font-weight:800;color:#34D399}.cm-hero h1{margin:8px 0 6px;font-size:26px;line-height:1.15;letter-spacing:-.5px}.cm-hero p{margin:0 0 14px;color:#CBD5E1;font-size:14px}
+.cm-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cm-3 button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:14px;color:#fff;font-weight:700;font-size:13px;padding:12px 4px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
+.cm-3 i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#10B981;color:#04231A;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.cm-h{display:flex;gap:12px;align-items:flex-start;margin:8px 2px 0}.cm-h>i{font-style:normal;width:28px;height:28px;border-radius:50%;background:#0B1220;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:none}.cm-h b{display:block;font-size:16.5px}.cm-h span{font-size:13px;color:var(--mut)}
+.cm-row,.cm-co{display:flex;align-items:center;gap:14px;width:100%;background:#fff;border:1px solid var(--line);border-radius:20px;padding:14px;cursor:pointer;text-align:left;color:inherit;box-shadow:0 1px 2px rgba(11,18,32,.04)}
+.cm-row .nm b,.cm-co .nm b{font-size:16px}.cm-row .nm span,.cm-co .nm span{white-space:normal}
+.cm-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex:none}.cm-ic.big{width:58px;height:58px;border-radius:16px}
+.cm-n{width:30px;height:30px;border-radius:50%;background:#F1F5F9;display:flex;align-items:center;justify-content:center;font-weight:700;color:#64748B;flex:none}
+.cm-go{width:36px;height:36px;border-radius:50%;background:#F1F5F9;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:18px;flex:none}
+.nav button.big{position:relative}.nav .fab{width:58px;height:58px;border-radius:50%;background:#F59E0B;display:flex;align-items:center;justify-content:center;margin-top:-30px;box-shadow:0 6px 16px rgba(245,158,11,.45);border:4px solid #fff}
+@media (min-width:900px){.nav .fab{width:34px;height:34px;margin:0;border:0;box-shadow:none}}

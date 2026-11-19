@@ -2,7 +2,7 @@ name: Phone app live update
 # main पर mobile/shared बदलते ही web bundle बनाकर branch "live" पर डालता है.
 # Phones app खुलने पर version.json देखकर नया bundle खुद ले लेते हैं (APK दोबारा नहीं).
 on:
-  push: { branches: [main], paths: ['mobile/**', 'shared/**', '.github/workflows/live-update.yml'] }
+  push: { branches: [main], paths: ['mobile/**', 'shared/**', 'web/src/**', 'web/public/**', '.github/workflows/live-update.yml'] }
   workflow_dispatch:
 permissions: { contents: write }
 concurrency: { group: live-update, cancel-in-progress: true }
