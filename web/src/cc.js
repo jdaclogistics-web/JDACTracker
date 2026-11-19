@@ -879,7 +879,7 @@ export async function viewHR(v, go, opts = {}) {
     const months = [...new Set(sal.map((s) => String(s.month)))].sort().reverse()
     const last = months[0]
     const lastTot = sal.filter((s) => String(s.month) === last).reduce((a, s) => a + (Number(s.fixedSalary) || 0), 0)
-    v.querySelector('#hrk').innerHTML = `<div><b>${E.employees.filter((e) => e.active).length}</b><span>Employees</span></div><div><b>${inrL(lastTot)}</b><span>Payroll ${esc(last || '')}</span></div><div><b>${hre.length}</b><span>Placed (billing)</span></div><div><b>${inrL(inv.reduce((a, i) => a + (Number(i.total) || 0), 0))}</b><span>HR billed</span></div>`
+    v.querySelector('#hrk').innerHTML = `<div><b>${E.employees.filter((e) => e.active).length}</b><span>Employees</span></div><div><b>${inrL(E.employees.filter((e) => e.active).reduce((a, e) => a + (Number(e.salary_inhand) || 0), 0))}</b><span>Monthly salaries</span></div><div><b>${hre.length}</b><span>Placed (billing)</span></div><div><b>${inrL(inv.reduce((a, i) => a + (Number(i.total) || 0), 0))}</b><span>HR billed</span></div>`
     if (sub === 'employees') { B.innerHTML = '<div id="tm"></div>'; return viewTeam(B.querySelector('#tm'), go, {}, { sub: 'dir', bare: true }) }
     if (sub === 'payroll') return payrollView(B, go, opts)
     if (sub === 'billing') {
