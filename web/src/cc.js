@@ -609,12 +609,12 @@ const CC_COS = [
   ['JDAC Logistics', 'truck', '#E11D48', 'Lead journey, bookings, collections and expenses'],
 ]
 const CC_TOOLS = [
-  ['accounts', 'Accounts', 'live money & Vittiya', 'wallet', '#0D9488'],
-  ['desks', 'Create employee interfaces', 'build desks & assign people', 'grid', '#4F46E5'],
-  ['attendance', 'Attendance', 'present & leave', 'cal', '#16A34A'],
+  ['accounts', 'Accounts', 'live money & Vittiya', 'dollar', '#0D9488'],
+  ['desks', 'Create employee interfaces', 'build sections & assign people', 'layout', '#4F46E5'],
+  ['attendance', 'Attendance', 'present & leave', 'calcheck', '#16A34A'],
   ['live', 'Live tracking', 'map & field status', 'pin', '#0D9488'],
   ['old:daily_reports', 'Daily reports', 'end-of-day updates', 'doc', '#2563EB'],
-  ['report', 'Insights', 'trends & performance', 'chart', '#9333EA'],
+  ['report', 'Insights', 'trends & performance', 'bars', '#C026D3'],
 ]
 export function viewCommand(v, go) {
   v.innerHTML = `
@@ -622,7 +622,7 @@ export function viewCommand(v, go) {
     <p>First see today's team. Second open the company you want to manage. Everything else stays below as a tool.</p>
     <div class="cm-3"><button data-jump="s1"><i>1</i>See team</button><button data-jump="s2"><i>2</i>Open company</button><button data-jump="s3"><i>3</i>Use tools</button></div></section>
   <div class="cm-h" id="s1"><i>1</i><div><b>First step — see today's team</b><span>Who started, who is working, who needs a push</span></div></div>
-  <button class="cm-row" data-go="team-today"><span class="cm-ic" style="background:#7C3AED">${ic('route', 20, '#fff')}</span><div class="nm"><b>Who's doing what</b><span id="wdw">today's team view</span></div>${ic('chev', 18, '#9AA4B5')}</button>
+  <button class="cm-row" data-go="team-today"><span class="cm-ic" style="background:linear-gradient(135deg,#7C3AED,#C026D3)">${ic('pulse', 20, '#fff')}</span><div class="nm"><b>Who's doing what</b><span id="wdw">today's team view</span></div>${ic('chev', 18, '#9AA4B5')}</button>
   <div class="cm-h" id="s2"><i>2</i><div><b>Second step — open one company</b><span>Dashboard → money in → buying → expenses → work</span></div></div>
   ${CC_COS.map(([n, i, c, sub], k) => `<button class="cm-co" data-co="${esc(n)}"><span class="cm-n">${k + 1}</span><span class="cm-ic big" style="background:${c}">${ic(i, 26, '#fff')}</span><div class="nm"><b>${esc(n)}</b><span>${esc(sub)}</span></div><span class="cm-go">→</span></button>`).join('')}
   <div class="cm-h" id="s3"><i>+</i><div><b>Tools when you need them</b><span>Accounts, employee interfaces, attendance, tracking and reports</span></div></div>

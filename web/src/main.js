@@ -52,6 +52,7 @@ function renderLogin(err = '') {
 
 function render() {
   cleanup()
+  document.body.classList.toggle('cmdmode', me.role !== 'hr')
   const tabs = ROLE_TABS[me.role]
   if (!tabs.some((t) => t[0] === tab) && !(['company', 'desk', 'deskadmin', 'leaves', 'biz', 'hr', 'people'].includes(tab) && me.role !== 'hr')) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
@@ -60,7 +61,7 @@ function render() {
     ${me.role === 'hr' ? `<div class="bt"><b>${esc(me.name)}</b><span>${ROLE_LABEL[me.role]} · ${fmtDate(istDate())}</span></div>`
       : `<div class="bt"><b>JDAC SALES PVT LTD</b><span>${fmtDate(istDate(), { day: 'numeric', month: 'short', year: 'numeric' })} <i class="parent">parent</i></span></div>`}
     <button class="ibtn" id="out" aria-label="Logout">${ic('logout', 18)}</button></header>
-  <div class="shell"><nav class="nav side" aria-label="Panel">${tabs.map(([k, l, i, more, big]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''} ${more ? 'more' : ''} ${big ? 'big' : ''}" style="${tab === k && !big ? `color:${acc}` : ''}">${big ? `<span class="fab">${ic(i, 26, '#fff')}</span>` : ic(i, 22)}<span>${l}</span></button>`).join('')}</nav>
+  <div class="shell ${me.role === 'hr' ? '' : 'cmd'}"><nav class="nav side" aria-label="Panel">${tabs.map(([k, l, i, more, big]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''} ${more ? 'more' : ''} ${big ? 'big' : ''}" style="${tab === k && !big ? `color:${acc}` : ''}">${big ? `<span class="fab">${ic(i, 26, '#fff')}</span>` : ic(i, 22)}<span>${l}</span></button>`).join('')}</nav>
   <main class="main" id="view"></main></div>`
   document.getElementById('out').onclick = doLogout
   app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { if (b.dataset.tab === 'logout') return doLogout(); tab = b.dataset.tab; tabArg = null; tabOpts = {}; render() }))

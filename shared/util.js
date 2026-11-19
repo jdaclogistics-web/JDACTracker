@@ -57,6 +57,11 @@ export function toast(msg, kind = 'ok') {
 
 // Inline stroke icons (design canvas वाले)
 const I = {
+  pulse: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  dollar: '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M14.5 8.5c-.5-1-1.5-1.5-2.5-1.5-1.4 0-2.5.8-2.5 2s1.1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1.1 0-2.1-.5-2.6-1.5M12 5.5v13"/>',
+  layout: '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 9h17M9 9v11.5"/>',
+  calcheck: '<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18M9 15l2 2 4-4"/>',
+  bars: '<path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/><rect x="3" y="3" width="18" height="18" rx="3"/>',
   truck: '<path d="M2 6h11v10H2zM13 9h4l4 4v3h-8"/><circle cx="6" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/>',
   box: '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9"/>',
   store: '<path d="M3 9.5 5 4h14l2 5.5M4 9.5V20h16V9.5M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M10 20v-5h4v5"/>',
