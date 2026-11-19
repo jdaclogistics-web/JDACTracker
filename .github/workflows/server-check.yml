@@ -1,0 +1,10 @@
+name: Server check
+# Server के मुख्य pages का जवाब दिखाता है (deploy के बाद जाँच के लिए)
+on: { workflow_dispatch: {} }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          B=https://jdac-tracker-api.jdaclogistics.workers.dev
+          for p in /api/health /api/usage /api/public/form/test "/api/legacy/rows"; do echo "== $p"; curl -sS -m 30 -w "  [HTTP %{http_code}]\n" "$B$p" | cut -c1-600; done
