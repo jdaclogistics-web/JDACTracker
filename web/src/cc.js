@@ -551,7 +551,7 @@ const kbCard = (t, nameOf, today, proj) => { const od = stageOf(t) !== 'Complete
     <div class="kb-meta">${who !== '—' ? `<span class="kb-av" style="background:${avColor(who.length)}">${esc(initials(who))}</span>${esc(who.split(' ')[0])}` : ''}${t.due ? `<span class="${od ? 'od' : ''}">📅 ${fmtDate(String(t.due).slice(0, 10), { day: 'numeric', month: 'short' })}</span>` : ''}${/high/i.test(t.priority || '') ? '<span class="hi">High</span>' : ''}</div>
     ${proj ? `<div class="kb-proj">${esc(proj)}</div>` : ''}</div>` }
 function taskEditor(t, emps, projects, tagLib, again, pid = '') {
-  const isNew = !t; t = t || { title: '', status: 'To do', projectId: pid, due: istDate(), priority: 'Normal', tags: [] }
+  const isNew = !t || !t._rid; t = t || { title: '', status: 'To do', projectId: pid, due: istDate(), priority: 'Normal', tags: [] }
   let tags = (Array.isArray(t.tags) ? t.tags : []).map((g) => ({ ...g }))
   const assignee = emps.find((e) => (t.assignee_emp != null && String(e.id) === String(t.assignee_emp)) || (e.legacy_id != null && t.assigneeId != null && String(e.legacy_id) === String(t.assigneeId)))
   const el = document.createElement('div'); el.className = 'tm-modal'
@@ -898,29 +898,59 @@ export async function viewHR(v, go, opts = {}) {
   } catch (e) { B.innerHTML = err(e) }
 }
 
-// ═════════════════════════ EMPLOYEE PAGE (what the employee sees — read-only for Boss / HR) ═════════════════════════
-export async function viewEmpPage(v, id) {
+// ═════════════════════════ EMPLOYEE PAGE (what the employee sees) — Viewer or Editor for Boss / HR / Developer ═════════════════════════
+const epState = { mode: 'view', tab: 'home' }
+export async function viewEmpPage(v, id, go) {
   v.innerHTML = skel
   try {
-    const h = await get('/api/my/home?as=' + id)
+    const [h, E] = await Promise.all([get('/api/my/home?as=' + id), get('/api/admin/employees')])
+    const emp = E.employees.find((x) => x.id === Number(id)) || {}
+    const edit = epState.mode === 'edit', again = () => viewEmpPage(v, id, go)
     const hr = Number(new Date(Date.now() + 330 * 60000).getUTCHours())
     const greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening'
     const pct = h.tasks_total ? Math.round((h.tasks_done / h.tasks_total) * 100) : 100
     const dayTxt = !h.day ? 'Not started' : h.day.end_at ? '✅ Closed' : '🟢 Working'
     const icons = { cargo: '🚚', bookings: '📒', collections: '💰', punch: '🧾', social: '📣', perf: '📈', fmcg: '🛒', 'jupiter-orders': '🏥', 'accounts-entry': '📊', simple: '📝' }
-    v.innerHTML = `<div class="ep-view">
-      <div class="ep-note">👁 Viewing ${esc(h.name)}'s page (read-only) — this is what they see in their app${h.emp_code ? ' · ' + esc(h.emp_code) : ''}</div>
+    const taskRow = (t) => `<div class="ep-row">${edit ? `<button class="ck" data-done="${esc(t.id)}" aria-label="Mark done"></button>` : '<span class="ic" style="background:#EEF2FF">📌</span>'}<div><b>${esc(t.title)}</b><span>${t.due ? 'due ' + fmtDate(t.due) : 'no due date'}${t.priority ? ' · ' + esc(t.priority) : ''}${t.status ? ' · ' + esc(t.status) : ''}</span></div>${t.due && t.due < istDate() ? '<span class="pill r">overdue</span>' : ''}</div>`
+    const tabs = { home: () => `
       <section class="ep-hero"><div class="ep-top"><span class="av">${esc(initials(h.name))}</span><div><b>${greet}, ${esc(h.name.split(' ')[0])} 👋</b><span>${esc(h.designation || h.team || '')}</span></div><span class="ep-st">${dayTxt}</span></div>
         <div class="ep-prog">🏆 ${pct}%<span class="ep-bar"><i style="width:${pct}%"></i></span>${h.tasks_done}/${h.tasks_total} tasks</div>
         <div class="ep-stats"><div><b>${h.entries}</b><span>entries</span></div><div><b>${h.day ? (h.day.total_km || 0).toFixed(1) : '0'}</b><span>km</span></div><div><b>${h.overdue}</b><span>overdue</span></div></div></section>
       <section class="ep-card"><h3>Your work, in order</h3><p class="sub">Start the day, finish tasks, fill your section, then submit.</p>
-        <div class="ep-steps"><div><i>▶️</i>1. Start day</div><div><i>📋</i>2. Tasks</div><div><i>🗂️</i>3. Sections</div><div><i>📅</i>4. Calendar</div></div></section>
-      <section class="ep-card ep-desks"><h3>Desks</h3><p class="sub">Only the work the boss gave appears here.</p>
-        ${h.desks.map((d) => `<div class="ep-row"><span class="ic">${icons[d.module] || d.icon || '🗂️'}</span><div><b>${esc(d.name)}</b><span>${esc(d.description || d.company || '')}</span></div><span class="pill n">Open</span></div>`).join('') || '<div class="empty">No desks switched on</div>'}</section>
-      <section class="ep-card"><div class="row"><h3>⏭ Up next</h3><span class="sp"></span><span class="sub" style="margin:0">${h.up_next.length} open</span></div>
-        ${h.up_next.slice(0, 8).map((t) => `<div class="ep-row"><span class="ic" style="background:#EEF2FF">📌</span><div><b>${esc(t.title)}</b><span>${t.due ? 'due ' + fmtDate(t.due) : 'no due date'}${t.priority ? ' · ' + esc(t.priority) : ''}</span></div>${t.due && t.due < istDate() ? '<span class="pill r">overdue</span>' : ''}</div>`).join('') || '<p class="sub">Nothing pending — enjoy the clear day ✨</p>'}</section>
+        <div class="ep-steps"><button data-go="day"><i>▶️</i>1. Start day</button><button data-go="tasks"><i>📋</i>2. Tasks</button><button data-go="desks"><i>🗂️</i>3. Sections</button><button data-go="tasks"><i>📅</i>4. Calendar</button></div>
+        <div id="dayx"></div></section>
+      <section class="ep-card ep-desks" id="desks"><h3>Desks</h3><p class="sub">Only the work the boss gave appears here.</p>
+        ${h.desks.map((d) => `<div class="ep-row"><span class="ic">${icons[d.module] || d.icon || '🗂️'}</span><div><b>${esc(d.name)}</b><span>${esc(d.description || d.company || '')}</span></div><button class="btn ghost sm" data-desk="${esc(d.id)}" data-mod="${esc(d.module)}">Open</button></div>`).join('') || '<div class="empty">No desks switched on</div>'}</section>
+      <section class="ep-card"><div class="row"><h3>⏭ Up next</h3><span class="sp"></span><button class="link" data-go="tasks">all tasks →</button></div>
+        ${h.up_next.slice(0, 5).map(taskRow).join('') || '<p class="sub">Nothing pending — enjoy the clear day ✨</p>'}</section>
       <section class="ep-card"><div class="row"><h3>My projects</h3><span class="sp"></span><span class="sub" style="margin:0">${h.projects.length}</span></div>
-        ${h.projects.map((p) => `<div class="ep-row"><span class="ic">📁</span><div><b>${esc(p.name)}</b><span>${p.open} open tasks · ${p.members} members</span></div></div>`).join('') || '<p class="sub">No projects</p>'}</section>
-    </div>`
+        ${h.projects.map((p) => `<div class="ep-row"><span class="ic">📁</span><div><b>${esc(p.name)}</b><span>${p.open} open tasks · ${p.members} members</span></div></div>`).join('') || '<p class="sub">No projects</p>'}</section>`,
+      tasks: () => `<section class="ep-card"><div class="row"><h3>Tasks · ${h.up_next.length} open</h3><span class="sp"></span>${edit ? '<button class="btn dark sm" id="addt">+ Add task</button>' : ''}</div>
+        ${h.up_next.map(taskRow).join('') || '<p class="sub">Nothing pending ✨</p>'}</section>`,
+      chat: () => `<div class="ep-note" style="background:#F1F5F9;color:#475569">Team chat — messages you send here go out as you, not as ${esc(h.name.split(' ')[0])}.</div><div id="epchat"></div>`,
+      me: () => `<section class="ep-card"><div class="ep-top" style="color:inherit"><span class="av">${esc(initials(h.name))}</span><div><b style="color:#0F172A">${esc(h.name)}</b><span>${esc(h.designation || '')}</span></div>${edit ? '<button class="btn dark sm" id="edp" style="margin-left:auto">Edit profile</button>' : ''}</div>
+        <div class="ep-kv">${[['Emp ID', emp.emp_code], ['User ID', emp.username], ['Mobile', emp.phone ? '+91 ' + emp.phone : ''], ['Team', emp.team], ['Department', emp.department], ['City', emp.work_location], ['Joining date', emp.joining_date ? fmtDate(emp.joining_date) : ''], ['Shift', emp.shift_start ? emp.shift_start + ' – ' + emp.shift_end : ''], ['Status', emp.status || (emp.active ? 'Active' : 'Inactive')]].map(([k, val]) => `<div><span>${k}</span><b>${esc(val || '—')}</b></div>`).join('')}</div></section>` }
+    const tab = tabs[epState.tab] ? epState.tab : 'home'
+    v.innerHTML = `<div class="ep-view">
+      <div class="ep-bar2"><span>👁 ${esc(h.name)}'s page${h.emp_code ? ' · ' + esc(h.emp_code) : ''}</span><span class="sp"></span>
+        <div class="ep-seg"><button data-m="view" class="${edit ? '' : 'on'}">Viewer</button><button data-m="edit" class="${edit ? 'on' : ''}">Editor</button></div></div>
+      ${edit ? '<div class="ep-note" style="background:#FEF3C7;color:#92400E">Editor mode — your changes are saved for this employee (admins only).</div>' : ''}
+      <div class="ep-phone"><div class="ep-body">${tabs[tab]()}</div>
+        <nav class="ep-foot">${[['home', '🏠', 'Home'], ['tasks', '📋', 'Tasks'], ['chat', '💬', 'Chat'], ['me', '👤', 'Me']].map(([k, i, l]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}"><i>${i}</i>${l}</button>`).join('')}</nav></div></div>`
+    v.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => { epState.mode = b.dataset.m; again() }))
+    v.querySelectorAll('.ep-foot [data-tab]').forEach((b) => (b.onclick = () => { epState.tab = b.dataset.tab; again() }))
+    v.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => {
+      if (b.dataset.go === 'tasks') { epState.tab = 'tasks'; return again() }
+      if (b.dataset.go === 'desks') return v.querySelector('#desks')?.scrollIntoView({ behavior: 'smooth' })
+      const x = v.querySelector('#dayx')
+      x.innerHTML = `<div class="ep-day">${h.day ? `Day started ${fmtTime(h.day.start_at)}${h.day.end_at ? ' · closed ' + fmtTime(h.day.end_at) : ''}` : `${esc(h.name.split(' ')[0])} starts the day in their own app (selfie + GPS).`}
+        ${edit ? `<div class="mkb" style="margin-top:8px">${['Present', 'Half Day', 'Absent', 'Leave'].map((st) => `<button data-mk="${st}">${st} today</button>`).join('')}</div>` : ''}</div>`
+      x.querySelectorAll('[data-mk]').forEach((m) => (m.onclick = async () => { try { await post('/api/admin/marks', { emp_id: Number(id), date: istDate(), status: m.dataset.mk, reason: 'Set from employee page' }); toast(`${h.name}: ${m.dataset.mk} today`) } catch (e) { toast(e.message, 'bad') } }))
+    }))
+    v.querySelectorAll('[data-desk]').forEach((b) => (b.onclick = () => (b.dataset.mod === 'cargo' && go ? go('desk', Number(id)) : go && go('desks', null, { desk: b.dataset.desk }))))
+    v.querySelectorAll('[data-done]').forEach((b) => (b.onclick = async () => { try { await post('/api/my/task-done', { id: b.dataset.done, done: true }); toast('Marked done'); again() } catch (e) { toast(e.message, 'bad') } }))
+    v.querySelector('#addt')?.addEventListener('click', async () => { const P = await get('/api/legacy/rows?tbl=projects&limit=1000'); taskEditor({ title: '', status: 'To do', assignee_emp: Number(id), due: istDate(), priority: 'Normal', tags: [] }, E.employees, P.rows.filter((p) => !/archiv|closed/i.test(String(p.status))), {}, again) })
+    v.querySelector('#edp')?.addEventListener('click', () => editPerson(emp, E.employees, again))
+    if (tab === 'chat') { injectChatCss(); renderChatUI(v.querySelector('#epchat')) }
   } catch (e) { v.innerHTML = err(e) }
 }

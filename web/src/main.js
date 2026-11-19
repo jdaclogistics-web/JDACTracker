@@ -95,7 +95,7 @@ function render() {
   if (tab === 'people' && boss) return viewPeople2(v, go, X, tabOpts)
   if (tab === 'tasks') return viewTasks2(v, go, tabOpts)
   if (tab === 'chat') return viewChat(v)
-  if (tab === 'emppage') return viewEmpPage(v, tabArg)
+  if (tab === 'emppage') return viewEmpPage(v, tabArg, go)
   if (tab === 'attendance') return viewAttendance(v, tabOpts, X)
   if (tab === 'dailyreports') return viewDailyReports(v, tabOpts)
   if (tab === 'old' && tabArg) return viewOld(v, tabArg)
@@ -472,20 +472,33 @@ async function viewAttSheet(v, mode = 'month', anchor = istDate()) {
     const presentOn = (ds) => emps.filter((e) => ['p', 'l'].includes(cell(e, ds)[1])).length
     const title = mode === 'week' ? `${fmtDate(dates[0])} – ${fmtDate(dates[6])}` : new Date(dates[0] + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     const step = (n) => (mode === 'week' ? addDays(dates[0], 7 * n) : (() => { const [y, m] = dates[0].split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 10) })())
+    const monthName = new Date(dates[0] + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    const sym = { p: 'P', l: 'L', h: '½', a: 'A', v: 'V', w: '–', f: '' }
     v.innerHTML = `<div class="at-bar"><button class="btn ghost sm" id="prv">‹ Prev</button><b style="font-size:15px">${title}</b><button class="btn ghost sm" id="nxt">Next ›</button>
         ${mode === 'week' ? `<input class="inp" type="date" id="pick" value="${dates[0]}" style="max-width:170px">` : `<input class="inp" type="month" id="pick" value="${dates[0].slice(0, 7)}" style="max-width:170px">`}
         <span class="sp"></span><button class="btn ghost sm" id="csv">${ic('download', 16)} Excel (CSV)</button></div>
-      <div class="at-wrap" id="aw"><section class="card sheet ${mode === 'month' ? 'mon' : ''}"><table style="width:100%"><thead><tr><th>Employee</th>${dates.map((d) => { const w = WD[new Date(d + 'T12:00:00Z').getUTCDay()]; return `<th class="${d === today ? 'td' : ''}">${mode === 'week' ? `${w}<br>${Number(d.slice(8))}` : `${Number(d.slice(8))}<br><small>${w[0]}</small>`}</th>` }).join('')}<th>P</th><th>A</th><th>KM</th></tr></thead><tbody>
-      ${emps.map((e) => { let p = 0, a = 0, km = 0; const tds = dates.map((ds) => { const [t, c] = cell(e, ds); if (c === 'p' || c === 'l') p++; if (c === 'h') p += 0.5; if (c === 'a') a++; const s = S.get(`${e.id}|${ds}`); if (s) km += s.total_km || 0; return `<td class="${c} ed" data-e="${e.id}" data-d="${ds}" title="Click to change">${t}</td>` }).join(''); return `<tr><th><span class="tm ${e.team === 'Warehouse' ? 'w' : 'o'}">${e.team[0]}</span>${esc(e.name)}</th>${tds}<td><b>${p}</b></td><td>${a}</td><td>${Math.round(km)}</td></tr>` }).join('')}
-      <tr class="tot"><th>Present</th>${dates.map((d) => `<td><b>${d > today ? '' : presentOn(d)}</b></td>`).join('')}<td></td><td></td><td></td></tr>
-      </tbody></table></section></div><p class="sub" style="margin:0">P present · L late · ½ half day · V leave · A absent · – week off (Sunday) · <b>Click any box to change attendance</b></p>
+      <div class="at2" id="aw"><table class="att2 ${mode}"><colgroup><col class="c-emp">${dates.map(() => '<col>').join('')}<col class="c-s"><col class="c-s"><col class="c-s"></colgroup>
+        <thead><tr class="grp"><th rowspan="2" class="emp">Employee</th><th colspan="${dates.length}" class="days">${mode === 'week' ? 'Days of the week' : 'Days of ' + monthName}</th><th colspan="3" class="days">Total</th></tr>
+        <tr>${dates.map((d) => { const wd = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="dh ${wd === 0 ? 'sun' : ''} ${d === today ? 'td' : ''}"><small>${mode === 'week' ? WD[wd] : WD[wd][0]}</small>${Number(d.slice(8))}</th>` }).join('')}<th class="sh">P</th><th class="sh">A</th><th class="sh">KM</th></tr></thead>
+        <tbody>${emps.map((e) => { let p = 0, a = 0, km = 0
+          const tds = dates.map((ds) => { const [, c] = cell(e, ds); if (c === 'p' || c === 'l') p++; if (c === 'h') p += 0.5; if (c === 'a') a++; const s = S.get(`${e.id}|${ds}`); if (s) km += s.total_km || 0
+            const sun = new Date(ds + 'T12:00:00Z').getUTCDay() === 0
+            return `<td class="${sun ? 'sun' : ''} ${ds === today ? 'td' : ''}">${c === 'f' ? '' : `<button class="ac ${c}" data-e="${e.id}" data-d="${ds}" title="${esc(e.name)} · ${fmtDate(ds)} — click to change">${sym[c]}</button>`}</td>` }).join('')
+          return `<tr><th class="emp"><span class="eav" style="background:${avColor(e.id)}">${esc(initials(e.name))}</span><span class="en"><b>${esc(e.name)}</b>${mode === 'week' ? `<small>${esc(e.designation || e.team)}</small>` : ''}</span></th>${tds}<td class="sv p">${p}</td><td class="sv a">${a}</td><td class="sv">${Math.round(km)}</td></tr>` }).join('')}</tbody>
+        <tfoot><tr><th class="emp">Present that day</th>${dates.map((d) => `<td>${d > today ? '' : `<b>${presentOn(d)}</b>`}</td>`).join('')}<td></td><td></td><td></td></tr></tfoot></table></div>
+      <div class="at-legend"><span><i class="ac p">P</i>Present</span><span><i class="ac l">L</i>Late</span><span><i class="ac h">½</i>Half day</span><span><i class="ac v">V</i>Leave</span><span><i class="ac a">A</i>Absent</span><span><i class="ac w">–</i>Sunday off</span><span class="sp"></span><b>Click any box to change attendance</b></div>
       <div id="mk" class="mkpop" hidden></div>`
-    const aw = v.querySelector('#aw'); const fitAw = () => { if (!aw.isConnected) return removeEventListener('resize', fitAw); const nav = document.querySelector('.nav'); const navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().height : 0; aw.style.maxHeight = Math.max(240, innerHeight - aw.getBoundingClientRect().top - navH - 40) + 'px' }; fitAw(); addEventListener('resize', fitAw)
+    const aw = v.querySelector('#aw')
+    // fit the whole sheet in the screen: row height shrinks to fit everyone; only scrolls if there are too many people
+    const fitAw = () => { if (!aw.isConnected) return removeEventListener('resize', fitAw); const nav = document.querySelector('.nav'); const navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().height : 0
+      const avail = innerHeight - aw.getBoundingClientRect().top - navH - 44; const rows = emps.length + 3
+      aw.style.setProperty('--rh', Math.max(24, Math.min(mode === 'week' ? 44 : 34, Math.floor(avail / rows))) + 'px'); aw.style.maxHeight = Math.max(240, avail) + 'px' }
+    fitAw(); addEventListener('resize', fitAw)
     const re = (a) => viewAttSheet(v, mode, a)
     v.querySelector('#prv').onclick = () => re(step(-1)); v.querySelector('#nxt').onclick = () => re(step(1))
     v.querySelector('#pick').onchange = (e) => e.target.value && re(mode === 'week' ? e.target.value : e.target.value + '-01')
     const pop = v.querySelector('#mk')
-    v.querySelectorAll('td.ed').forEach((td) => (td.onclick = () => {
+    v.querySelectorAll('button.ac[data-e]').forEach((td) => (td.onclick = () => {
       const e = emps.find((x) => x.id === Number(td.dataset.e)); const ds = td.dataset.d
       if (ds > today) return toast('Future dates cannot be changed', 'bad')
       pop.innerHTML = `<b>${esc(e.name)}</b><span class="sub" style="margin:0">${fmtDate(ds)}</span>
