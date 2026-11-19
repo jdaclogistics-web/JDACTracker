@@ -297,3 +297,4 @@ button.ac:hover{outline:2px solid #2563EB;outline-offset:1px}
 .att2 td.sv{background:transparent!important}
 .at2.tight .eav{display:none}.at2.tight .att2 .en b{font-size:12px}.at2.tight .ac{font-size:10.5px;border-radius:5px}.at2.tight .att2 tbody th.emp{padding-left:12px}
 .at2.tight .en small{display:none}.at2.tight .att2.week .ac{height:calc(var(--rh) - 4px)}
+.at-tabs{align-items:center}.at-ttl{padding:0 14px 0 8px;font-size:15px;white-space:nowrap}@media (max-width:760px){.at-ttl{display:none}}
