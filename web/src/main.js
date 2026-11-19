@@ -9,7 +9,7 @@ import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials,
 const app = document.getElementById('app')
 let me = null, tab = 'home', tabArg = null, tabOpts = {}, timer = null, map = null
 const ROLE_TABS = {
-  hr: [['home', 'Home', 'home'], ['people', 'Attendance', 'cal'], ['live', 'Live map', 'pin'], ['leaves', 'Leave', 'check'], ['staff', 'Employees', 'users'], ['report', 'Month sheet', 'download'], ['old', 'HR records', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat']],
+  hr: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['people', 'Attendance', 'cal', 1], ['live', 'Live map', 'pin', 1], ['leaves', 'Leave', 'check', 1], ['staff', 'Employees', 'users', 1], ['report', 'Month sheet', 'download', 1], ['old', 'HR records', 'grid', 1]],
   boss: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Staff & logins', 'lock', 1], ['report', 'Insights', 'download', 1], ['old', 'Records', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
   developer: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Logins', 'lock', 1], ['report', 'Insights', 'download', 1], ['old', 'Records', 'grid', 1], ['system', 'System', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
 }
@@ -52,16 +52,16 @@ function renderLogin(err = '') {
 
 function render() {
   cleanup()
-  document.body.classList.toggle('cmdmode', me.role !== 'hr')
+  document.body.classList.add('cmdmode')
   const tabs = ROLE_TABS[me.role]
-  if (!tabs.some((t) => t[0] === tab) && !(['company', 'desk', 'deskadmin', 'leaves', 'biz', 'hr', 'people'].includes(tab) && me.role !== 'hr')) tab = 'home'
+  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
   app.innerHTML = `
   <header class="bar"><img class="blogo" src="./jdac-logo.png" alt="JDAC">
-    ${me.role === 'hr' ? `<div class="bt"><b>${esc(me.name)}</b><span>${ROLE_LABEL[me.role]} · ${fmtDate(istDate())}</span></div>`
+    ${false ? ''
       : `<div class="bt"><b>JDAC SALES PVT LTD</b><span>${fmtDate(istDate(), { day: 'numeric', month: 'short', year: 'numeric' })} <i class="parent">parent</i></span></div>`}
     <button class="ibtn" id="out" aria-label="Logout">${ic('logout', 18)}</button></header>
-  <div class="shell ${me.role === 'hr' ? '' : 'cmd'}"><nav class="nav side" aria-label="Panel">${tabs.map(([k, l, i, more, big]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''} ${more ? 'more' : ''} ${big ? 'big' : ''}" style="${tab === k && !big ? `color:${acc}` : ''}">${big ? `<span class="fab">${ic(i, 26, '#fff')}</span>` : ic(i, 22)}<span>${l}</span></button>`).join('')}</nav>
+  <div class="shell cmd"><nav class="nav side" aria-label="Panel">${tabs.map(([k, l, i, more, big]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''} ${more ? 'more' : ''} ${big ? 'big' : ''}" style="${tab === k && !big ? `color:${acc}` : ''}">${big ? `<span class="fab">${ic(i, 26, '#fff')}</span>` : ic(i, 22)}<span>${l}</span></button>`).join('')}</nav>
   <main class="main" id="view"></main></div>`
   document.getElementById('out').onclick = doLogout
   app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { if (b.dataset.tab === 'logout') return doLogout(); tab = b.dataset.tab; tabArg = null; tabOpts = {}; render() }))
@@ -69,7 +69,7 @@ function render() {
   const go = (t, arg = null, opts = {}) => { tab = t; tabArg = arg; tabOpts = opts || {}; render(); window.scrollTo(0, 0) }
   const X = { setTimer: (t) => { timer = t }, openRoute }
   const boss = me.role !== 'hr'
-  if (tab === 'home' && boss) return viewCommand(v, go)
+  if (tab === 'home') return viewCommand(v, go, me.role)
   if (tab === 'team') return viewTeam(v, go, X, tabOpts)
   if (tab === 'hr') return viewHR(v, go, tabOpts)
   if (tab === 'company') return viewCompany(v, go, tabArg, tabOpts)

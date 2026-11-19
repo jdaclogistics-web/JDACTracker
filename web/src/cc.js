@@ -616,7 +616,8 @@ const CC_TOOLS = [
   ['old:daily_reports', 'Daily reports', 'end-of-day updates', 'doc', '#2563EB'],
   ['report', 'Insights', 'trends & performance', 'bars', '#C026D3'],
 ]
-export function viewCommand(v, go) {
+export function viewCommand(v, go, role = 'boss') {
+  const hr = role === 'hr'
   v.innerHTML = `
   <section class="cm-hero"><div class="cm-k">JDAC COMMAND CENTRE</div><h1>Start here, then open one company</h1>
     <p>First see today's team. Second open the company you want to manage. Everything else stays below as a tool.</p>
@@ -626,10 +627,11 @@ export function viewCommand(v, go) {
   <div class="cm-h" id="s2"><i>2</i><div><b>Second step — open one company</b><span>Dashboard → money in → buying → expenses → work</span></div></div>
   ${CC_COS.map(([n, i, c, sub], k) => `<button class="cm-co" data-co="${esc(n)}"><span class="cm-n">${k + 1}</span><span class="cm-ic big" style="background:${c}">${ic(i, 26, '#fff')}</span><div class="nm"><b>${esc(n)}</b><span>${esc(sub)}</span></div><span class="cm-go">→</span></button>`).join('')}
   <div class="cm-h" id="s3"><i>+</i><div><b>Tools when you need them</b><span>Accounts, employee interfaces, attendance, tracking and reports</span></div></div>
-  ${CC_TOOLS.map(([k, l, sub, i, c]) => `<button class="cm-row" data-tool="${k}"><span class="cm-ic" style="background:${c}">${ic(i, 20, '#fff')}</span><div class="nm"><b>${l}</b><span>${sub}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}`
+  ${CC_TOOLS.filter(([k]) => !(hr && k === 'accounts')).map(([k, l, sub, i, c]) => `<button class="cm-row" data-tool="${k}"><span class="cm-ic" style="background:${c}">${ic(i, 20, '#fff')}</span><div class="nm"><b>${l}</b><span>${sub}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}`
   v.querySelectorAll('[data-jump]').forEach((b) => (b.onclick = () => v.querySelector('#' + b.dataset.jump).scrollIntoView({ behavior: 'smooth' })))
   v.querySelector('[data-go]').onclick = () => go('team', null, { sub: 'today' })
-  v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : go('company', b.dataset.co))))
+  // HR को पैसे/profit नहीं दिखते — company खोलने पर उस company के desks और लोग
+  v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : hr ? (ccState.company = b.dataset.co, saveState(), go('desks')) : go('company', b.dataset.co))))
   v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'attendance' ? go('team', null, { sub: 'today' }) : go(t, tbl || null) }))
   get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not in` }).catch(() => {})
 }
