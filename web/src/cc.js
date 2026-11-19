@@ -893,7 +893,7 @@ export async function viewHR(v, go, opts = {}) {
 }
 
 // ═════════════════════════ PAYROLL (monthly sheet + salary slips) ═════════════════════════
-const COMPANY = { name: 'JDAC SALES PVT LTD', addr: 'Shop No 1 & 2, Vida Complex, Nr. Sunshine Worldwide School, Bainguinum, Tiswadi, Goa 403110', email: 'jdacsales@gmail.com', hr: 'Nameera Shaikh', hrRole: 'HR' }
+const COMPANY = { name: 'JDAC SALES PVT LTD', addr: 'KPCT Mall, A Wing, 3rd Floor, Office 321, 322, Vitthal Rao Shivarkar Road, Fatima Nagar, Wanowrie, Pune 411013', email: 'jdacsales@gmail.com', hr: 'Nameera Shaikh', hrRole: 'HR' }
 const N0 = (x) => Number(x) || 0
 export function payCalc(r, dim) {
   const R = r.rates, d = r.data, perDay = N0(R.fixed) / dim
@@ -985,7 +985,7 @@ async function salarySlip(r, m, dim) {
     td.r,th.r{text-align:right}.sec{background:#0B1730;color:#fff;text-align:center;font-weight:800;font-size:11px;letter-spacing:.1em;padding:6px}
     .tot td{font-weight:800;background:#F8FAFC;border-bottom:1.5px solid #0F172A}.k td:first-child{color:#64748B;width:45%}.k td{font-weight:600}
     .net{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1.5px solid #0F172A;background:#ECFDF5}.net span{font-weight:800;font-size:13.5px}.net b{font-size:20px;color:#065F46}
-    .sig{display:grid;grid-template-columns:1fr 1fr;border-top:1.5px solid #0F172A}.sig>div{padding:10px 16px}.sig>div+div{border-left:1.5px solid #0F172A;text-align:right}
+    .sig{display:block;border-top:1.5px solid #0F172A}.sig>div{padding:10px 16px}.sig>div+div{border-left:1.5px solid #0F172A;text-align:right}
     .sig img{height:62px;display:block;margin:2px 0}.sig small{color:#64748B;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
     .foot{text-align:center;font-size:10px;color:#94A3B8;padding:6px}.pbtn{display:block;margin:14px auto 0;padding:10px 22px;border:0;border-radius:10px;background:#0B1220;color:#fff;font-weight:700;cursor:pointer}
     @media print{body{padding:0}.pbtn{display:none}}</style></head><body>
@@ -1005,7 +1005,7 @@ async function salarySlip(r, m, dim) {
         <table><tr><td>Advance / deduction</td><td class="r">${n(c.adv)}</td></tr><tr class="tot"><td>Total (B)</td><td class="r">${n(c.adv)}</td></tr></table></div>
     </div>
     <div class="net"><span>NET PAYABLE SALARY (A − B)</span><b>₹ ${n(c.total)}</b></div>
-    <div class="sig"><div><small>Checked and authorised by</small><img src="${asset('sign-hr.png')}" alt="Signature"><b>${COMPANY.hr}</b>, ${COMPANY.hrRole}</div><div><small>Employee signature</small><div style="height:62px"></div>${esc(r.name)}</div></div>
+    <div class="sig"><div><small>Checked and authorised by</small><img src="${asset('sign-hr.png')}" alt="Signature"><b>Nameera Shaikh – HR Manager – Sign</b></div></div>
     <div class="foot">Computer-generated salary slip · JDAC Tracker</div></div>
   <button class="pbtn" onclick="print()">Download / Print (Save as PDF)</button></body></html>`
   if (w) { w.document.write(html); w.document.close(); return }
