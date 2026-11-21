@@ -406,9 +406,10 @@ export async function viewDesk(v, go, empId) {
 export async function viewPeople2(v, go, X, opts = {}, tabName = 'people') {
   const sub = opts.sub || 'today'
   if (opts.bare) { v.innerHTML = `<div id="pb">${skel}</div>` } else
-  v.innerHTML = `<div class="cc-top"><b>${tabName === 'team' ? 'Team' : 'People'}</b><span class="sp"></span>${switcher('psw')}</div>
-    <div class="cc-tabs">${[['today', 'Today'], ['dir', 'Directory'], ['leave', 'Leave'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="pb">${skel}</div>`
-  if (!opts.bare) v.querySelector('#psw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewPeople2(v, go, X, opts, tabName) }
+  v.innerHTML = tabName === 'team' ? `${TEAM_TABS(sub)}<div id="pb">${skel}</div>`
+    : `<div class="cc-top"><b>People</b><span class="sp"></span>${switcher('psw')}</div>
+    <div class="cc-tabs">${[['today', 'Today'], ['dir', 'Employee Master'], ['leave', 'Leave'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="pb">${skel}</div>`
+  if (!opts.bare && v.querySelector('#psw')) v.querySelector('#psw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewPeople2(v, go, X, opts, tabName) }
   if (!opts.bare) v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => (tabName === 'team' ? go('team', null, { sub: b.dataset.sub }) : viewPeople2(v, go, X, { sub: b.dataset.sub }))))
   const B = v.querySelector('#pb')
   try {
@@ -459,8 +460,8 @@ export async function viewPeople2(v, go, X, opts = {}, tabName = 'people') {
           <form id="ml" class="cform"><label class="f">Person<select class="inp" name="emp_id">${E.employees.filter((e) => e.active).map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></label>
           <label class="f">Type<select class="inp" name="kind"><option>Full day</option><option>Half day</option></select></label><label class="f">From<input class="inp" type="date" name="from" required value="${today}"></label><label class="f">To<input class="inp" type="date" name="to" value="${today}"></label>
           <label class="f" style="grid-column:1/-1">Reason<input class="inp" name="reason" minlength="3" placeholder="e.g. family function"></label><button class="btn pri" style="grid-column:1/-1">Mark leave</button></form></details>`
-      B.querySelectorAll('[data-ok],[data-no]').forEach((b) => (b.onclick = async () => { try { await post(`/api/admin/leaves/${b.dataset.ok || b.dataset.no}/decide`, { status: b.dataset.ok ? 'Approved' : 'Rejected' }); toast('Saved'); viewPeople2(v, go, X, { sub: 'leave' }) } catch (e) { toast(e.message, 'bad') } }))
-      B.querySelector('#ml').onsubmit = async (e) => { e.preventDefault(); try { const r = await post('/api/admin/mark-leave', Object.fromEntries(new FormData(e.target))); toast(`${r.days} day leave marked`); viewPeople2(v, go, X, { sub: 'leave' }) } catch (er) { toast(er.message, 'bad') } }
+      B.querySelectorAll('[data-ok],[data-no]').forEach((b) => (b.onclick = async () => { try { await post(`/api/admin/leaves/${b.dataset.ok || b.dataset.no}/decide`, { status: b.dataset.ok ? 'Approved' : 'Rejected' }); toast('Saved'); viewPeople2(v, go, X, { ...opts, sub: 'leave' }, tabName) } catch (e) { toast(e.message, 'bad') } }))
+      B.querySelector('#ml').onsubmit = async (e) => { e.preventDefault(); try { const r = await post('/api/admin/mark-leave', Object.fromEntries(new FormData(e.target))); toast(`${r.days} day leave marked`); viewPeople2(v, go, X, { ...opts, sub: 'leave' }, tabName) } catch (er) { toast(er.message, 'bad') } }
     } else {
       const [E, D] = await Promise.all([get('/api/admin/employees'), get('/api/desks')])
       const act = E.employees.filter((e) => e.active)
@@ -698,7 +699,7 @@ const MOTIVATION = ['Great companies are built one good day at a time.', 'Small 
   'Today’s effort is tomorrow’s profit.', 'Make it happen, then make it better.', 'Customers remember how fast and how well we served them.',
   'Strong teams win together.', 'Plan the work, then work the plan.', 'Start strong, finish stronger.', 'Growth happens outside the comfort zone.']
 const motivation = () => MOTIVATION[Math.floor((Date.now() + 330 * 60000) / 864e5) % MOTIVATION.length]
-export function viewCommand(v, go, role = 'boss') {
+export function viewCommand(v, go, role = 'boss', only = '') {
   const hr = role === 'hr'
   v.innerHTML = `
   <section class="cm-hero"><div class="cm-k">JDAC COMMAND CENTRE</div><h1>${esc(motivation())}</h1>
@@ -710,21 +711,30 @@ export function viewCommand(v, go, role = 'boss') {
   <div class="cm-grid cos">${CC_COS.map(([n, i, c, sub], k) => `<button class="cm-co" data-co="${esc(n)}"><span class="cm-n">${k + 1}</span><span class="cm-ic big" style="background:${c}">${ic(i, 26, '#fff')}</span><div class="nm"><b>${esc(n)}</b><span>${esc(sub)}</span></div><span class="cm-go">→</span></button>`).join('')}</div>
   <div class="cm-h" id="s3"><i>+</i><div><b>Tools when you need them</b><span>Accounts, employee interfaces, attendance, tracking and reports</span></div></div>
   <div class="cm-grid tools">${CC_TOOLS.filter(([k]) => !(hr && (k === 'accounts' || k === 'insights'))).map(([k, l, sub, i, c]) => `<button class="cm-row" data-tool="${k}"><span class="cm-ic" style="background:${c}">${ic(i, 20, '#fff')}</span><div class="nm"><b>${l}</b><span>${sub}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div>`
-  v.querySelectorAll('[data-jump]').forEach((b) => (b.onclick = () => v.querySelector('#' + b.dataset.jump).scrollIntoView({ behavior: 'smooth' })))
-  v.querySelector('[data-go]').onclick = () => go('team', null, { sub: 'today' })
+  // "Open company" / "Use tools" pages = the same cards on their own page
+  if (only) { const keep = only === 'cos' ? ['#s2', '.cm-grid.cos'] : ['#s3', '.cm-grid.tools']; [...v.children].forEach((el) => { if (!keep.some((k) => el.matches(k))) el.remove() }) }
+  v.querySelectorAll('[data-jump]').forEach((b) => (b.onclick = () => go({ s1: 'who', s2: 'companies', s3: 'tools' }[b.dataset.jump])))
+  if (v.querySelector('[data-go]')) v.querySelector('[data-go]').onclick = () => go('who')
   // HR को पैसे/profit नहीं दिखते — company खोलने पर उस company के desks और लोग
   v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : hr ? (ccState.company = b.dataset.co, saveState(), go('desks')) : go('company', b.dataset.co))))
   v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'insights' ? go('accounts', null, { sub: 'summary' }) : go(t, tbl || null) }))
   prefetch('/api/admin/employees', '/api/desks', '/api/admin/report?month=' + istDate().slice(0, 7))
-  get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not started` }).catch(() => {})
+  if (!only) get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not started` }).catch(() => {})
 }
 
+// "Who's doing what" — today only (no Directory / Leave / Org chart tabs)
+export function viewWho(v, go, X) {
+  v.innerHTML = `<div class="cc-top"><b>Who's doing what — today</b><span class="sp"></span><span style="font-size:12.5px;opacity:.8">${fmtDate(istDate())}</span></div><div id="whob"></div>`
+  return viewPeople2(v.querySelector('#whob'), go, X, { sub: 'today', bare: true })
+}
 // ═════════════════════════ TEAM (Directory sheet + Org chart) ═════════════════════════
 const STATUS_K = { Active: 'g', Inactive: 'n', Dropped: 'r' }
 const hm = (t) => { const [h, m] = String(t || '').split(':').map(Number); if (isNaN(h)) return '—'; return `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''}${h < 12 ? 'am' : 'pm'}` }
 const docPill = (x) => `<td>${x ? `<span class="doc ${/allot|submit|done|yes/i.test(x) ? 'ok' : 'wait'}">${esc(x)}</span>` : '<span class="doc no">—</span>'}</td>`
 const stOf = (e) => e.status || (e.active ? 'Active' : 'Inactive')
 const nextCode = (list) => 'JD' + (Math.max(1000, ...list.map((e) => Number(String(e.emp_code || '').replace(/^JD/i, '')) || 0)) + 1)
+// Team: one slim row (title + tabs) so the sheet below gets the room. Leave lives under Dashboard → Attendance.
+const TEAM_TABS = (sub) => `<div class="cc-tabs at-tabs slim"><b class="at-ttl">Team</b>${[['today', 'Today'], ['dir', 'Employee Master'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div>`
 // Keep the page itself still: only the table scrolls, sized to the screen
 function fitToScreen(el, extra = 12) {
   const fit = () => { if (!el.isConnected) return removeEventListener('resize', fit); const nav = document.querySelector('.nav'); const navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().height : 0; el.style.maxHeight = Math.max(240, innerHeight - el.getBoundingClientRect().top - navH - extra) + 'px' }
@@ -736,8 +746,7 @@ export async function viewTeam(v, go, X, opts = {}) {
   const nav = (o) => (opts.bare ? viewTeam(v, go, X, { ...opts, ...o }) : go('team', null, o))
   if (sub === 'today' || sub === 'leave') return viewPeople2(v, go, X, opts, 'team')
   if (opts.bare) v.innerHTML = `<div id="tb">${skel}</div>`
-  else v.innerHTML = `<div class="cc-top"><b>Team</b><span class="sp"></span></div>
-    <div class="cc-tabs">${[['today', 'Today'], ['dir', 'Directory'], ['leave', 'Leave'], ['org', 'Org chart']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="tb">${skel}</div>`
+  else v.innerHTML = `${TEAM_TABS(sub)}<div id="tb">${skel}</div>`
   if (!opts.bare) v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => go('team', null, { sub: b.dataset.sub })))
   const B = v.querySelector('#tb')
   try {
@@ -757,14 +766,14 @@ export async function viewTeam(v, go, X, opts = {}) {
           <div class="chips">${['Active', 'Inactive', 'Dropped', 'All'].map((x) => `<button class="chip ${st === x ? 'on' : ''}" data-st="${x}">${x} <small>${all.filter((e) => x === 'All' || stOf(e) === x).length}</small></button>`).join('')}</div>
           <span class="sp"></span><button class="btn ghost sm" id="up">⬆ Upload sheet</button><input type="file" id="upf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="xl">⬇ Excel</button><button class="btn dark sm" id="add">+ Add person</button></div>
         <div class="tm-sum"><span><b>${L.length}</b> people</span><span>Monthly salary <b>${inr(tot)}</b></span><span>Yearly <b>${inrL(tot * 12)}</b></span></div>
-        <div class="tm-wrap" id="tw"><table class="tds"><thead><tr><th>Emp ID</th><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="num">Salary in hand</th><th class="num">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th>View · Edit</th></tr></thead><tbody>
+        <div class="tm-wrap" id="tw"><table class="tds"><thead><tr><th>Emp ID</th><th>Name</th><th>Status</th><th>Designation</th><th>Joining</th><th>Exit</th><th>Contact</th><th>Time</th><th>City</th><th class="num">Salary in hand</th><th class="num">LPA</th><th>Offer letter</th><th>Appointment</th><th>Documents</th><th>Tracker login</th><th>View · Login · Edit</th></tr></thead><tbody>
         ${L.map((e) => { const m = salOf(e)
           return `<tr><td><b class="tds-id">${esc(e.emp_code || '—')}</b></td><td><div class="tm-n"><span class="av" style="background:${avColor(e.id)};color:#fff">${esc(initials(e.name))}</span><div><b>${esc(e.name)}</b><span>${esc(e.department || e.team)}</span></div></div></td>
             <td><span class="pill ${STATUS_K[stOf(e)]}">${stOf(e)}</span></td><td>${esc(e.designation || '—')}</td>
             <td>${e.joining_date ? fmtDate(e.joining_date) : '—'}</td><td>${e.exit_date ? fmtDate(e.exit_date) : '—'}</td><td>${e.phone ? '+91 ' + esc(e.phone) : '—'}</td>
             <td>${esc(hm(e.shift_start))} – ${esc(hm(e.shift_end))}</td><td>${esc(e.work_location || '—')}</td>
             <td class="num"><b>${m ? inr(m) : '—'}</b></td><td class="num">${lpa(m)}</td>${[e.offer_letter, e.appointment_letter, e.documents].map(docPill).join('')}
-            <td><code>${esc(e.username)}</code><div class="sub">${e.login_mode === 'phone' ? 'password: mobile no.' : e.login_mode === 'locked' ? 'login not set' : 'custom password'}</div></td><td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn ghost sm" data-vw="${e.id}" title="View ${esc(e.name)}'s page" aria-label="View page">👁</button><button class="btn ghost sm" data-ed="${e.id}">Edit</button></div></td></tr>` }).join('') || '<tr><td colspan="16" class="empty">No one here</td></tr>'}</tbody></table></div>`
+            <td><code>${esc(e.username)}</code><div class="sub">${e.login_mode === 'phone' ? 'password: mobile no.' : e.login_mode === 'locked' ? 'login not set' : 'custom password'}</div></td><td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn ghost sm" data-vw="${e.id}" title="View ${esc(e.name)}'s page" aria-label="View page">👁</button><button class="btn ghost sm" data-key="${e.id}" title="Copy User ID and password" aria-label="Copy login">🔑</button><button class="btn ghost sm" data-ed="${e.id}">Edit</button></div></td></tr>` }).join('') || '<tr><td colspan="16" class="empty">No one here</td></tr>'}</tbody></table></div>`
       fitToScreen(B.querySelector('#tw'))
       const qi = B.querySelector('#q'); qi.oninput = () => { const val = qi.value; paint(val); const i = B.querySelector('#q'); i.focus(); i.setSelectionRange(val.length, val.length) }
       B.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => nav({ sub: 'dir', st: b.dataset.st })))
@@ -775,9 +784,20 @@ export async function viewTeam(v, go, X, opts = {}) {
         ...L.map((e) => [e.emp_code, e.name, stOf(e), e.designation, e.joining_date, e.exit_date, e.phone, `${hm(e.shift_start)} to ${hm(e.shift_end)}`, e.work_location, salOf(e) || '', salOf(e) ? (salOf(e) * 12 / 100000).toFixed(2) : '', e.offer_letter, e.appointment_letter, e.documents, e.username])])
       B.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = () => editPerson(all.find((x) => x.id === Number(b.dataset.ed)), all, again)))
       B.querySelectorAll('[data-vw]').forEach((b) => (b.onclick = () => go('emppage', Number(b.dataset.vw))))
+      B.querySelectorAll('[data-key]').forEach((b) => (b.onclick = () => copyLogin(all.find((x) => x.id === Number(b.dataset.key)))))
     }
     paint(opts.q || '')
   } catch (e) { B.innerHTML = err(e) }
+}
+// 🔑 copies the login, ready to paste into WhatsApp. Password = their mobile number unless a custom one was set.
+const APP_LINK = 'https://jdaclogistics-web.github.io/JDACTracker/app/'
+function copyLogin(e) {
+  if (!e) return
+  if (e.login_mode !== 'phone' || !e.phone) return toast(e.login_mode === 'phone' ? 'Add their mobile number first — it is the password' : 'A custom password is set, so it cannot be shown. Open Edit → "Use mobile number as password" or set a new one.', 'bad')
+  const txt = `JDAC Tracker login\nName: ${e.name}\nUser ID: ${e.username}\nPassword: ${e.phone}\nOpen: ${APP_LINK}`
+  const done = () => toast(`Login copied — paste it to ${e.name.split(' ')[0]} on WhatsApp`)
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(done).catch(() => window.prompt('Copy this login:', txt.replace(/\n/g, ' | ')))
+  else window.prompt('Copy this login:', txt.replace(/\n/g, ' | '))
 }
 // Upload an Excel / CSV sheet → matched by Emp ID (or name) and updated
 const COLMAP = [[/emp.?id|emp.?code|^id$/i, 'emp_code'], [/^name/i, 'name'], [/status/i, 'status'], [/design/i, 'designation'], [/depart/i, 'department'], [/join/i, 'joining_date'], [/exit|leav/i, 'exit_date'],
@@ -836,7 +856,7 @@ function editPerson(e, all, again) {
     <label class="f">Time to<input class="inp" type="time" name="shift_end" value="${esc(e.shift_end || '19:00')}"></label>
     ${sel('offer_letter', 'Offer letter')}${sel('appointment_letter', 'Appointment letter')}${sel('documents', 'Documents')}
     <div class="tm-pw" style="grid-column:1/-1"><b>JDAC Tracker login</b>
-      <span>User ID = <b id="uid">${esc(isNew ? e.emp_code : e.username)}</b> · Password = their 10-digit mobile number${!isNew && e.login_mode === 'custom' ? ' (currently a custom password is set)' : ''}</span>
+      <span>User ID = <b id="uid">${esc(isNew ? e.emp_code : e.username)}</b> · Password = their 10-digit mobile number${!isNew && e.login_mode === 'custom' ? ' (currently a custom password is set)' : ''}</span>${isNew ? '' : '<div><button type="button" class="btn dark sm" id="cpl">🔑 Copy User ID &amp; password</button></div>'}
       ${isNew ? '' : `<div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn ghost sm" id="pwm">Use mobile number as password</button><button type="button" class="btn ghost sm" id="pw">Set a custom password</button></div><code id="pwv" hidden></code>`}</div>
     <div class="sub" style="grid-column:1/-1">Setting Inactive / Dropped closes their login and removes them from the team list. Old data (attendance etc.) is kept.</div>
     <button class="btn pri" style="grid-column:1/-1">${isNew ? 'Add person' : 'Save'}</button></form>`
@@ -844,6 +864,7 @@ function editPerson(e, all, again) {
   const close = () => el.remove()
   el.querySelector('.tm-bg').onclick = close; el.querySelector('[data-x]').onclick = close
   if (isNew) el.querySelector('[name=emp_code]').oninput = (ev) => (el.querySelector('#uid').textContent = ev.target.value.toUpperCase())
+  el.querySelector('#cpl')?.addEventListener('click', () => copyLogin(e))
   let newPw = null, usePhone = false
   el.querySelector('#pwm')?.addEventListener('click', () => { usePhone = true; newPw = null; const p = el.querySelector('#pwv'); p.hidden = false; p.textContent = `User ID ${e.emp_code || e.username} · password = mobile number — applies when you press Save` })
   el.querySelector('#pw')?.addEventListener('click', () => { const c = 'abcdefghjkmnpqrstuvwxyz23456789'; newPw = 'JDAC' + Array.from(crypto.getRandomValues(new Uint8Array(5)), (x) => c[x % c.length]).join(''); usePhone = false; const p = el.querySelector('#pwv'); p.hidden = false; p.textContent = `${e.username} / ${newPw} — applies when you press Save` })
@@ -1071,10 +1092,10 @@ export async function viewEmpPage(v, id, go) {
         ${h.projects.map((p) => `<div class="ep-row"><span class="ic">📁</span><div><b>${esc(p.name)}</b><span>${p.open} open tasks · ${p.members} members</span></div></div>`).join('') || '<p class="sub">No projects</p>'}</section>`,
       tasks: () => `<section class="ep-card"><div class="row"><h3>Tasks · ${h.up_next.length} open</h3><span class="sp"></span>${edit ? '<button class="btn dark sm" id="addt">+ Add task</button>' : ''}</div>
         ${h.up_next.map(taskRow).join('') || '<p class="sub">Nothing pending ✨</p>'}</section>
-        <section class="ep-card"><h3>🧾 Orders punched by ${esc(h.name.split(' ')[0])}</h3><p class="sub">They punch orders in their app under Tasks → Orders. Red days = no order.</p><div id="eporders"></div></section>`,
+        <section class="ep-card"><h3>🧾 ${h.order_word === 'booking' ? 'Bookings' : 'Orders'} punched by ${esc(h.name.split(' ')[0])}</h3><p class="sub">Punched in their app under Tasks. Tap Today, This week or This month.</p><div id="eporders"></div></section>`,
       chat: () => `<div id="epchat"></div>`,
       me: () => `<section class="ep-card"><div class="ep-top" style="color:inherit"><span class="av">${esc(initials(h.name))}</span><div><b style="color:#0F172A">${esc(h.name)}</b><span>${esc(h.designation || '')}</span></div>${edit ? '<button class="btn dark sm" id="edp" style="margin-left:auto">Edit profile</button>' : ''}</div>
-        <div class="ep-kv">${[['Emp ID', emp.emp_code], ['User ID', emp.username], ['Mobile', emp.phone ? '+91 ' + emp.phone : ''], ['Team', emp.team], ['Department', emp.department], ['City', emp.work_location], ['Joining date', emp.joining_date ? fmtDate(emp.joining_date) : ''], ['Shift', emp.shift_start ? emp.shift_start + ' – ' + emp.shift_end : ''], ['Status', emp.status || (emp.active ? 'Active' : 'Inactive')]].map(([k, val]) => `<div><span>${k}</span><b>${esc(val || '—')}</b></div>`).join('')}</div></section>` }
+        <div class="ep-kv">${[['Employee ID', emp.emp_code || emp.username], ['Mobile', emp.phone ? '+91 ' + emp.phone : ''], ['Team', emp.team], ['Department', emp.department], ['City', emp.work_location], ['Joining date', emp.joining_date ? fmtDate(emp.joining_date) : ''], ['Shift', emp.shift_start ? emp.shift_start + ' – ' + emp.shift_end : ''], ['Status', emp.status || (emp.active ? 'Active' : 'Inactive')]].map(([k, val]) => `<div><span>${k}</span><b>${esc(val || '—')}</b></div>`).join('')}</div></section>` }
     const tab = tabs[epState.tab] ? epState.tab : 'home'
     v.innerHTML = `<div class="ep-view">
       <div class="ep-bar2"><span>👁 ${esc(h.name)}'s page${h.emp_code ? ' · ' + esc(h.emp_code) : ''}<small>🔒 Admin controls — only Boss / HR see this bar, ${esc(h.name.split(' ')[0])} never does</small></span><span class="sp"></span>
@@ -1088,8 +1109,13 @@ export async function viewEmpPage(v, id, go) {
       if (b.dataset.go === 'tasks') { epState.tab = 'tasks'; return again() }
       if (b.dataset.go === 'desks') return v.querySelector('#desks')?.scrollIntoView({ behavior: 'smooth' })
       const x = v.querySelector('#dayx')
-      x.innerHTML = `<div class="ep-day">${h.day ? `✅ Day started at ${fmtTime(h.day.start_at)}${h.day.end_at ? ' · closed at ' + fmtTime(h.day.end_at) : ' · working now'}`
+      x.innerHTML = `<div class="ep-day">${h.day ? `✅ Day started at ${fmtTime(h.day.start_at)}${h.day.end_at ? ' · closed at ' + fmtTime(h.day.end_at) : ` · working now. Close day needs a closing selfie.${edit ? '<div style="margin-top:8px"><button class="btn dark sm" id="cday">📷 Take selfie &amp; close day</button></div>' : ''}`}`
         : `Day not started yet. Start day needs a selfie (with date, day, time and location on it) and GPS.${edit ? `<div style="margin-top:8px"><button class="btn pri sm" id="sday">📷 Open camera &amp; start day</button></div>` : ''}`}</div>`
+      x.querySelector('#cday')?.addEventListener('click', async (ev) => {
+        const btn = ev.currentTarget
+        try { btn.disabled = true; btn.textContent = 'Getting location…'; const pos = await browserPosition().catch(() => ({})); const photo = await stampedSelfie({ pos, who: h.name }); btn.textContent = 'Saving…'
+          await post('/api/admin/day-end', { emp_id: Number(id), ...pos, photo }); toast(`${h.name}'s day closed`); again() } catch (e) { btn.disabled = false; btn.textContent = '📷 Take selfie & close day'; toast(e.message, 'bad') }
+      })
       x.querySelector('#sday')?.addEventListener('click', async (ev) => {
         const btn = ev.currentTarget
         try {
@@ -1107,6 +1133,6 @@ export async function viewEmpPage(v, id, go) {
     v.querySelector('#addt')?.addEventListener('click', async () => { const P = await get('/api/legacy/rows?tbl=projects&limit=1000'); taskEditor({ title: '', status: 'To do', assignee_emp: Number(id), due: istDate(), priority: 'Normal', tags: [] }, E.employees, P.rows.filter((p) => !/archiv|closed/i.test(String(p.status))), {}, again) })
     v.querySelector('#edp')?.addEventListener('click', () => editPerson(emp, E.employees, again))
     if (tab === 'chat') { injectChatCss(); renderChatUI(v.querySelector('#epchat'), { as: Number(id) }) }
-    if (tab === 'tasks') renderOrders(v.querySelector('#eporders'), { as: Number(id) })
+    if (tab === 'tasks') renderOrders(v.querySelector('#eporders'), { as: Number(id), word: h.order_word })
   } catch (e) { v.innerHTML = err(e) }
 }

@@ -35,7 +35,7 @@ export function homeBlocks(h, session, go) {
     <div class="wk-steps">
       <button data-go="start"><span>▶️</span><b>1. Start day</b></button><button data-go="tasks"><span>📋</span><b>2. Tasks</b></button>
       <button data-go="desks"><span>🗂️</span><b>3. Sections</b></button><button data-go="month"><span>📅</span><b>4. Calendar</b></button></div></section>
-  <section class="card wk-ord"><div class="row"><div class="nm"><h2 class="h3">🧾 My orders</h2><div class="sub">Today <b>${h.orders?.today_n || 0}</b> · ${inr(h.orders?.today)} &nbsp;|&nbsp; This month <b>${h.orders?.month_n || 0}</b> · ${inr(h.orders?.month)}</div></div><span class="sp"></span><button class="btn dark sm" data-go="tasks" data-project="orders">＋ Punch order</button></div></section>
+  <section class="card wk-ord"><div class="row"><div class="nm"><h2 class="h3">🧾 My ${h.order_word === 'booking' ? 'bookings' : 'orders'}</h2><div class="sub">Today <b>${h.orders?.today_n || 0}</b> · ${inr(h.orders?.today)} &nbsp;|&nbsp; This month <b>${h.orders?.month_n || 0}</b> · ${inr(h.orders?.month)}</div></div><span class="sp"></span><button class="btn dark sm" data-go="tasks" data-project="orders">＋ Punch ${h.order_word === 'booking' ? 'booking' : 'order'}</button></div></section>
   <section class="card" id="desks"><div class="wk-dh"><h2 class="h3">Desks</h2><div class="sub">Only the work your boss gave you appears here.</div></div>
     <div class="list">${h.desks.map((d) => `<button class="li" data-desk="${esc(d.module)}" data-name="${esc(d.name)}" data-id="${esc(d.id)}"><span class="wk-di">${esc(d.icon || '🗂️')}</span><div class="nm"><b>${esc(d.name)}</b><span>${esc(d.description)}</span></div><span class="pill n">OPEN</span></button>`).join('') || '<div class="empty">No desk assigned yet</div>'}</div></section>
   <section class="card"><div class="row"><h2 class="h3">⏭️ Up next for you</h2><span class="sp"></span><button class="link" data-go="tasks">all tasks →</button></div>
@@ -62,10 +62,10 @@ function bindTaskChecks(v, after) {
 let taskTab = 'tasks'
 export async function renderTasks(v, go, tabArg) {
   if (tabArg === 'orders' || tabArg === 'tasks') taskTab = tabArg
-  v.innerHTML = `<div class="wk-tabs"><button data-tt="tasks" class="${taskTab === 'tasks' ? 'on' : ''}">📋 Tasks</button><button data-tt="orders" class="${taskTab === 'orders' ? 'on' : ''}">🧾 Orders</button></div><div id="tkb" class="stack"><div class="skel"></div></div>`
+  v.innerHTML = `<div class="wk-tabs"><button data-tt="tasks" class="${taskTab === 'tasks' ? 'on' : ''}">📋 Tasks</button><button data-tt="orders" class="${taskTab === 'orders' ? 'on' : ''}">🧾 ${myHomeData?.order_word === 'booking' ? 'Bookings' : 'Orders'}</button></div><div id="tkb" class="stack"><div class="skel"></div></div>`
   v.querySelectorAll('[data-tt]').forEach((b) => (b.onclick = () => { taskTab = b.dataset.tt; renderTasks(v, go) }))
   const B = v.querySelector('#tkb')
-  if (taskTab === 'orders') return renderOrders(B)
+  if (taskTab === 'orders') { if (!myHomeData) await loadMyHome(); return renderOrders(B, { word: myHomeData?.order_word }) }
   const h = await loadMyHome()
   if (!h) { B.innerHTML = '<div class="err">No internet</div>'; return }
   B.innerHTML = `<button class="wk-new" id="addtask" style="border:0;border-radius:16px;padding:14px;font-weight:800;font-size:15px;color:#fff">＋ Add my task</button>

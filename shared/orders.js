@@ -28,9 +28,9 @@ const CSS = `
 let cssOn = false
 const st = { month: null, sel: null, form: false, view: 'today' }
 
-const rowHtml = (i) => `<div class="od-row" data-r><em>ORDER ${i}</em>
-  <label class="w">Name / title<input data-f="customer" required maxlength="80" placeholder="Customer, shop or order title"></label>
-  <label>No. of orders<input data-f="qty" type="number" min="1" step="1" value="1" required inputmode="numeric"></label>
+const rowHtml = (i, w = 'order') => `<div class="od-row" data-r><em>${w.toUpperCase()} ${i}</em>
+  <label class="w">Name / title<input data-f="customer" required maxlength="80" placeholder="Customer, shop or ${w} title"></label>
+  <label>No. of ${w}s<input data-f="qty" type="number" min="1" step="1" value="1" required inputmode="numeric"></label>
   <label>Amount ₹<input data-f="amount" type="number" min="1" step="0.01" required inputmode="decimal"></label>
   <label class="w">Client contact number<input data-f="contact" type="tel" maxlength="15" inputmode="tel" placeholder="10-digit mobile (optional)"></label></div>`
 const q = (x) => Number(x.qty) || 1
@@ -38,6 +38,7 @@ const q = (x) => Number(x.qty) || 1
 export async function renderOrders(v, opts = {}) {
   if (!cssOn) { const el = document.createElement('style'); el.textContent = CSS; document.head.appendChild(el); cssOn = true }
   const today = istDate(), ro = !!opts.as, view = st.view
+  const w = opts.word === 'booking' ? 'booking' : 'order', W = w[0].toUpperCase() + w.slice(1) // CSEs punch bookings, others orders
   const month = st.month || today.slice(0, 7), sel = st.sel || today
   const [y, m] = month.split('-').map(Number), dim = new Date(Date.UTC(y, m, 0)).getUTCDate()
   const dow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7, weekStart = new Date(Date.parse(today + 'T12:00:00Z') - dow * 864e5).toISOString().slice(0, 10)
@@ -53,11 +54,11 @@ export async function renderOrders(v, opts = {}) {
   let body = ''
   if (view === 'today') {
     const L = byDay[today] || []
-    body = `<section class="od-card"><div style="display:flex;align-items:baseline;gap:8px"><h3>Today's orders</h3><span style="flex:1"></span><span style="font-size:12.5px;color:#64748B">${sumN(L)} orders · ${inr(sumA(L))}</span></div>${L.map(li).join('') || '<div class="od-empty">No orders punched today</div>'}</section>`
+    body = `<section class="od-card"><div style="display:flex;align-items:baseline;gap:8px"><h3>Today's ${w}s</h3><span style="flex:1"></span><span style="font-size:12.5px;color:#64748B">${sumN(L)} ${w}s · ${inr(sumA(L))}</span></div>${L.map(li).join('') || `<div class="od-empty">No ${w}s punched today</div>`}</section>`
   } else if (view === 'week') {
     const days = Array.from({ length: dow + 1 }, (_, i) => new Date(Date.parse(weekStart + 'T12:00:00Z') + i * 864e5).toISOString().slice(0, 10)).reverse()
-    body = `<section class="od-card"><div style="display:flex;align-items:baseline;gap:8px"><h3>This week's orders</h3><span style="flex:1"></span><span style="font-size:12.5px;color:#64748B">${sumN(r.rows)} orders · ${inr(sumA(r.rows))}</span></div>
-      ${days.map((d) => { const L = byDay[d] || []; return `<div class="od-dayh">${d === today ? 'Today' : fmtDate(d)} · ${sumN(L)} orders · ${inr(sumA(L))}</div>${L.map(li).join('') || '<div class="od-empty" style="padding:6px 0">No orders</div>'}` }).join('')}</section>`
+    body = `<section class="od-card"><div style="display:flex;align-items:baseline;gap:8px"><h3>This week's ${w}s</h3><span style="flex:1"></span><span style="font-size:12.5px;color:#64748B">${sumN(r.rows)} ${w}s · ${inr(sumA(r.rows))}</span></div>
+      ${days.map((d) => { const L = byDay[d] || []; return `<div class="od-dayh">${d === today ? 'Today' : fmtDate(d)} · ${sumN(L)} ${w}s · ${inr(sumA(L))}</div>${L.map(li).join('') || `<div class="od-empty" style="padding:6px 0">No ${w}s</div>`}` }).join('')}</section>`
   } else {
     const first = (new Date(`${month}-01T12:00:00Z`).getUTCDay() + 6) % 7
     let zero = 0
@@ -69,21 +70,21 @@ export async function renderOrders(v, opts = {}) {
     }).join('')
     const monthLabel = new Date(`${month}-01T12:00:00Z`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })
     const dayRows = byDay[sel] || []
-    body = `<section class="od-card"><div class="od-cal-h"><button id="pm" aria-label="Previous month">‹</button><b>${monthLabel} · ${sumN(r.rows)} orders · ${inr(sumA(r.rows))}</b><button id="nm" aria-label="Next month" ${month >= today.slice(0, 7) ? 'disabled style="opacity:.3"' : ''}>›</button></div>
+    body = `<section class="od-card"><div class="od-cal-h"><button id="pm" aria-label="Previous month">‹</button><b>${monthLabel} · ${sumN(r.rows)} ${w}s · ${inr(sumA(r.rows))}</b><button id="nm" aria-label="Next month" ${month >= today.slice(0, 7) ? 'disabled style="opacity:.3"' : ''}>›</button></div>
       <div class="od-cal">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => `<div class="wd">${d}</div>`).join('')}${'<div></div>'.repeat(first)}${cells}</div>
-      ${zero ? `<div class="od-warn">No order punched on ${zero} working day${zero > 1 ? 's' : ''} this month (red days).</div>` : '<div class="od-good">An order on every working day so far 👍</div>'}</section>
-    <section class="od-card"><div style="display:flex;align-items:baseline;gap:8px"><h3>${sel === today ? 'Today' : fmtDate(sel)}</h3><span style="flex:1"></span><span style="font-size:12.5px;color:#64748B">${sumN(dayRows)} orders · ${inr(sumA(dayRows))}</span></div>
-      ${dayRows.map(li).join('') || '<div class="od-empty">No orders on this day — tap a date above</div>'}</section>`
+      ${zero ? `<div class="od-warn">No ${w} punched on ${zero} working day${zero > 1 ? 's' : ''} this month (red days).</div>` : `<div class="od-good">${W}s on every working day so far 👍</div>`}</section>
+    <section class="od-card"><div style="display:flex;align-items:baseline;gap:8px"><h3>${sel === today ? 'Today' : fmtDate(sel)}</h3><span style="flex:1"></span><span style="font-size:12.5px;color:#64748B">${sumN(dayRows)} ${w}s · ${inr(sumA(dayRows))}</span></div>
+      ${dayRows.map(li).join('') || `<div class="od-empty">No ${w}s on this day — tap a date above</div>`}</section>`
   }
   v.innerHTML = `<div class="od-stack">
     <div class="od-k">${[['today', 'Today', t.today_n, t.today], ['week', 'This week', t.week_n, t.week], ['month', 'This month', t.month_n, t.month]].map(([k, l, n, a]) => `<button data-view="${k}" class="${view === k ? 'on' : ''}"><span>${l}</span><b>${n || 0}</b><small>${inr(a)}</small></button>`).join('')}</div>
-    ${ro ? '' : `<button class="od-new" id="odn">${st.form ? '✕ Close' : '＋ Punch new order'}</button>`}
-    ${!ro && st.form ? `<section class="od-card"><h3>New order</h3><form class="od-form" id="odf"><div id="odrows" style="display:contents">${rowHtml(1)}</div>
-      <button type="button" class="od-more" id="odmore">＋ Add another order</button>
+    ${ro ? '' : `<button class="od-new" id="odn">${st.form ? '✕ Close' : `＋ Punch new ${w}`}</button>`}
+    ${!ro && st.form ? `<section class="od-card"><h3>New ${w}</h3><form class="od-form" id="odf"><div id="odrows" style="display:contents">${rowHtml(1, w)}</div>
+      <button type="button" class="od-more" id="odmore">＋ Add another ${w}</button>
       <label>Date<input id="odt" type="date" value="${today}" max="${today}" required></label><label>Note (optional)<input id="ot" maxlength="200" placeholder="items, remarks"></label>
       <button id="odsave">Save</button></form></section>` : ''}
     ${body}
-    ${ro ? '' : '<div style="font-size:11.5px;color:#94A3B8;text-align:center">Orders can be corrected on the same day. They cannot be deleted — ask admin.</div>'}</div>`
+    ${ro ? '' : `<div style="font-size:11.5px;color:#94A3B8;text-align:center">${W}s can be corrected on the same day. They cannot be deleted — ask admin.</div>`}</div>`
   const again = () => renderOrders(v, opts)
   v.querySelectorAll('[data-view]').forEach((b) => (b.onclick = () => { st.view = b.dataset.view; if (st.view === 'month') { st.month = null; st.sel = null } again() }))
   v.querySelector('#odn')?.addEventListener('click', () => { st.form = !st.form; again() })
@@ -92,7 +93,7 @@ export async function renderOrders(v, opts = {}) {
   v.querySelectorAll('[data-day]').forEach((c) => c.dataset.day && (c.onclick = () => { st.sel = c.dataset.day; again() }))
   const f = v.querySelector('#odf')
   if (f) {
-    f.querySelector('#odmore').onclick = () => { const box = f.querySelector('#odrows'); box.insertAdjacentHTML('beforeend', rowHtml(box.querySelectorAll('[data-r]').length + 1)); box.lastElementChild.querySelector('input').focus() }
+    f.querySelector('#odmore').onclick = () => { const box = f.querySelector('#odrows'); box.insertAdjacentHTML('beforeend', rowHtml(box.querySelectorAll('[data-r]').length + 1, w)); box.lastElementChild.querySelector('input').focus() }
     f.onsubmit = async (e) => {
       e.preventDefault(); const btn = f.querySelector('#odsave'); btn.disabled = true
       const date = f.querySelector('#odt').value, note = f.querySelector('#ot').value.trim()
@@ -101,13 +102,13 @@ export async function renderOrders(v, opts = {}) {
         for (const el of rowsEl) { if (el.dataset.done) continue
           const g = (k) => el.querySelector(`[data-f=${k}]`).value.trim()
           await post('/api/bookings', { customer: g('customer'), qty: g('qty'), amount: g('amount'), contact: g('contact'), date, note }); el.dataset.done = '1'; saved++ }
-        toast(`${saved} order${saved > 1 ? 's' : ''} saved ✓`); st.form = false; if (date !== today) { st.view = 'month'; st.sel = date; st.month = date.slice(0, 7) } again()
+        toast(`${saved} ${w}${saved > 1 ? 's' : ''} saved ✓`); st.form = false; if (date !== today) { st.view = 'month'; st.sel = date; st.month = date.slice(0, 7) } again()
       } catch (er) { btn.disabled = false; toast(er.message, 'bad') }
     }
   }
   v.querySelectorAll('[data-ed]').forEach((b) => (b.onclick = () => {
     const x = r.rows.find((o) => String(o.id) === b.dataset.ed), el = b.closest('.od-li')
-    el.outerHTML = `<form class="od-form" id="ode" style="margin:8px 0"><label class="w">Name / title<input id="ec" value="${esc(x.customer || '')}" maxlength="80"></label><label>No. of orders<input id="eq" type="number" min="1" step="1" value="${q(x)}" required></label><label>Amount ₹<input id="ea" type="number" step="0.01" min="1" value="${x.amount}" required></label>
+    el.outerHTML = `<form class="od-form" id="ode" style="margin:8px 0"><label class="w">Name / title<input id="ec" value="${esc(x.customer || '')}" maxlength="80"></label><label>No. of ${w}s<input id="eq" type="number" min="1" step="1" value="${q(x)}" required></label><label>Amount ₹<input id="ea" type="number" step="0.01" min="1" value="${x.amount}" required></label>
       <label class="w">Client contact number<input id="ep" type="tel" value="${esc(x.contact || '')}" maxlength="15"></label><button>Save</button></form>`
     const ef = v.querySelector('#ode')
     ef.onsubmit = async (e) => { e.preventDefault(); try { await patch('/api/bookings/' + x.id, { customer: ef.querySelector('#ec').value, qty: ef.querySelector('#eq').value, amount: ef.querySelector('#ea').value, contact: ef.querySelector('#ep').value }); toast('Saved'); again() } catch (er) { toast(er.message, 'bad') } }

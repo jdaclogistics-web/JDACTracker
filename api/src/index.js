@@ -185,6 +185,20 @@ on('POST', '/api/admin/day-start', async (env, req) => {
   await audit(env, me.id, 'day_start_for', 'day_sessions', `${emp.id}:${date}`, null, { by: me.name, lat, lng })
   return json({ ok: true })
 })
+on('POST', '/api/admin/day-end', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req)
+  const date = istDate()
+  const s = await env.DB.prepare('SELECT * FROM day_sessions WHERE emp_id = ? AND date = ?').bind(Number(b.emp_id), date).first()
+  if (!s) throw new HttpError(404, 'Their day has not started')
+  if (s.end_at) throw new HttpError(409, 'Their day is already closed')
+  if (!b.photo) throw bad('Take the closing selfie first')
+  const photo = await savePhoto(env, `${s.emp_id}/${date}-out-${Date.now()}.jpg`, b.photo)
+  await recompute(env, s.emp_id, date)
+  await env.DB.prepare('UPDATE day_sessions SET end_at = ?, end_lat = ?, end_lng = ?, end_photo = ? WHERE id = ? AND end_at IS NULL').bind(nowIso(), Number(b.lat) || null, Number(b.lng) || null, photo, s.id).run()
+  await audit(env, me.id, 'day_end_for', 'day_sessions', `${s.emp_id}:${date}`, null, { by: me.name })
+  return json({ ok: true })
+})
 on('POST', '/api/day/end', async (env, req) => {
   const me = await authUser(env, req)
   const b = await body(req)
@@ -192,8 +206,9 @@ on('POST', '/api/day/end', async (env, req) => {
   const s = await env.DB.prepare('SELECT * FROM day_sessions WHERE emp_id = ? AND date = ?').bind(me.id, date).first()
   if (!s) throw new HttpError(404, 'Day has not started')
   if (s.end_at) return json({ session: s, already: true }) // दोबारा भेजा → वही जवाब, कुछ नहीं बदलता
+  if (!b.photo) throw bad('Take the closing selfie to close your day') // a day cannot be closed without a selfie
   const at = nowIso()
-  const photo = b.photo ? await savePhoto(env, `${me.id}/${date}-out-${Date.now()}.jpg`, b.photo) : null
+  const photo = await savePhoto(env, `${me.id}/${date}-out-${Date.now()}.jpg`, b.photo)
   if (b.client_id && Number.isFinite(Number(b.lat))) {
     await env.DB.prepare('INSERT OR IGNORE INTO location_pings (client_id, emp_id, date, lat, lng, accuracy, kind, recorded_at) VALUES (?,?,?,?,?,?,?,?)')
       .bind(String(b.client_id), me.id, date, Number(b.lat), Number(b.lng), b.accuracy ?? null, 'duty', at).run()
@@ -717,6 +732,8 @@ on('GET', '/api/my/home', async (env, req, url) => {
   const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id))
   try { const td = istDate(); const q = (f) => env.DB.prepare('SELECT COALESCE(SUM(amount),0) s, COALESCE(SUM(COALESCE(qty,1)),0) n FROM daily_bookings WHERE emp_id = ? AND date BETWEEN ? AND ?').bind(who.id, f, td).first()
     const [a, m] = await Promise.all([q(td), q(td.slice(0, 8) + '01')]); out.orders = { today_n: a.n, today: a.s, month_n: m.n, month: m.s } } catch { out.orders = { today_n: 0, today: 0, month_n: 0, month: 0 } }
+  // CSE / logistics staff punch "bookings"; Govaa Bazaar and others punch "orders"
+  out.order_word = /govaa/i.test(who.department || '') ? 'order' : /customer success|cse|logistic|operation/i.test(`${who.department || ''} ${who.designation || ''}`) ? 'booking' : 'order'
   if (who !== me) {
     const day = await env.DB.prepare('SELECT start_at, end_at, total_km FROM day_sessions WHERE emp_id = ? AND date = ?').bind(who.id, istDate()).first()
     Object.assign(out, { viewing: true, emp_id: who.id, emp_code: who.emp_code || null, team: who.team, phone: who.phone || null, joining_date: who.joining_date || null, day: day || null })

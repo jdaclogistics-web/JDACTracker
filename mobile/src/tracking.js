@@ -32,7 +32,7 @@ async function watch() {
   if (isNative()) {
     st.watcher = await BackgroundGeolocation.addWatcher({
       backgroundTitle: 'JDAC — Duty tracking is on',
-      backgroundMessage: 'Tracking stops when you End day',
+      backgroundMessage: 'Tracking stops when you Close day',
       requestPermissions: true, stale: false, distanceFilter: st.field ? 10 : 20,
     }, (loc, err) => {
       if (err) { emit({ error: err.code === 'NOT_AUTHORIZED' ? 'denied' : err.message }); return }

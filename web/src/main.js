@@ -3,7 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import './web.css'
 import L from 'leaflet'
 import { auth, login, logout, get, post, patch, photoUrl } from '@shared/api.js'
-import { viewCC, viewCompany, viewDesk, viewTasks2, viewChat, viewDesks, viewDeskAdmin, viewPeople2, viewAccounts, viewCommand, viewTeam, viewHR, viewEmpPage } from './cc.js'
+import { viewCC, viewCompany, viewDesk, viewTasks2, viewChat, viewDesks, viewDeskAdmin, viewPeople2, viewAccounts, viewCommand, viewTeam, viewHR, viewEmpPage, viewWho } from './cc.js'
 import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials, avColor, downloadCsv, minsAgo } from '@shared/util.js'
 
 const app = document.getElementById('app')
@@ -57,7 +57,7 @@ function render() {
   cleanup()
   document.body.classList.add('cmdmode')
   const tabs = ROLE_TABS[me.role]
-  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old', 'emppage'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
+  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old', 'emppage', 'who', 'companies', 'tools'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
   app.innerHTML = `
   <header class="bar"><img class="blogo" src="./jdac-logo.png" alt="JDAC">
@@ -95,6 +95,9 @@ function render() {
   if (tab === 'people' && boss) return viewPeople2(v, go, X, tabOpts)
   if (tab === 'tasks') return viewTasks2(v, go, tabOpts)
   if (tab === 'chat') return viewChat(v)
+  if (tab === 'who') return viewWho(v, go, X)
+  if (tab === 'companies') return viewCommand(v, go, me.role, 'cos')
+  if (tab === 'tools') return viewCommand(v, go, me.role, 'tools')
   if (tab === 'emppage') return viewEmpPage(v, tabArg, go)
   if (tab === 'attendance') return viewAttendance(v, tabOpts, X)
   if (tab === 'dailyreports') return viewDailyReports(v, tabOpts)
@@ -430,11 +433,12 @@ async function viewStaff(v) {
 // ── Attendance: Today · Week · Month · Live ─────────────────────────────
 async function viewAttendance(v, opts = {}, X) {
   const sub = opts.sub || 'today'
-  v.innerHTML = `<div class="cc-tabs at-tabs"><b class="at-ttl">Attendance</b>${[['today', 'Today'], ['week', 'Week'], ['month', 'Month'], ['live', 'Live tracking']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="atb" class="stack"></div>`
+  v.innerHTML = `<div class="cc-tabs at-tabs"><b class="at-ttl">Attendance</b>${[['today', 'Today'], ['week', 'Week'], ['month', 'Month'], ['leave', 'Leave'], ['live', 'Live tracking']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="atb" class="stack"></div>`
   v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => viewAttendance(v, { sub: b.dataset.sub }, X)))
   const B = v.querySelector('#atb')
   if (sub === 'today') return viewPeople2(B, null, X, { sub: 'today', bare: true })
   if (sub === 'live') return viewLive(B)
+  if (sub === 'leave') return viewPeople2(B, null, X, { sub: 'leave', bare: true })
   return viewAttSheet(B, sub, opts.anchor || istDate())
 }
 const viewReport = (v, month) => viewAttSheet(v, 'month', month ? month + '-01' : istDate())
@@ -521,7 +525,44 @@ async function viewAttSheet(v, mode = 'month', anchor = istDate()) {
 }
 
 // ── Daily reports (clean view) ──────────────────────────────────────────
+// Daily reports: what each person punched (bookings / orders) — today, yesterday, this month, last month; plus the old written reports
 async function viewDailyReports(v, opts = {}) {
+  const tabN = opts.tab || 'orders'
+  v.innerHTML = `<div class="cc-tabs at-tabs"><b class="at-ttl">Daily reports</b><button data-t="orders" class="${tabN === 'orders' ? 'on' : ''}">Bookings &amp; orders</button><button data-t="written" class="${tabN === 'written' ? 'on' : ''}">Written reports</button></div><div id="drb" class="stack"></div>`
+  v.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => viewDailyReports(v, { tab: b.dataset.t })))
+  const B = v.querySelector('#drb')
+  if (tabN === 'written') return writtenReports(B, {})
+  return ordersReport(B, opts)
+}
+async function ordersReport(B, opts) {
+  loading(B)
+  try {
+    const today = istDate(), yest = addDays(today, -1), m0 = today.slice(0, 8) + '01'
+    const lmEnd = addDays(m0, -1), lm0 = lmEnd.slice(0, 8) + '01'
+    const P = { today: ['Today', today, today], yest: ['Yesterday', yest, yest], month: ['This month', m0, today], last: ['Last month', lm0, lmEnd] }
+    const per = P[opts.per] ? opts.per : 'today', [, from, to] = P[per], who = opts.who || ''
+    const [R, E] = await Promise.all([get(`/api/bookings?all=1&from=${from}&to=${to}`, { fresh: true }), get('/api/admin/employees')])
+    const qn = (x) => Number(x.qty) || 1, inr = (n) => '₹' + Math.round(n || 0).toLocaleString('en-IN')
+    const stat = {}; for (const x of R.rows) { const k = x.emp_id || 0; (stat[k] ||= { n: 0, amt: 0 }); stat[k].n += qn(x); stat[k].amt += x.amount }
+    const people = E.employees.filter((e) => (e.active && e.role === 'employee') || stat[e.id]).map((e) => ({ ...e, ...(stat[e.id] || { n: 0, amt: 0 }) })).sort((a, b) => b.amt - a.amt || a.name.localeCompare(b.name))
+    const rows = R.rows.filter((x) => !who || String(x.emp_id) === who)
+    const days = [...new Set(rows.map((x) => x.date))].sort().reverse()
+    const tot = rows.reduce((a, x) => ({ n: a.n + qn(x), amt: a.amt + x.amount }), { n: 0, amt: 0 })
+    const sel = people.find((p) => String(p.id) === who)
+    B.innerHTML = `<div class="at-bar"><div class="chips">${Object.entries(P).map(([k, [l]]) => `<button class="chip ${per === k ? 'on' : ''}" data-per="${k}">${l}</button>`).join('')}</div><span class="sp"></span>
+        <span class="sub" style="margin:0">${fmtDate(from)}${from !== to ? ' – ' + fmtDate(to) : ''}</span><button class="btn ghost sm" id="csv">${ic('download', 16)} Excel</button></div>
+      <div class="rp-grid"><aside class="rp-people"><button class="rp-p ${who ? '' : 'on'}" data-who=""><b>Everyone</b><span>${people.reduce((a, p) => a + p.n, 0)} · ${inr(people.reduce((a, p) => a + p.amt, 0))}</span></button>
+        ${people.map((p) => `<button class="rp-p ${String(p.id) === who ? 'on' : ''} ${p.n ? '' : 'zero'}" data-who="${p.id}"><i style="background:${avColor(p.id)}">${esc(initials(p.name))}</i><div><b>${esc(p.name)}</b><small>${esc(p.department || p.designation || '')}</small></div><span>${p.n ? `${p.n} · ${inr(p.amt)}` : 'none'}</span></button>`).join('')}</aside>
+      <section class="card rp-main"><div class="row"><h2 class="h3">${sel ? esc(sel.name) : 'Everyone'} — ${P[per][0].toLowerCase()}</h2><span class="sp"></span><b>${tot.n} bookings / orders · ${inr(tot.amt)}</b></div>
+        ${days.map((d) => { const L = rows.filter((x) => x.date === d); return `<div class="dr-day">${fmtDate(d)} · ${L.reduce((a, x) => a + qn(x), 0)} · ${inr(L.reduce((a, x) => a + x.amount, 0))}</div>
+          <table class="rp-t"><tbody>${L.map((x) => `<tr>${who ? '' : `<td class="w">${esc(x.name || '—')}</td>`}<td><b>${esc(x.customer || x.booking_no)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ''}</td><td class="m">${esc(x.booking_no)}</td><td class="m">${x.contact ? '📞 ' + esc(x.contact) : ''}</td><td class="n">× ${qn(x)}</td><td class="a">${inr(x.amount)}</td></tr>`).join('')}</tbody></table>` }).join('') || `<div class="empty">${sel ? esc(sel.name) + ' has' : 'No one has'} punched nothing ${per === 'today' ? 'today' : per === 'yest' ? 'yesterday' : 'in this period'}</div>`}</section></div>`
+    const re = (o) => ordersReport(B, { per, who, ...o })
+    B.querySelectorAll('[data-per]').forEach((b) => (b.onclick = () => re({ per: b.dataset.per })))
+    B.querySelectorAll('[data-who]').forEach((b) => (b.onclick = () => re({ who: b.dataset.who })))
+    B.querySelector('#csv').onclick = () => downloadCsv(`JDAC-daily-report-${from}-to-${to}.csv`, [['Date', 'Employee', 'Name / title', 'Number', 'Client contact', 'No. of orders', 'Amount', 'Note'], ...rows.map((x) => [x.date, x.name, x.customer || '', x.booking_no, x.contact || '', qn(x), x.amount, x.note || ''])])
+  } catch (e) { fail(B, e) }
+}
+async function writtenReports(v, opts = {}) {
   loading(v)
   try {
     const [R, E] = await Promise.all([get('/api/legacy/rows?tbl=daily_reports&limit=1000'), get('/api/admin/employees')])
@@ -533,13 +574,12 @@ async function viewDailyReports(v, opts = {}) {
     const L = rows.filter((r) => r._d >= f.from && r._d <= f.to && (!f.p || String(r._e.id) === f.p) && (!f.q || JSON.stringify(r).toLowerCase().includes(f.q.toLowerCase())))
     const days = [...new Set(L.map((r) => r._d))]
     const field = (k, val) => (val && String(val).trim() ? `<div class="k">${k}</div><p>${esc(String(val))}</p>` : '')
-    v.innerHTML = `<div class="cc-top"><b>Daily reports</b><span class="sp"></span></div>
-      <div class="at-bar"><label class="sub" style="margin:0">From</label><input class="inp" type="date" id="df" value="${f.from}" style="max-width:160px"><label class="sub" style="margin:0">To</label><input class="inp" type="date" id="dt" value="${f.to}" style="max-width:160px">
+    v.innerHTML = `<div class="at-bar"><label class="sub" style="margin:0">From</label><input class="inp" type="date" id="df" value="${f.from}" style="max-width:160px"><label class="sub" style="margin:0">To</label><input class="inp" type="date" id="dt" value="${f.to}" style="max-width:160px">
         <select class="inp" id="dp" style="max-width:200px"><option value="">Everyone</option>${people.map((p) => `<option value="${p.id}" ${String(p.id) === f.p ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
         <input class="inp" id="dq" placeholder="Search…" value="${esc(f.q)}" style="max-width:200px"><span class="sp"></span><span class="sub" style="margin:0">${L.length} reports</span></div>
       <div>${days.map((d) => `<div class="dr-day">${fmtDate(d)}</div>${L.filter((r) => r._d === d).map((r) => `<div class="dr"><span class="av" style="background:${avColor(r._e.id)}">${esc(initials(r._e.name))}</span><div style="flex:1;min-width:0"><b>${esc(r._e.name)}</b> <span class="sub" style="display:inline">${esc(r._e.designation || '')}${r.createdAt ? ' · ' + esc(String(r.createdAt).slice(11, 16)) : ''}</span>
         ${field('Tasks', r.tasksDone)}${field('Work done', r.workDone)}${field('Key numbers', r.keyNumbers)}${field('Blockers', r.blockers)}</div></div>`).join('')}`).join('') || '<section class="card empty">No reports in these dates</section>'}</div>`
-    const re = (o) => viewDailyReports(v, { ...f, ...o })
+    const re = (o) => writtenReports(v, { ...f, ...o })
     v.querySelector('#df').onchange = (e) => re({ from: e.target.value }); v.querySelector('#dt').onchange = (e) => re({ to: e.target.value })
     v.querySelector('#dp').onchange = (e) => re({ p: e.target.value })
     let t; v.querySelector('#dq').oninput = (e) => { clearTimeout(t); t = setTimeout(() => re({ q: e.target.value }), 400) }

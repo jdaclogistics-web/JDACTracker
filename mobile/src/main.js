@@ -170,8 +170,8 @@ function renderHome(v) {
     <form id="kmf" class="stack"><label class="f">Actual km today<input class="inp" id="kmv" type="number" step="0.1" min="0" max="500" required value="${session.manual_km || ''}"></label>
     <label class="f">Reason<input class="inp" id="kmn" minlength="3" required placeholder="e.g. Kharadi + Viman Nagar deliveries" value="${esc(session.manual_km_note || '')}"></label>
     <button class="btn ghost">Save</button></form></details>
-  <button class="btn dark" id="end" style="font-size:16px;padding:17px">${ic('stop', 16, '#fff')} End day</button>
-  <p class="sub" style="text-align:center;margin:0">End day takes a selfie${wh ? ' and stops tracking' : ''}.</p>
+  <button class="btn dark" id="end" style="font-size:16px;padding:17px">${ic('stop', 16, '#fff')} Close day</button>
+  <p class="sub" style="text-align:center;margin:0">You must take a selfie to close your day${wh ? ' — it also stops tracking' : ''}.</p>
   ${!isNative() && wh ? `<p class="sub" style="text-align:center;margin:0;color:#B45309">Web version: GPS works only while this page is open and the screen is on. Use the Android app (APK) for full-day tracking.</p>` : ''}
   ${isNative() && wh ? `<button class="link" id="perm" style="align-self:center">${ic('battery', 16)} Tracking stops? Fix battery / location settings</button>` : ''}`
   v.querySelector('#end').onclick = doEnd
@@ -212,8 +212,8 @@ async function doEnd() {
   // दो बार tap = confirm (browser confirm() camera खोलने की permission खा जाता है)
   if (Date.now() - endArmed > 4000) {
     endArmed = Date.now()
-    b.classList.replace('dark', 'dng'); b.textContent = 'Tap again to end day'
-    setTimeout(() => { if (b.isConnected && !busy) { b.classList.replace('dng', 'dark'); b.innerHTML = `${ic('stop', 16, '#fff')} End day` } }, 4000)
+    b.classList.replace('dark', 'dng'); b.textContent = 'Tap again to close day'
+    setTimeout(() => { if (b.isConnected && !busy) { b.classList.replace('dng', 'dark'); b.innerHTML = `${ic('stop', 16, '#fff')} Close day` } }, 4000)
     return
   }
   busy = true
@@ -298,8 +298,13 @@ function renderMe(v) {
   v.innerHTML = `
   <section class="card"><div class="row"><div class="av" style="background:#F59E0B;color:#0B1220;border-radius:50%;width:52px;height:52px;font-size:17px">${esc(initials(me.name))}</div>
     <div class="nm"><b style="font-size:17px">${esc(me.name)}</b><span>${esc(me.designation || '')}</span><span>${esc(me.team)} team${me.work_location ? ' · ' + esc(me.work_location) : ''}</span></div></div>
-    <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>@${esc(me.username || '')}</b><span>${me.phone ? '+91 ' + esc(me.phone) : 'username'}</span></div></div></section>
+    <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>${esc(me.emp_code || me.username || '')}</b><span>Employee ID</span></div></div></section>
   ${admin ? `<a class="card tip" href="./admin.html" style="text-decoration:none;color:inherit">${ic('shield', 20, '#6D28D9')}<div><b>Open admin panel</b><p>Dashboard, companies, team, tasks — in this app.</p></div></a>` : ''}
+  <section class="card"><div class="row"><h2 class="h3">My profile</h2><span class="sp"></span><span class="sub" style="margin:0">view only</span></div>
+    <div class="me-kv">${[['Employee ID', me.emp_code || me.username], ['Name', me.name], ['Status', me.status || 'Active'], ['Designation', me.designation], ['Department', me.department], ['Team', me.team], ['Mobile', me.phone ? '+91 ' + me.phone : ''], ['City', me.work_location],
+      ['Joining date', me.joining_date ? fmtDate(me.joining_date) : ''], ['Exit date', me.exit_date ? fmtDate(me.exit_date) : ''], ['Shift', me.shift_start ? me.shift_start + ' – ' + me.shift_end : ''], ['Salary in hand', me.salary_inhand ? '₹' + Math.round(me.salary_inhand).toLocaleString('en-IN') + ' / month' : '']]
+      .map(([k, val]) => `<div><span>${k}</span><b>${esc(val || '—')}</b></div>`).join('')}</div>
+    <p class="sub" style="margin:8px 0 0">Something wrong? Ask HR to correct it — you cannot edit this yourself.</p></section>
   <section class="card" style="padding:4px 14px"><div class="list">
     <button class="li" id="gol">${ic('cal', 20, '#3A4558')}<div class="nm"><b>Leave</b><span>Apply for leave, see status</span></div>${ic('chev', 18, '#9AA4B5')}</button>
     <button class="li" id="gom">${ic('clock', 20, '#3A4558')}<div class="nm"><b>My attendance</b><span>Month calendar</span></div>${ic('chev', 18, '#9AA4B5')}</button>
