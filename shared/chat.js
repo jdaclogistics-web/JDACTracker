@@ -17,11 +17,16 @@ const when = (at) => { const s = String(at || ''); const d = s.slice(0, 10), t =
 
 export async function renderChatUI(v, opts = {}) {
   if (opts.group) state.group = opts.group
+  // opts.as = employee id → admin preview of exactly what that employee sees (read-only)
+  const key = opts.as ? 'as' + opts.as : 'group'
+  if (opts.as && !state[key]) state[key] = 'general'
   v.innerHTML = '<div class="skel"></div>'
   let c
-  try { c = await get('/api/cc/chat?group=' + encodeURIComponent(state.group)) } catch (e) { v.innerHTML = `<div class="err">${esc(e.message)}</div>`; return }
-  const g = c.groups.find((x) => x.id === state.group) || c.groups[0]
-  const canWrite = g.id !== 'ann' || c.can_announce
+  try { c = await get('/api/cc/chat?group=' + encodeURIComponent(state[key]) + (opts.as ? '&as=' + opts.as : '')) } catch (e) {
+    if (!opts.as && state.group !== 'general') { state.group = 'general'; return renderChatUI(v, { ...opts, group: undefined }) } // not in that project group any more
+    v.innerHTML = `<div class="err">${esc(e.message)}</div>`; return }
+  const g = c.groups.find((x) => x.id === c.group) || c.groups[0]
+  const canWrite = !opts.as && (g.id !== 'ann' || c.can_announce)
   v.innerHTML = `<section class="card ch">
     <div class="ch-tabs" role="tablist">${c.groups.map((x) => `<button role="tab" class="${x.id === g.id ? 'on' : ''}" data-g="${esc(x.id)}">${x.icon} ${esc(x.name)}</button>`).join('')}</div>
     <div class="ch-head"><b>${g.icon} ${esc(g.name)}</b><span>${g.id === 'ann' ? 'For everyone — only Boss / HR can post' : g.id === 'general' ? 'Whole team' : 'project group'}</span></div>
@@ -33,9 +38,9 @@ export async function renderChatUI(v, opts = {}) {
       <textarea id="cm" rows="1" placeholder="Message… (Shift + Enter = new line)"></textarea>
       <button type="button" class="ch-ic" id="mic" title="Voice message" aria-label="Voice message">🎤</button><button class="ch-send" aria-label="Send">➤</button></form>
       <div class="ch-rec" id="rec" hidden><span class="dot"></span><b id="rt">0:00</b> Recording… <button type="button" id="rstop">Send</button><button type="button" id="rcancel">Cancel</button></div>`
-    : '<div class="sub" style="text-align:center;margin-top:8px">📢 Only Boss / HR post Announcements</div>'}</section>`
+    : opts.as ? `<div class="sub" style="text-align:center;margin-top:8px">👁 These are the only chats ${esc(c.viewing_as || 'this employee')} can see. Read-only preview.</div>` : '<div class="sub" style="text-align:center;margin-top:8px">📢 Only Boss / HR post Announcements</div>'}</section>`
   const box = v.querySelector('#msgs'); box.scrollTop = box.scrollHeight
-  v.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => { state.group = b.dataset.g; renderChatUI(v) }))
+  v.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => { state[key] = b.dataset.g; renderChatUI(v, { as: opts.as }) }))
   v.querySelector('.ch-tabs .on')?.scrollIntoView({ inline: 'center', block: 'nearest' })
   // voice / file / image lazy load
   v.querySelectorAll('audio[data-file]').forEach((a) => a.addEventListener('play', async function once() { if (a.src) return; a.removeEventListener('play', once); try { a.src = await fileUrl(a.dataset.file); a.play() } catch (e) { toast(e.message, 'bad') } }))
@@ -46,7 +51,7 @@ export async function renderChatUI(v, opts = {}) {
   const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px' }
   ta.addEventListener('input', grow)
   const send = async (payload) => {
-    try { await post('/api/cc/chat', { group: g.id, ...payload }); renderChatUI(v) } catch (er) { toast(er.message, 'bad') }
+    try { await post('/api/cc/chat', { group: g.id, ...payload }); renderChatUI(v, { as: opts.as }) } catch (er) { toast(er.message, 'bad') }
   }
   // Enter = send, Shift + Enter = नई line (phone पर Enter नई line देता है — Send button से भेजें)
   const touch = matchMedia('(pointer: coarse)').matches

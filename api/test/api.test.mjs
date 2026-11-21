@@ -14,7 +14,7 @@ let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; console.log('  ✔
 
 const h = await hashPassword('JDAC1234')
 // real-staff data migrations don't apply to the test fixtures
-for (const k of ['mig_people_v1', 'mig_directory_v1', 'mig_org_v2', 'mig_login_v1']) await DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?)').bind(k, 'test').run()
+for (const k of ['mig_people_v1', 'mig_directory_v1', 'mig_org_v2', 'mig_login_v1', 'mig_org_v3']) await DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?)').bind(k, 'test').run()
 await DB.prepare("INSERT INTO employees (username, name, phone, pass_hash, role, team, work_location) VALUES ('rahul','Rahul','9876543210',?, 'employee','Warehouse','Pune Camp'), ('nameera','Nameera','9000000001',?, 'hr','Office','Pune HO'), ('darshan','Darshan',NULL,?, 'developer','Office',NULL)").bind(h, h, h).run()
 
 console.log('Login')
@@ -132,5 +132,22 @@ console.log('24h auto-logout')
   const sv = await call('POST', '/api/admin/payroll', { emp_id: id, month: m, advance: 500, incentives: 200, note: 'test', rates: { fixed: 30000, mobile: 250 } }, HR)
   const g2 = await call('GET', '/api/admin/payroll?month=' + m, null, HR); const r = g2.data.rows.find((x) => x.emp_id === id)
   ok(sv.status === 200 && r.data.advance === 500 && r.rates.fixed === 30000 && r.rates.mobile === 250, 'payroll inputs and rates save')
+}
+{ // orders from the Tasks panel, own tasks, project-only chat
+  const T = (await call('POST', '/api/login', { username: 'jd1002', password: '9222222222' })).data.token
+  const o = await call('POST', '/api/bookings', { customer: 'Sai Traders', amount: 1500 }, T)
+  const g = await call('GET', '/api/bookings', null, T)
+  ok(o.status === 200 && /^ORD-/.test(o.data.booking_no) && g.data.totals.today_n >= 1 && g.data.rows[0].customer === 'Sai Traders', 'employee punches an order without an order number')
+  const t = await call('POST', '/api/my/task', { title: 'Visit 5 shops' }, T)
+  const h = await call('GET', '/api/my/home', null, T)
+  ok(t.status === 200 && h.data.up_next.some((x) => x.title === 'Visit 5 shops'), 'employee adds their own task')
+  const pm = await call('POST', '/api/admin/project-members', { name: 'Bahiram', emp_ids: [] }, HR); const pid = pm.data.project_id
+  ok((await call('GET', '/api/cc/chat?group=' + pid, null, T)).status === 403, 'non-member cannot open a project chat')
+  const meId = (await call('GET', '/api/me', null, T)).data.me.id
+  await call('POST', '/api/admin/project-members', { project_id: pid, emp_ids: [meId] }, HR)
+  const c1 = await call('GET', '/api/cc/chat?group=' + pid, null, T)
+  ok(c1.status === 200 && c1.data.groups.some((x) => x.id === pid), 'member sees the project chat group')
+  const c2 = await call('GET', '/api/cc/chat?as=' + meId, null, HR)
+  ok(c2.data.viewing_as && c2.data.groups.length === c1.data.groups.length, 'admin previews exactly the groups an employee sees')
 }
 console.log(`\nALL ${pass} CHECKS PASSED`)

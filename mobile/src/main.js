@@ -107,7 +107,7 @@ function render() {
   if (tab === 'leave') return renderLeave(v)
   if (tab === 'month') return renderMonth(v)
   if (tab === 'me') return renderMe(v)
-  if (tab === 'tasks') return renderTasks(v, go)
+  if (tab === 'tasks') return renderTasks(v, go, tabArg)
   if (tab === 'chat') return renderChat(v, tabArg || '')
   if (tab === 'desk') return renderDesk(v, go, tabArg, tabArg2, tabArg3)
   v.innerHTML = '<div id="day" class="stack"></div><div id="wk" class="stack"></div>'

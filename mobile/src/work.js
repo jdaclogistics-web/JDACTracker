@@ -35,6 +35,7 @@ export function homeBlocks(h, session, go) {
     <div class="wk-steps">
       <button data-go="start"><span>▶️</span><b>1. Start day</b></button><button data-go="tasks"><span>📋</span><b>2. Tasks</b></button>
       <button data-go="desks"><span>🗂️</span><b>3. Sections</b></button><button data-go="month"><span>📅</span><b>4. Calendar</b></button></div></section>
+  <section class="card wk-ord"><div class="row"><div class="nm"><h2 class="h3">🧾 My orders</h2><div class="sub">Today <b>${h.orders?.today_n || 0}</b> · ${inr(h.orders?.today)} &nbsp;|&nbsp; This month <b>${h.orders?.month_n || 0}</b> · ${inr(h.orders?.month)}</div></div><span class="sp"></span><button class="btn dark sm" data-go="tasks" data-project="orders">＋ Punch order</button></div></section>
   <section class="card" id="desks"><div class="wk-dh"><h2 class="h3">Desks</h2><div class="sub">Only the work your boss gave you appears here.</div></div>
     <div class="list">${h.desks.map((d) => `<button class="li" data-desk="${esc(d.module)}" data-name="${esc(d.name)}" data-id="${esc(d.id)}"><span class="wk-di">${esc(d.icon || '🗂️')}</span><div class="nm"><b>${esc(d.name)}</b><span>${esc(d.description)}</span></div><span class="pill n">OPEN</span></button>`).join('') || '<div class="empty">No desk assigned yet</div>'}</div></section>
   <section class="card"><div class="row"><h2 class="h3">⏭️ Up next for you</h2><span class="sp"></span><button class="link" data-go="tasks">all tasks →</button></div>
@@ -58,17 +59,33 @@ function bindTaskChecks(v, after) {
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────
-export async function renderTasks(v, go) {
-  v.innerHTML = '<div class="skel"></div>'
+let taskTab = 'tasks'
+export async function renderTasks(v, go, tabArg) {
+  if (tabArg === 'orders' || tabArg === 'tasks') taskTab = tabArg
+  v.innerHTML = `<div class="wk-tabs"><button data-tt="tasks" class="${taskTab === 'tasks' ? 'on' : ''}">📋 Tasks</button><button data-tt="orders" class="${taskTab === 'orders' ? 'on' : ''}">🧾 Orders</button></div><div id="tkb" class="stack"><div class="skel"></div></div>`
+  v.querySelectorAll('[data-tt]').forEach((b) => (b.onclick = () => { taskTab = b.dataset.tt; renderTasks(v, go) }))
+  const B = v.querySelector('#tkb')
+  if (taskTab === 'orders') return renderOrders(B)
   const h = await loadMyHome()
-  if (!h) { v.innerHTML = '<div class="err">No internet</div>'; return }
-  v.innerHTML = `<section class="card"><div class="row"><h2 class="h3">My tasks</h2><span class="sp"></span><span class="sub">${h.up_next.length} open · ${h.tasks_done} done today</span></div>
-    <div class="list">${h.up_next.map((t) => taskRow(t) + (t.notes || t.checklist.length ? `<div class="wk-tn">${t.notes ? esc(t.notes) : ''}${t.checklist.map((c) => `<div>${c.done ? '☑' : '☐'} ${esc(c.title)}</div>`).join('')}</div>` : '')).join('') || '<div class="empty">Nothing pending — enjoy the clear day ✨</div>'}</div></section>`
-  bindTaskChecks(v, () => renderTasks(v, go))
+  if (!h) { B.innerHTML = '<div class="err">No internet</div>'; return }
+  B.innerHTML = `<button class="wk-new" id="addtask" style="border:0;border-radius:16px;padding:14px;font-weight:800;font-size:15px;color:#fff">＋ Add my task</button>
+    <section class="card"><div class="row"><h2 class="h3">My tasks</h2><span class="sp"></span><span class="sub">${h.up_next.length} open · ${h.tasks_done} done today</span></div>
+    <div class="list">${h.up_next.map((t) => taskRow(t) + (t.notes || t.checklist.length ? `<div class="wk-tn">${t.notes ? esc(t.notes) : ''}${t.checklist.map((c) => `<div>${c.done ? '☑' : '☐'} ${esc(c.title)}</div>`).join('')}</div>` : '')).join('') || '<div class="empty">Nothing pending — add a task or enjoy the clear day ✨</div>'}</div></section>`
+  bindTaskChecks(B, () => renderTasks(v, go))
+  B.querySelector('#addtask').onclick = () => sheet(`<div class="row"><h2 class="h3">New task</h2><span class="sp"></span><button class="link" data-close>Close</button></div>
+    <form id="tf" class="stack" style="margin-top:10px"><label class="f">What do you need to do?<input class="inp" id="tt" required maxlength="120" placeholder="e.g. Reels for Bahiram, visit 5 shops"></label>
+    <label class="f">Due date<input class="inp" type="date" id="td" value="${istDate()}" min="${istDate()}"></label>
+    ${h.projects.length ? `<label class="f">Project<select class="inp" id="tp"><option value="">—</option>${h.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>` : ''}
+    <label class="f">Priority<select class="inp" id="tpr"><option>Normal</option><option>High</option><option>Low</option></select></label>
+    <label class="f">Notes (optional)<input class="inp" id="tn" maxlength="300"></label><button class="btn pri">Add task</button></form>`, (el, close) => {
+    el.querySelector('#tf').onsubmit = async (e) => { e.preventDefault()
+      try { await post('/api/my/task', { title: el.querySelector('#tt').value, due: el.querySelector('#td').value, project_id: el.querySelector('#tp')?.value || '', priority: el.querySelector('#tpr').value, notes: el.querySelector('#tn').value }); close(); toast('Task added ✓'); renderTasks(v, go) } catch (er) { toast(er.message, 'bad') } }
+  })
 }
 
 // ── Chat ──
 import { renderChatUI, injectChatCss } from '@shared/chat.js'
+import { renderOrders } from '@shared/orders.js'
 export function renderChat(v, project = '') { injectChatCss(); return renderChatUI(v, project ? { group: project } : {}) }
 
 // ── Desks ─────────────────────────────────────────────────────────────────

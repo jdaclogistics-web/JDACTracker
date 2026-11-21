@@ -3,6 +3,7 @@ import { get, post, patch, prefetch } from '@shared/api.js'
 import { esc, ic, fmtDate, fmtTime, toast, initials, avColor, istDate, downloadCsv } from '@shared/util.js'
 import { renderChatUI, injectChatCss } from '@shared/chat.js'
 import { stampedSelfie, browserPosition } from '@shared/selfie.js'
+import { renderOrders, resetOrdersView } from '@shared/orders.js'
 
 const inr = (n) => (n ? '₹' + Math.round(n).toLocaleString('en-IN') : '₹0')
 const inrL = (n) => (Math.abs(n) >= 100000 ? '₹' + (n / 100000).toFixed(n >= 1e6 ? 1 : 2).replace(/\.?0+$/, '') + 'L' : inr(n))
@@ -490,24 +491,33 @@ export async function viewTasks2(v, go, opts = {}) {
     const today = istDate()
     if (sub === 'projects') {
       const live = projects.filter((p) => !/archiv|closed/i.test(String(p.status)))
-      const sel = opts.project || 'all'
+      const sel = opts.project || 'all', who = opts.who || ''
       const inSel = (t) => sel === 'all' || (sel === 'null' ? !t.projectId : String(t.projectId) === String(sel))
-      const ts = tasks.filter(inSel)
+      const empOf = (t) => E.employees.find((x) => (t.assignee_emp != null && String(x.id) === String(t.assignee_emp)) || (x.legacy_id != null && t.assigneeId != null && String(x.legacy_id) === String(t.assigneeId)))
+      const ts = tasks.filter((t) => inSel(t) && (!who || String(empOf(t)?.id || '') === who))
+      const whoProjects = who ? [...new Set(tasks.filter((t) => String(empOf(t)?.id || '') === who && t.projectId).map((t) => String(t.projectId)))].map((id) => live.find((p) => String(p.id) === id)?.name).filter(Boolean) : []
       const tagLib = {}; for (const t of tasks) for (const g of (Array.isArray(t.tags) ? t.tags : [])) if (g && g.n) tagLib[g.n] = g.c
       const projName = (id) => live.find((p) => String(p.id) === String(id))?.name || ''
       const cnt = (f) => tasks.filter((t) => f(t) && !isDone(t)).length
       B.innerHTML = `<div class="kb-chips">${[['all', 'All projects', cnt(() => true)], ...live.map((p) => [String(p.id), p.name, cnt((t) => String(t.projectId) === String(p.id))]), ['null', 'Other tasks', cnt((t) => !t.projectId)]]
           .map(([k, l, n]) => `<button class="${sel === k ? 'on' : ''}" data-p="${esc(k)}">${esc(l)}<small>${n}</small></button>`).join('')}</div>
-        <div class="kb-bar"><span class="sub" style="margin:0">Drag a card to move it · tap a card to edit, add tags or change stage</span><span class="sp"></span><button class="btn dark sm" id="kadd">+ Add task</button></div>
+        <div class="kb-bar"><select class="inp" id="kwho" style="max-width:220px"><option value="">👤 Everyone</option>${E.employees.filter((e) => e.active && e.role !== 'developer').sort((a, b) => a.name.localeCompare(b.name)).map((e) => `<option value="${e.id}" ${String(e.id) === who ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+          ${who ? `<span class="sub" style="margin:0">${ts.filter((t) => stageOf(t) !== 'Completed').length} open tasks${whoProjects.length ? ' · projects: <b>' + whoProjects.map(esc).join(', ') + '</b>' : ''}</span>` : '<span class="sub" style="margin:0">Drag a card to move it · click (or right-click) a card for assignee, tags and project · right-click a project to set its members</span>'}
+          <span class="sp"></span><button class="btn ghost sm" id="kproj">+ Project</button><button class="btn dark sm" id="kadd">+ Add task</button></div>
         <div class="kb" id="kb">${KB_COLS.map(([k, l, c]) => { const L = ts.filter((t) => stageOf(t) === k).sort((a, b) => String(a.due || '9').localeCompare(String(b.due || '9')))
           return `<div class="kb-col" data-col="${k}" style="--c:${c}"><div class="kb-h"><i></i><b>${l}</b><small>${L.length}</small></div><div class="kb-list">${(k === 'Completed' ? L.slice(-40).reverse() : L).map((t) => kbCard(t, nameOf, today, sel === 'all' ? projName(t.projectId) : '')).join('') || '<div class="kb-empty">Drop here</div>'}</div></div>` }).join('')}</div>`
       const kb = B.querySelector('#kb'); kb.style.maxHeight = Math.max(320, innerHeight - kb.getBoundingClientRect().top - (document.querySelector('.nav')?.getBoundingClientRect().height || 0) - 14) + 'px'
-      B.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => re({ project: b.dataset.p })))
+      B.querySelectorAll('[data-p]').forEach((b) => { b.onclick = () => re({ project: b.dataset.p })
+        const edit = (e) => { if (['all', 'null'].includes(b.dataset.p)) return; e.preventDefault(); projectEditor(live.find((p) => String(p.id) === b.dataset.p), E.employees, () => re({})) }
+        b.ondblclick = edit; b.oncontextmenu = edit })
+      B.querySelector('#kwho').onchange = (e) => re({ who: e.target.value })
+      B.querySelector('#kproj').onclick = () => projectEditor(null, E.employees, () => re({}))
       const setStage = async (rid, st) => { try { await patch('/api/legacy/rows', { tbl: 'tasks', id: rid, data: { status: st, ...(st === 'Completed' ? { closedAt: nowIso() } : {}) } }); re({}) } catch (e) { toast(e.message, 'bad') } }
       B.querySelectorAll('.kb-card').forEach((c) => {
         c.ondragstart = (e) => { e.dataTransfer.setData('text/plain', c.dataset.rid); c.classList.add('drag') }
         c.ondragend = () => c.classList.remove('drag')
-        c.onclick = () => taskEditor(tasks.find((t) => String(t._rid) === c.dataset.rid), E.employees, live, tagLib, () => re({}))
+        const open = (e) => { e?.preventDefault(); taskEditor(tasks.find((t) => String(t._rid) === c.dataset.rid), E.employees, live, tagLib, () => re({})) }
+        c.onclick = open; c.oncontextmenu = open
       })
       B.querySelectorAll('.kb-col').forEach((col) => {
         col.ondragover = (e) => { e.preventDefault(); col.classList.add('over') }
@@ -551,6 +561,22 @@ const kbCard = (t, nameOf, today, proj) => { const od = stageOf(t) !== 'Complete
   return `<div class="kb-card" draggable="true" data-rid="${esc(t._rid)}">${(Array.isArray(t.tags) && t.tags.length) ? `<div class="kb-tags">${t.tags.map(tagHtml).join('')}</div>` : ''}<b>${esc(t.title)}</b>
     <div class="kb-meta">${who !== '—' ? `<span class="kb-av" style="background:${avColor(who.length)}">${esc(initials(who))}</span>${esc(who.split(' ')[0])}` : ''}${t.due ? `<span class="${od ? 'od' : ''}">📅 ${fmtDate(String(t.due).slice(0, 10), { day: 'numeric', month: 'short' })}</span>` : ''}${/high/i.test(t.priority || '') ? '<span class="hi">High</span>' : ''}</div>
     ${proj ? `<div class="kb-proj">${esc(proj)}</div>` : ''}</div>` }
+// Project: name + members. Members decide who sees the project's chat group and "My projects".
+async function projectEditor(p, emps, again) {
+  const el = document.createElement('div'); el.className = 'tm-modal'
+  let ids = new Set()
+  if (p) { try { ids = new Set((await get('/api/admin/project-members?project=' + encodeURIComponent(p.id), { fresh: true })).emp_ids) } catch { /* */ } }
+  const staff = emps.filter((e) => e.active && e.role !== 'developer').sort((a, b) => String(a.department || 'zz').localeCompare(String(b.department || 'zz')) || a.name.localeCompare(b.name))
+  el.innerHTML = `<div class="tm-bg"></div><form class="tm-card cform"><div class="row" style="grid-column:1/-1"><h2 class="h3">${p ? 'Project: ' + esc(p.name) : 'New project'}</h2><span class="sp"></span><button type="button" class="link" data-x>Close</button></div>
+    <label class="f" style="grid-column:1/-1">Project name<input class="inp" name="name" value="${esc(p?.name || '')}" required maxlength="60" placeholder="e.g. Bahiram"></label>
+    <div style="grid-column:1/-1"><b>Members</b><div class="sub" style="margin:2px 0 8px">Only members see this project's chat group and get it under "My projects". Boss and HR always see everything.</div>
+      <div class="pm-grid">${staff.map((e) => `<label class="pm"><input type="checkbox" value="${e.id}" ${ids.has(e.id) ? 'checked' : ''}><span><b>${esc(e.name)}</b><small>${esc(e.department || e.designation || '')}</small></span></label>`).join('')}</div></div>
+    <button class="btn pri" style="grid-column:1/-1">Save</button></form>`
+  document.body.appendChild(el)
+  const close = () => el.remove(); el.querySelector('.tm-bg').onclick = close; el.querySelector('[data-x]').onclick = close
+  el.querySelector('form').onsubmit = async (ev) => { ev.preventDefault()
+    try { await post('/api/admin/project-members', { project_id: p ? String(p.id) : '', name: ev.target.name.value.trim(), emp_ids: [...el.querySelectorAll('.pm input:checked')].map((x) => Number(x.value)) }); toast('Saved'); close(); again() } catch (e) { toast(e.message, 'bad') } }
+}
 function taskEditor(t, emps, projects, tagLib, again, pid = '') {
   const isNew = !t || !t._rid; t = t || { title: '', status: 'To do', projectId: pid, due: istDate(), priority: 'Normal', tags: [] }
   let tags = (Array.isArray(t.tags) ? t.tags : []).map((g) => ({ ...g }))
@@ -841,14 +867,14 @@ function editPerson(e, all, again) {
   }
 }
 // Org chart — premium hierarchy: Director → HR → departments (lead first)
-const DEP_STYLE = { Operations: ['#0EA5E9', 'route'], 'Customer Success': ['#8B5CF6', 'chat'], Marketing: ['#EC4899', 'mega'], Accounts: ['#14B8A6', 'dollar'], 'Delivery team': ['#F59E0B', 'truck'], 'Govaa Bazaar Warehouse': ['#22C55E', 'store'], 'Medical sales': ['#EF4444', 'box'] }
+const DEP_STYLE = { Operations: ['#0EA5E9', 'route'], 'Customer Success Executive': ['#8B5CF6', 'chat'], 'Customer Success': ['#8B5CF6', 'chat'], Marketing: ['#EC4899', 'mega'], Accounts: ['#14B8A6', 'dollar'], 'Logistics Coordinator': ['#F59E0B', 'truck'], 'Delivery team': ['#F59E0B', 'truck'], 'Govaa Bazaar Warehouse': ['#22C55E', 'store'], 'Medical sales': ['#EF4444', 'box'] }
 const LEAD_RE = /manager|incharge|head|lead/i
 function orgChart(B, emps) {
   const boss = emps.filter((e) => e.role === 'boss')
   const hrs = emps.filter((e) => e.role === 'hr' || e.department === 'HR').sort((a, b) => (LEAD_RE.test(b.designation || '') ? 1 : 0) - (LEAD_RE.test(a.designation || '') ? 1 : 0))
   const staff = emps.filter((e) => e.role === 'employee' && e.department !== 'HR')
-  const groups = {}; for (const e of staff) (groups[e.department || (e.team === 'Warehouse' ? 'Delivery team' : 'Office team')] ||= []).push(e)
-  const order = ['Operations', 'Customer Success', 'Marketing', 'Accounts', 'Delivery team', 'Govaa Bazaar Warehouse', 'Medical sales']
+  const groups = {}; for (const e of staff) (groups[e.department || (e.team === 'Warehouse' ? 'Logistics Coordinator' : 'Office team')] ||= []).push(e)
+  const order = ['Operations', 'Customer Success Executive', 'Customer Success', 'Marketing', 'Accounts', 'Logistics Coordinator', 'Delivery team', 'Govaa Bazaar Warehouse', 'Medical sales']
   const deps = Object.entries(groups).sort((a, b) => ((order.indexOf(a[0]) + 1 || 99) - (order.indexOf(b[0]) + 1 || 99)))
   const av = (e, s = 40) => `<span class="oc-av" style="width:${s}px;height:${s}px;background:${avColor(e.id)}">${esc(initials(e.name))}</span>`
   B.innerHTML = `<section class="oc2">
@@ -857,7 +883,7 @@ function orgChart(B, emps) {
     <div class="oc2-hr"><div class="oc2-lbl">Human Resources</div><div class="oc2-hrrow">${hrs.map((e, i) => `${i ? '<span class="oc2-arrow">→</span>' : ''}<div class="oc2-card ${i ? '' : 'lead'}">${av(e)}<div><b>${esc(e.name)}</b><span>${esc(e.designation || 'HR')}</span></div></div>`).join('')}</div></div>
     <div class="oc2-stem"></div>
     <div class="oc2-lbl c">Departments · ${staff.length} people</div>
-    <div class="oc2-deps">${deps.map(([d, l]) => { const [c, i] = DEP_STYLE[d] || ['#64748B', 'grid']; const lead = l.filter((e) => LEAD_RE.test(e.designation || '')), rest = l.filter((e) => !lead.includes(e))
+    <div class="oc2-deps">${deps.map(([d, l]) => { const [c, i] = DEP_STYLE[d] || ['#64748B', 'grid']; const mgr = l.filter((e) => /manager|head|lead/i.test(e.designation || '')), lead = mgr.length ? mgr : l.filter((e) => /incharge/i.test(e.designation || '')), rest = l.filter((e) => !lead.includes(e))
       return `<div class="oc2-dep" style="--c:${c}"><div class="oc2-dh"><span class="oc2-di">${ic(i, 18, '#fff')}</span><b>${esc(d)}</b><small>${l.length}</small></div>
         ${lead.map((e) => `<div class="oc2-p lead">${av(e, 34)}<div><b>${esc(e.name)}</b><span>${esc(e.designation || '')}</span></div><em>Lead</em></div>`).join('')}
         ${rest.map((e) => `<div class="oc2-p">${av(e, 30)}<div><b>${esc(e.name)}</b><span>${esc(e.designation || '')}</span></div></div>`).join('')}</div>` }).join('')}</div>
@@ -1018,6 +1044,7 @@ async function salarySlip(r, m, dim) {
 // ═════════════════════════ EMPLOYEE PAGE (what the employee sees) — Viewer or Editor for Boss / HR / Developer ═════════════════════════
 const epState = { mode: 'view', tab: 'home' }
 export async function viewEmpPage(v, id, go) {
+  if (epState.id !== id) { epState.id = id; resetOrdersView() }
   v.innerHTML = skel
   try {
     const [h, E] = await Promise.all([get('/api/my/home?as=' + id), get('/api/admin/employees')])
@@ -1043,13 +1070,14 @@ export async function viewEmpPage(v, id, go) {
       <section class="ep-card"><div class="row"><h3>My projects</h3><span class="sp"></span><span class="sub" style="margin:0">${h.projects.length}</span></div>
         ${h.projects.map((p) => `<div class="ep-row"><span class="ic">📁</span><div><b>${esc(p.name)}</b><span>${p.open} open tasks · ${p.members} members</span></div></div>`).join('') || '<p class="sub">No projects</p>'}</section>`,
       tasks: () => `<section class="ep-card"><div class="row"><h3>Tasks · ${h.up_next.length} open</h3><span class="sp"></span>${edit ? '<button class="btn dark sm" id="addt">+ Add task</button>' : ''}</div>
-        ${h.up_next.map(taskRow).join('') || '<p class="sub">Nothing pending ✨</p>'}</section>`,
-      chat: () => `<div class="ep-note" style="background:#F1F5F9;color:#475569">Team chat — messages you send here go out as you, not as ${esc(h.name.split(' ')[0])}.</div><div id="epchat"></div>`,
+        ${h.up_next.map(taskRow).join('') || '<p class="sub">Nothing pending ✨</p>'}</section>
+        <section class="ep-card"><h3>🧾 Orders punched by ${esc(h.name.split(' ')[0])}</h3><p class="sub">They punch orders in their app under Tasks → Orders. Red days = no order.</p><div id="eporders"></div></section>`,
+      chat: () => `<div id="epchat"></div>`,
       me: () => `<section class="ep-card"><div class="ep-top" style="color:inherit"><span class="av">${esc(initials(h.name))}</span><div><b style="color:#0F172A">${esc(h.name)}</b><span>${esc(h.designation || '')}</span></div>${edit ? '<button class="btn dark sm" id="edp" style="margin-left:auto">Edit profile</button>' : ''}</div>
         <div class="ep-kv">${[['Emp ID', emp.emp_code], ['User ID', emp.username], ['Mobile', emp.phone ? '+91 ' + emp.phone : ''], ['Team', emp.team], ['Department', emp.department], ['City', emp.work_location], ['Joining date', emp.joining_date ? fmtDate(emp.joining_date) : ''], ['Shift', emp.shift_start ? emp.shift_start + ' – ' + emp.shift_end : ''], ['Status', emp.status || (emp.active ? 'Active' : 'Inactive')]].map(([k, val]) => `<div><span>${k}</span><b>${esc(val || '—')}</b></div>`).join('')}</div></section>` }
     const tab = tabs[epState.tab] ? epState.tab : 'home'
     v.innerHTML = `<div class="ep-view">
-      <div class="ep-bar2"><span>👁 ${esc(h.name)}'s page${h.emp_code ? ' · ' + esc(h.emp_code) : ''}</span><span class="sp"></span>
+      <div class="ep-bar2"><span>👁 ${esc(h.name)}'s page${h.emp_code ? ' · ' + esc(h.emp_code) : ''}<small>🔒 Admin controls — only Boss / HR see this bar, ${esc(h.name.split(' ')[0])} never does</small></span><span class="sp"></span>
         <div class="ep-seg"><button data-m="view" class="${edit ? '' : 'on'}">Viewer</button><button data-m="edit" class="${edit ? 'on' : ''}">Editor</button></div></div>
       ${edit ? '<div class="ep-note" style="background:#FEF3C7;color:#92400E">Editor mode — your changes are saved for this employee (admins only).</div>' : ''}
       <div class="ep-phone"><div class="ep-body">${tabs[tab]()}</div>
@@ -1078,6 +1106,7 @@ export async function viewEmpPage(v, id, go) {
     v.querySelectorAll('[data-done]').forEach((b) => (b.onclick = async () => { try { await post('/api/my/task-done', { id: b.dataset.done, done: true }); toast('Marked done'); again() } catch (e) { toast(e.message, 'bad') } }))
     v.querySelector('#addt')?.addEventListener('click', async () => { const P = await get('/api/legacy/rows?tbl=projects&limit=1000'); taskEditor({ title: '', status: 'To do', assignee_emp: Number(id), due: istDate(), priority: 'Normal', tags: [] }, E.employees, P.rows.filter((p) => !/archiv|closed/i.test(String(p.status))), {}, again) })
     v.querySelector('#edp')?.addEventListener('click', () => editPerson(emp, E.employees, again))
-    if (tab === 'chat') { injectChatCss(); renderChatUI(v.querySelector('#epchat')) }
+    if (tab === 'chat') { injectChatCss(); renderChatUI(v.querySelector('#epchat'), { as: Number(id) }) }
+    if (tab === 'tasks') renderOrders(v.querySelector('#eporders'), { as: Number(id) })
   } catch (e) { v.innerHTML = err(e) }
 }

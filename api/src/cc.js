@@ -52,7 +52,7 @@ export function money(D, company, R) {
   const live = (x) => !/cancel|reject/i.test(s(x.stage) + s(x.status))
   if (company === 'JDAC Logistics') {
     let sale = 0, cost = 0
-    m.cse_bookings = (D.bookings || []).filter((b) => inR(b.date, R)).reduce((a, b) => a + N(b.amount), 0)
+    m.cse_bookings = (D.bookings || []).filter((b) => inR(b.date, R) && (b.company || 'JDAC Logistics') === 'JDAC Logistics').reduce((a, b) => a + N(b.amount), 0)
     for (const o of D.cargo_orders) if (orderCounts(o) && inR(d10(o.date || o.createdAt), R)) {
       m.booked += N(o.amount); m.orders++
       if (N(o.vendorCost) > 0) { sale += N(o.amount); cost += N(o.vendorCost) }
@@ -220,7 +220,7 @@ export function myHome(D, emp, today, myDesks = []) {
   const doneToday = tasks.filter((t) => /done|closed|complete/i.test(s(t.status)) && d10(t.closedAt) === today).length
   const overdue = open.filter((t) => d10(t.due) && d10(t.due) < today).length
   const desks = myDesks.map((d) => ({ id: String(d.id), name: d.name, icon: d.icon, description: d.description || (d.kind === 'later' ? 'coming later' : ''), module: d.kind === 'simple' ? 'simple' : d.module, kind: d.kind, company: d.company }))
-  const projIds = new Set(D.project_members.filter((m) => String(m.personId) === String(emp.legacy_id)).map((m) => String(m.projectId)))
+  const projIds = new Set(D.project_members.filter((m) => (emp.legacy_id != null && String(m.personId) === String(emp.legacy_id)) || String(m.emp_id || '') === String(emp.id)).map((m) => String(m.projectId)))
   const projects = D.projects.filter((p) => projIds.has(String(p.id))).map((p) => ({ id: String(p.id), name: s(p.name),
     open: D.tasks.filter((t) => String(t.projectId || '') === String(p.id) && !/done|closed/i.test(s(t.status))).length,
     members: D.project_members.filter((m) => String(m.projectId) === String(p.id)).length }))

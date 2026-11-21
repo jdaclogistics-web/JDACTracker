@@ -618,7 +618,7 @@ on('POST', '/api/legacy/rows', async (env, req) => {
   const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
   const d = { ...cleanData(b.data), id, createdAt: nowIso(), createdBy_name: me.name }
   await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind(b.tbl, id, JSON.stringify(d)).run()
-  await audit(env, me.id, 'record_add', b.tbl, id, null, d)
+  await audit(env, me.id, 'record_add', b.tbl, id, null, d); dropCache()
   return json({ ok: true, id })
 })
 on('PATCH', '/api/legacy/rows', async (env, req) => {
@@ -630,7 +630,7 @@ on('PATCH', '/api/legacy/rows', async (env, req) => {
   const prev = JSON.parse(old.data)
   const d = { ...prev, ...cleanData(b.data), id: prev.id, updatedAt: nowIso(), updatedBy_name: me.name }
   await env.DB.prepare('UPDATE legacy_records SET data = ? WHERE tbl = ? AND legacy_id = ?').bind(JSON.stringify(d), b.tbl, String(b.id)).run()
-  await audit(env, me.id, 'record_edit', b.tbl, String(b.id), prev, d)
+  await audit(env, me.id, 'record_edit', b.tbl, String(b.id), prev, d); dropCache()
   return json({ ok: true })
 })
 
@@ -661,16 +661,20 @@ const projectIdsOf = (D, e) => new Set(D.project_members.filter((m) => (e.legacy
 on('GET', '/api/cc/chat', async (env, req, url) => {
   const me = await authUser(env, req)
   const D = await loadAll(env)
-  const group = url.searchParams.get('group') || 'general'
-  // employees only see project groups they are members of; Boss / HR / Developer see all
-  const mine = projectIdsOf(D, me)
-  const projects = D.projects.filter((p) => !/archiv|closed/i.test(String(p.status)) && (ADMIN_ROLES.includes(me.role) || mine.has(String(p.id)))).map((p) => ({ id: String(p.id), name: p.name }))
-  if (!['ann', 'general'].includes(group) && !projects.some((p) => p.id === group)) throw new HttpError(403, 'You are not in this project group')
+  let group = url.searchParams.get('group') || 'general'
+  // employees only see project groups they are members of; Boss / HR / Developer see all.
+  // ?as=<employee id> (admins only) shows exactly the groups that employee sees — read-only preview.
+  const asId = ADMIN_ROLES.includes(me.role) && url.searchParams.get('as') ? Number(url.searchParams.get('as')) : null
+  const viewer = asId ? (await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(asId).first()) || me : me
+  const seeAll = ADMIN_ROLES.includes(viewer.role)
+  const mine = projectIdsOf(D, viewer)
+  const projects = D.projects.filter((p) => !/archiv|closed/i.test(String(p.status)) && (seeAll || mine.has(String(p.id)))).map((p) => ({ id: String(p.id), name: p.name }))
+  if (!['ann', 'general'].includes(group) && !projects.some((p) => p.id === group)) { if (asId) group = 'general'; else throw new HttpError(403, 'You are not in this project group') }
   const groups = [{ id: 'ann', name: 'Announcements', icon: '📢', everyone: true }, { id: 'general', name: 'General', icon: '💬' }, ...projects.map((p) => ({ ...p, icon: '📁' }))]
   const inGroup = (m) => (group === 'ann' ? m.channel === 'ann' : group === 'general' ? m.channel !== 'ann' && !m.projectId : m.channel !== 'ann' && String(m.projectId || '') === group)
   const msgs = D.chat_messages.filter((m) => (!m.deletedAt || m.deletedAt === 'None') && inGroup(m)).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).slice(-200)
   const counts = {}; for (const m of D.chat_messages) { const k = m.channel === 'ann' ? 'ann' : m.projectId ? String(m.projectId) : 'general'; counts[k] = (counts[k] || 0) + 1 }
-  return json({ me: me.name, me_id: me.id, can_announce: ADMIN_ROLES.includes(me.role), group, groups: groups.map((g) => ({ ...g, count: counts[g.id] || 0 })),
+  return json({ me: me.name, me_id: me.id, can_announce: ADMIN_ROLES.includes(me.role), viewing_as: asId ? viewer.name : null, group, groups: groups.map((g) => ({ ...g, count: counts[g.id] || 0 })),
     messages: msgs.map((m) => ({ id: m._rid, sender: m.senderName, sender_emp: m.emp_id || null, body: m.body, kind: m.kind || 'text', file: m.fileId || null, file_name: m.fileName || null, file_mime: m.fileMime || null, file_size: m.fileSize || null, at: m.createdAt })) })
 })
 on('POST', '/api/cc/chat', async (env, req) => {
@@ -711,6 +715,8 @@ on('GET', '/api/my/home', async (env, req, url) => {
   const as = url.searchParams.get('as')
   if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
   const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id))
+  try { const td = istDate(); const q = (f) => env.DB.prepare('SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM daily_bookings WHERE emp_id = ? AND date BETWEEN ? AND ?').bind(who.id, f, td).first()
+    const [a, m] = await Promise.all([q(td), q(td.slice(0, 8) + '01')]); out.orders = { today_n: a.n, today: a.s, month_n: m.n, month: m.s } } catch { out.orders = { today_n: 0, today: 0, month_n: 0, month: 0 } }
   if (who !== me) {
     const day = await env.DB.prepare('SELECT start_at, end_at, total_km FROM day_sessions WHERE emp_id = ? AND date = ?').bind(who.id, istDate()).first()
     Object.assign(out, { viewing: true, emp_id: who.id, emp_code: who.emp_code || null, team: who.team, phone: who.phone || null, joining_date: who.joining_date || null, day: day || null })
@@ -772,6 +778,44 @@ on('POST', '/api/my/cargo-order', async (env, req) => {
   await audit(env, me.id, 'cargo_order', 'cargo_orders', id, null, { amount, markupPct })
   return json({ ok: true, id, markupPct, pending: needApproval, min_price: Math.ceil(vendorCost * 1.4) })
 })
+// Employee adds a task for themself (shows in their Tasks and on the admin Kanban)
+on('POST', '/api/my/task', async (env, req) => {
+  const me = await authUser(env, req); const b = await body(req)
+  const title = String(b.title || '').trim().slice(0, 120); if (!title) throw bad('Write the task')
+  const D = await loadAll(env)
+  const pid = b.project_id && projectIdsOf(D, me).has(String(b.project_id)) ? (Number(b.project_id) || String(b.project_id)) : null
+  const id = await legacyPut(env, 'tasks', { title, status: 'To do', type: 'One-time', priority: ['High', 'Low'].includes(b.priority) ? b.priority : 'Normal', due: /^\d{4}-\d{2}-\d{2}$/.test(b.due || '') ? b.due : istDate(),
+    notes: String(b.notes || '').slice(0, 500), projectId: pid, assigneeId: me.legacy_id ?? null, assignee_emp: me.id, createdAt: nowIso(), createdBy_name: me.name, self_added: true })
+  return json({ ok: true, id })
+})
+// Who is in a project (decides whose chat shows the project group, and "My projects")
+on('GET', '/api/admin/project-members', async (env, req, url) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const pid = String(url.searchParams.get('project') || '')
+  const D = await loadAll(env)
+  const { results: emps } = await env.DB.prepare('SELECT id, legacy_id FROM employees').all()
+  const ms = D.project_members.filter((m) => String(m.projectId) === pid)
+  return json({ emp_ids: emps.filter((e) => ms.some((m) => (e.legacy_id != null && String(m.personId) === String(e.legacy_id)) || String(m.emp_id || '') === String(e.id))).map((e) => e.id) })
+})
+on('POST', '/api/admin/project-members', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req); let pid = String(b.project_id || '')
+  if (!pid && b.name) pid = String(await legacyPut(env, 'projects', { name: String(b.name).trim().slice(0, 60), status: 'Active', createdAt: nowIso(), createdBy_name: me.name }))
+  if (!pid) throw bad('Project?')
+  if (b.name && b.project_id) { const { results } = await env.DB.prepare("SELECT legacy_id, data FROM legacy_records WHERE tbl = 'projects'").all(); const row = results.find((r) => String(JSON.parse(r.data).id) === pid); if (row) await env.DB.prepare("UPDATE legacy_records SET data = ? WHERE tbl = 'projects' AND legacy_id = ?").bind(JSON.stringify({ ...JSON.parse(row.data), name: String(b.name).trim().slice(0, 60) }), row.legacy_id).run() }
+  const want = new Set((Array.isArray(b.emp_ids) ? b.emp_ids : []).map(Number))
+  const { results: emps } = await env.DB.prepare('SELECT id, legacy_id FROM employees').all()
+  const { results: rows } = await env.DB.prepare("SELECT legacy_id, data FROM legacy_records WHERE tbl = 'project_members'").all()
+  const have = new Set()
+  for (const r of rows) { const m = JSON.parse(r.data); if (String(m.projectId) !== pid) continue
+    const e = emps.find((x) => (x.legacy_id != null && String(m.personId) === String(x.legacy_id)) || String(m.emp_id || '') === String(x.id))
+    if (e && want.has(e.id) && !have.has(e.id)) have.add(e.id)
+    else await env.DB.prepare("DELETE FROM legacy_records WHERE tbl = 'project_members' AND legacy_id = ?").bind(r.legacy_id).run() }
+  for (const id of want) if (!have.has(id)) { const e = emps.find((x) => x.id === id); if (e) await legacyPut(env, 'project_members', { projectId: Number(pid) || pid, personId: e.legacy_id ?? null, emp_id: e.id, role: 'Member', createdAt: nowIso() }) }
+  dropCache(); await audit(env, me.id, 'project_members', 'project_members', pid, null, { emp_ids: [...want] })
+  return json({ ok: true, project_id: pid })
+})
+
 on('POST', '/api/my/task-done', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
   const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task not found')
@@ -1040,6 +1084,22 @@ async function runMigrations(env) {
     await mark('mig_login_v1')
   }
   for (const q of DESK_TABLES) { try { await env.DB.prepare(q).run() } catch (e) { console.error('desk table', e?.message) } }
+  for (const col of ['customer', 'note', 'company']) { try { if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('daily_bookings') WHERE name = ?").bind(col).first())) await env.DB.prepare(`ALTER TABLE daily_bookings ADD COLUMN ${col} TEXT`).run() } catch (e) { console.error('orders col', e?.message) } }
+  if (!(await done('mig_org_v3'))) {
+    // 21 Nov 2026 (Darshan): Delivery team → "Logistics Coordinator" team led by Zubair (Warehouse Manager); Abrar = Warehouse Executive; Sushil left 20 Nov; CSE team name; Bahiram project for Marketing
+    await env.DB.prepare("UPDATE employees SET department = 'Logistics Coordinator' WHERE department = 'Delivery team'").run()
+    await env.DB.prepare("UPDATE employees SET designation = 'Warehouse Manager', department = 'Logistics Coordinator', team = 'Warehouse' WHERE emp_code = 'JD1013'").run()
+    await env.DB.prepare("UPDATE employees SET designation = 'Warehouse Executive' WHERE emp_code = 'JD1021'").run()
+    await env.DB.prepare("UPDATE employees SET active = 0, status = 'Inactive', exit_date = '2026-11-20', token_version = token_version + 1 WHERE emp_code = 'JD1026' AND active = 1").run()
+    await env.DB.prepare("UPDATE employees SET department = 'Customer Success Executive' WHERE department = 'Customer Success'").run()
+    const { results: pr } = await env.DB.prepare("SELECT data FROM legacy_records WHERE tbl = 'projects'").all()
+    if (!pr.some((r) => /bahiram/i.test(JSON.parse(r.data).name || ''))) {
+      const pid = await legacyPut(env, 'projects', { name: 'Bahiram', status: 'Active', createdAt: nowIso(), createdBy_name: 'System' })
+      const { results: mk } = await env.DB.prepare("SELECT id, legacy_id FROM employees WHERE department = 'Marketing' AND active = 1").all()
+      for (const e of mk) await legacyPut(env, 'project_members', { projectId: pid, personId: e.legacy_id ?? null, emp_id: e.id, role: 'Member', createdAt: nowIso() })
+    }
+    await mark('mig_org_v3')
+  }
   if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS legacy_records (tbl TEXT NOT NULL, legacy_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tbl, legacy_id))').run()

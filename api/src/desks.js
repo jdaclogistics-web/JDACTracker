@@ -9,7 +9,7 @@ export const DESK_TABLES = [
   `CREATE TABLE IF NOT EXISTS desk_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, desk_id INTEGER NOT NULL, emp_id INTEGER, date TEXT NOT NULL, data TEXT NOT NULL,
     amount REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS daily_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER, date TEXT NOT NULL, booking_no TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    amount REAL NOT NULL CHECK (amount > 0), legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT)`,
+    amount REAL NOT NULL CHECK (amount > 0), legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT, customer TEXT, note TEXT, company TEXT)`,
   `CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, invoice_id TEXT NOT NULL, company TEXT, amount REAL NOT NULL CHECK (amount > 0), date TEXT NOT NULL,
     mode TEXT NOT NULL, reference TEXT, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`,
   `CREATE TABLE IF NOT EXISTS public_forms (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, icon TEXT, fields TEXT NOT NULL,
@@ -162,34 +162,47 @@ export function registerDesks(on, X) {
     const week = t.toISOString().slice(0, 10), month = today.slice(0, 8) + '01'
     const adminAll = isAdmin(me) && url.searchParams.get('all') === '1'
     const from = url.searchParams.get('from') || (adminAll ? week : month), to = url.searchParams.get('to') || today
-    const emp = adminAll ? (url.searchParams.get('emp') ? Number(url.searchParams.get('emp')) : null) : me.id
+    const asEmp = isAdmin(me) && url.searchParams.get('as') ? Number(url.searchParams.get('as')) : null // admin looking at one employee's page
+    const emp = asEmp || (adminAll ? (url.searchParams.get('emp') ? Number(url.searchParams.get('emp')) : null) : me.id)
     const where = `date BETWEEN ? AND ?${emp ? ' AND emp_id = ?' : ''}`, args = [from, to, ...(emp ? [emp] : [])]
     const { results } = await env.DB.prepare(`SELECT b.*, e.name FROM daily_bookings b LEFT JOIN employees e ON e.id = b.emp_id WHERE ${where} ORDER BY date DESC, b.id DESC LIMIT 2000`).bind(...args).all()
-    const sum = async (f) => (await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM daily_bookings WHERE date BETWEEN ? AND ?${adminAll ? '' : ' AND emp_id = ?'}`).bind(f, today, ...(adminAll ? [] : [me.id])).first())
+    const one = asEmp || (adminAll ? null : me.id)
+    const sum = async (f) => (await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM daily_bookings WHERE date BETWEEN ? AND ?${one ? ' AND emp_id = ?' : ''}`).bind(f, today, ...(one ? [one] : [])).first())
     const [st, sw, sm] = await Promise.all([sum(today), sum(week), sum(month)])
     const per = {}
     for (const r of results) { const k = r.emp_id || 0; per[k] = per[k] || { emp_id: r.emp_id, name: r.name || '—', bookings: 0, amount: 0, today: 0 }; per[k].bookings++; per[k].amount += r.amount; if (r.date === today) per[k].today += r.amount }
-    return json({ today, from, to, totals: { today: st.s, week: sw.s, month: sm.s, today_n: st.n }, rows: results, per_cse: Object.values(per).sort((a, b) => b.amount - a.amount) })
+    return json({ today, from, to, totals: { today: st.s, week: sw.s, month: sm.s, today_n: st.n, week_n: sw.n, month_n: sm.n }, rows: results, per_cse: Object.values(per).sort((a, b) => b.amount - a.amount) })
   })
   on('POST', '/api/bookings', async (env, req) => {
     const me = await authUser(env, req); const b = await body(req)
-    const no = String(b.booking_no || '').trim().slice(0, 40); if (!no) throw bad('Enter booking number')
     const amount = dN(b.amount); if (amount <= 0) throw bad('Enter amount')
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
     if (date > istDate()) throw bad('No future dates')
-    if (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
-    await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount) VALUES (?,?,?,?)').bind(me.id, date, no, amount).run()
-    return json({ ok: true })
+    const customer = String(b.customer || '').trim().slice(0, 80) || null, note = String(b.note || '').trim().slice(0, 200) || null
+    // order / booking number is optional: without one we number it ORD-<emp>-<yymmdd>-<n>
+    let no = String(b.booking_no || '').trim().slice(0, 40)
+    if (!no) {
+      if (!customer) throw bad('Enter the customer / shop name or an order number')
+      const base = `ORD-${me.emp_code || me.id}-${date.slice(2).replace(/-/g, '')}`
+      const n = (await env.DB.prepare('SELECT COUNT(*) n FROM daily_bookings WHERE booking_no LIKE ?').bind(base + '-%').first()).n
+      no = `${base}-${n + 1}`
+      while (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) no += 'a'
+    } else if (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
+    const company = /govaa/i.test(me.department || '') ? 'GovaaBazaar' : 'JDAC Logistics'
+    await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount, customer, note, company) VALUES (?,?,?,?,?,?,?)').bind(me.id, date, no, amount, customer, note, company).run()
+    dropCache()
+    return json({ ok: true, booking_no: no })
   })
   on('PATCH', '/api/bookings/:id', async (env, req, url, p) => {
     const me = await authUser(env, req); const b = await body(req)
     const r = await env.DB.prepare('SELECT * FROM daily_bookings WHERE id = ?').bind(Number(p.id)).first(); if (!r) throw new HttpError(404, 'Booking not found')
     if (!isAdmin(me) && (r.emp_id !== me.id || String(r.created_at).slice(0, 10) !== new Date().toISOString().slice(0, 10) && r.date !== istDate())) throw new HttpError(403, 'Edit or delete only on the same day — after that, admin')
-    if (b.delete) { await env.DB.prepare('DELETE FROM daily_bookings WHERE id = ?').bind(r.id).run(); await audit(env, me.id, 'booking_delete', 'daily_bookings', r.id, r, null); return json({ ok: true }) }
+    if (b.delete) { await env.DB.prepare('DELETE FROM daily_bookings WHERE id = ?').bind(r.id).run(); await audit(env, me.id, 'booking_delete', 'daily_bookings', r.id, r, null); dropCache(); return json({ ok: true }) }
     const no = String(b.booking_no ?? r.booking_no).trim(), amount = b.amount != null ? dN(b.amount) : r.amount
     if (amount <= 0 || !no) throw bad('Booking number and amount')
     if (no.toLowerCase() !== r.booking_no.toLowerCase() && await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
-    await env.DB.prepare('UPDATE daily_bookings SET booking_no = ?, amount = ?, date = ?, updated_at = ? WHERE id = ?').bind(no, amount, /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : r.date, new Date().toISOString(), r.id).run()
+    await env.DB.prepare('UPDATE daily_bookings SET booking_no = ?, amount = ?, date = ?, customer = ?, note = ?, updated_at = ? WHERE id = ?').bind(no, amount, /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : r.date, b.customer !== undefined ? String(b.customer).trim().slice(0, 80) || null : r.customer ?? null, b.note !== undefined ? String(b.note).trim().slice(0, 200) || null : r.note ?? null, new Date().toISOString(), r.id).run()
+    dropCache()
     await audit(env, me.id, 'booking_edit', 'daily_bookings', r.id, r, { no, amount })
     return json({ ok: true })
   })
