@@ -331,3 +331,4 @@ table.pay{border-collapse:separate;border-spacing:0;font-size:12.5px;white-space
 .rp-main{max-height:72vh;overflow:auto}.rp-t{width:100%;border-collapse:collapse;font-size:13.5px}.rp-t td{padding:7px 8px;border-bottom:1px solid var(--line2);vertical-align:top}.rp-t td small{display:block;color:var(--mut);font-size:12px}
 .rp-t td.m{color:var(--mut);font-size:12.5px;white-space:nowrap}.rp-t td.w{font-weight:600;white-space:nowrap;color:#334155}.rp-t td.n{white-space:nowrap;color:#059669;font-weight:700}.rp-t td.a{text-align:right;font-weight:800;white-space:nowrap}
 @media (max-width:760px){.rp-grid{grid-template-columns:1fr}.rp-people{flex-direction:row;overflow-x:auto;max-height:none}.rp-p{flex:none}.rp-p small{display:none}}
+.rp-t td.n{background:transparent}

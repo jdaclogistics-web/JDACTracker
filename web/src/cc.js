@@ -689,9 +689,9 @@ const CC_COS = [
 const CC_TOOLS = [
   ['accounts', 'Accounts', 'live money & Vittiya', 'dollar', '#0D9488'],
   ['desks', 'Create employee interfaces', 'build sections & assign people', 'layout', '#4F46E5'],
-  ['attendance', 'Attendance', 'today · week · month · live', 'calcheck', '#16A34A'],
+  ['attendance', 'Attendance', 'today · week · month · leave · live', 'calcheck', '#16A34A'],
   ['live', 'Live tracking', 'map & field status', 'pin', '#0D9488'],
-  ['dailyreports', 'Daily reports', 'end-of-day updates', 'doc', '#2563EB'],
+  ['dailyreports', 'Daily reports', 'bookings & orders by person', 'doc', '#2563EB'],
   ['insights', 'Insights', 'accounts: sales, profit, money in', 'bars', '#C026D3'],
 ]
 const MOTIVATION = ['Great companies are built one good day at a time.', 'Small wins every day add up to big results.', 'Lead the team today — they follow your energy.',
