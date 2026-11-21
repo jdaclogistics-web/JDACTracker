@@ -9,8 +9,8 @@ const CSS = `
 .od-k b{display:block;font-size:19px;line-height:1.1}.od-k span{font-size:12px;color:#64748B;font-weight:600}.od-k small{display:block;font-size:12px;color:#059669;font-weight:700;margin-top:2px}
 .od-new{width:100%;border:0;border-radius:16px;padding:15px;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(135deg,#059669,#0D9488);cursor:pointer}
 .od-card{background:#fff;border:1px solid #E2E8F0;border-radius:18px;padding:14px}.od-card h3{margin:0;font-size:16px}
-.od-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.od-form label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:700;color:#475569}.od-form .w{grid-column:1/-1}
-.od-form input{border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 12px;font:inherit;font-size:15px;min-width:0}.od-form button{grid-column:1/-1;border:0;border-radius:12px;padding:13px;font-weight:800;font-size:15px;background:#0B1220;color:#fff;cursor:pointer}
+.od-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.od-form label{min-width:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:700;color:#475569}.od-form .w{grid-column:1/-1}
+.od-form input{width:100%;box-sizing:border-box;border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 12px;font:inherit;font-size:15px;min-width:0}.od-form button{grid-column:1/-1;border:0;border-radius:12px;padding:13px;font-weight:800;font-size:15px;background:#0B1220;color:#fff;cursor:pointer}
 .od-cal-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}.od-cal-h b{flex:1;text-align:center;font-size:15px}.od-cal-h button{border:1px solid #E2E8F0;background:#fff;border-radius:10px;width:36px;height:34px;font-weight:800;cursor:pointer}
 .od-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.od-cal .wd{font-size:10.5px;font-weight:800;color:#94A3B8;text-align:center;padding:2px 0}
 .od-d{border-radius:10px;padding:5px 2px;text-align:center;min-height:46px;background:#F8FAFC;border:1.5px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
