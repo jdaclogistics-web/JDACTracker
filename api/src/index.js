@@ -715,7 +715,7 @@ on('GET', '/api/my/home', async (env, req, url) => {
   const as = url.searchParams.get('as')
   if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
   const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id))
-  try { const td = istDate(); const q = (f) => env.DB.prepare('SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM daily_bookings WHERE emp_id = ? AND date BETWEEN ? AND ?').bind(who.id, f, td).first()
+  try { const td = istDate(); const q = (f) => env.DB.prepare('SELECT COALESCE(SUM(amount),0) s, COALESCE(SUM(COALESCE(qty,1)),0) n FROM daily_bookings WHERE emp_id = ? AND date BETWEEN ? AND ?').bind(who.id, f, td).first()
     const [a, m] = await Promise.all([q(td), q(td.slice(0, 8) + '01')]); out.orders = { today_n: a.n, today: a.s, month_n: m.n, month: m.s } } catch { out.orders = { today_n: 0, today: 0, month_n: 0, month: 0 } }
   if (who !== me) {
     const day = await env.DB.prepare('SELECT start_at, end_at, total_km FROM day_sessions WHERE emp_id = ? AND date = ?').bind(who.id, istDate()).first()
@@ -1084,7 +1084,7 @@ async function runMigrations(env) {
     await mark('mig_login_v1')
   }
   for (const q of DESK_TABLES) { try { await env.DB.prepare(q).run() } catch (e) { console.error('desk table', e?.message) } }
-  for (const col of ['customer', 'note', 'company']) { try { if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('daily_bookings') WHERE name = ?").bind(col).first())) await env.DB.prepare(`ALTER TABLE daily_bookings ADD COLUMN ${col} TEXT`).run() } catch (e) { console.error('orders col', e?.message) } }
+  for (const col of ['customer', 'note', 'company', 'qty', 'contact']) { try { if (!(await env.DB.prepare("SELECT 1 AS x FROM pragma_table_info('daily_bookings') WHERE name = ?").bind(col).first())) await env.DB.prepare(`ALTER TABLE daily_bookings ADD COLUMN ${col} ${col === 'qty' ? 'INTEGER' : 'TEXT'}`).run() } catch (e) { console.error('orders col', e?.message) } }
   if (!(await done('mig_org_v3'))) {
     // 21 Nov 2026 (Darshan): Delivery team → "Logistics Coordinator" team led by Zubair (Warehouse Manager); Abrar = Warehouse Executive; Sushil left 20 Nov; CSE team name; Bahiram project for Marketing
     await env.DB.prepare("UPDATE employees SET department = 'Logistics Coordinator' WHERE department = 'Delivery team'").run()

@@ -9,7 +9,7 @@ export const DESK_TABLES = [
   `CREATE TABLE IF NOT EXISTS desk_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, desk_id INTEGER NOT NULL, emp_id INTEGER, date TEXT NOT NULL, data TEXT NOT NULL,
     amount REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS daily_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER, date TEXT NOT NULL, booking_no TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    amount REAL NOT NULL CHECK (amount > 0), legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT, customer TEXT, note TEXT, company TEXT)`,
+    amount REAL NOT NULL CHECK (amount > 0), legacy_id TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT, customer TEXT, note TEXT, company TEXT, qty INTEGER, contact TEXT)`,
   `CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, invoice_id TEXT NOT NULL, company TEXT, amount REAL NOT NULL CHECK (amount > 0), date TEXT NOT NULL,
     mode TEXT NOT NULL, reference TEXT, by_emp INTEGER, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))`,
   `CREATE TABLE IF NOT EXISTS public_forms (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, icon TEXT, fields TEXT NOT NULL,
@@ -167,7 +167,7 @@ export function registerDesks(on, X) {
     const where = `date BETWEEN ? AND ?${emp ? ' AND emp_id = ?' : ''}`, args = [from, to, ...(emp ? [emp] : [])]
     const { results } = await env.DB.prepare(`SELECT b.*, e.name FROM daily_bookings b LEFT JOIN employees e ON e.id = b.emp_id WHERE ${where} ORDER BY date DESC, b.id DESC LIMIT 2000`).bind(...args).all()
     const one = asEmp || (adminAll ? null : me.id)
-    const sum = async (f) => (await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM daily_bookings WHERE date BETWEEN ? AND ?${one ? ' AND emp_id = ?' : ''}`).bind(f, today, ...(one ? [one] : [])).first())
+    const sum = async (f) => (await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) s, COALESCE(SUM(COALESCE(qty,1)),0) n FROM daily_bookings WHERE date BETWEEN ? AND ?${one ? ' AND emp_id = ?' : ''}`).bind(f, today, ...(one ? [one] : [])).first())
     const [st, sw, sm] = await Promise.all([sum(today), sum(week), sum(month)])
     const per = {}
     for (const r of results) { const k = r.emp_id || 0; per[k] = per[k] || { emp_id: r.emp_id, name: r.name || '—', bookings: 0, amount: 0, today: 0 }; per[k].bookings++; per[k].amount += r.amount; if (r.date === today) per[k].today += r.amount }
@@ -189,7 +189,8 @@ export function registerDesks(on, X) {
       while (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) no += 'a'
     } else if (await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
     const company = /govaa/i.test(me.department || '') ? 'GovaaBazaar' : 'JDAC Logistics'
-    await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount, customer, note, company) VALUES (?,?,?,?,?,?,?)').bind(me.id, date, no, amount, customer, note, company).run()
+    const qty = Math.max(1, Math.min(9999, Math.round(dN(b.qty)) || 1)), contact = String(b.contact || '').replace(/[^\d+]/g, '').slice(0, 15) || null
+    await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount, customer, note, company, qty, contact) VALUES (?,?,?,?,?,?,?,?,?)').bind(me.id, date, no, amount, customer, note, company, qty, contact).run()
     dropCache()
     return json({ ok: true, booking_no: no })
   })
@@ -197,11 +198,12 @@ export function registerDesks(on, X) {
     const me = await authUser(env, req); const b = await body(req)
     const r = await env.DB.prepare('SELECT * FROM daily_bookings WHERE id = ?').bind(Number(p.id)).first(); if (!r) throw new HttpError(404, 'Booking not found')
     if (!isAdmin(me) && (r.emp_id !== me.id || String(r.created_at).slice(0, 10) !== new Date().toISOString().slice(0, 10) && r.date !== istDate())) throw new HttpError(403, 'Edit or delete only on the same day — after that, admin')
+    if (b.delete && !isAdmin(me)) throw new HttpError(403, 'Orders cannot be deleted — ask admin')
     if (b.delete) { await env.DB.prepare('DELETE FROM daily_bookings WHERE id = ?').bind(r.id).run(); await audit(env, me.id, 'booking_delete', 'daily_bookings', r.id, r, null); dropCache(); return json({ ok: true }) }
     const no = String(b.booking_no ?? r.booking_no).trim(), amount = b.amount != null ? dN(b.amount) : r.amount
     if (amount <= 0 || !no) throw bad('Booking number and amount')
     if (no.toLowerCase() !== r.booking_no.toLowerCase() && await env.DB.prepare('SELECT 1 x FROM daily_bookings WHERE booking_no = ?').bind(no).first()) throw new HttpError(409, `${no} was already entered — use a new number`)
-    await env.DB.prepare('UPDATE daily_bookings SET booking_no = ?, amount = ?, date = ?, customer = ?, note = ?, updated_at = ? WHERE id = ?').bind(no, amount, /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : r.date, b.customer !== undefined ? String(b.customer).trim().slice(0, 80) || null : r.customer ?? null, b.note !== undefined ? String(b.note).trim().slice(0, 200) || null : r.note ?? null, new Date().toISOString(), r.id).run()
+    await env.DB.prepare('UPDATE daily_bookings SET booking_no = ?, amount = ?, date = ?, customer = ?, note = ?, qty = ?, contact = ?, updated_at = ? WHERE id = ?').bind(no, amount, /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : r.date, b.customer !== undefined ? String(b.customer).trim().slice(0, 80) || null : r.customer ?? null, b.note !== undefined ? String(b.note).trim().slice(0, 200) || null : r.note ?? null, b.qty !== undefined ? Math.max(1, Math.round(dN(b.qty)) || 1) : r.qty ?? 1, b.contact !== undefined ? String(b.contact).replace(/[^\d+]/g, '').slice(0, 15) || null : r.contact ?? null, new Date().toISOString(), r.id).run()
     dropCache()
     await audit(env, me.id, 'booking_edit', 'daily_bookings', r.id, r, { no, amount })
     return json({ ok: true })
