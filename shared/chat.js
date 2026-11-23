@@ -93,7 +93,7 @@ export const CHAT_CSS = `
 .ch{display:flex;flex-direction:column;gap:8px;padding:12px}
 .ch-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin:0 -2px}.ch-tabs::-webkit-scrollbar{display:none}
 .ch-tabs button{flex:none;border:1px solid #E2E8F0;background:#fff;border-radius:99px;padding:8px 14px;font-weight:700;font-size:13px;color:#475569;cursor:pointer;white-space:nowrap}
-.ch-tabs button.on{background:#0B1220;color:#fff;border-color:#0B1220}
+.ch-tabs button.on{background:var(--brand-ink,#0B1220);color:#fff;border-color:var(--brand-ink,#0B1220)}
 .ch-head{display:flex;align-items:baseline;gap:8px;padding:4px 2px;border-bottom:1px solid #EEF2F6}.ch-head b{font-size:15px}.ch-head span{font-size:12px;color:#64748B}
 .ch-msgs{min-height:240px;max-height:58vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px 2px}
 .ch-m{max-width:82%;background:#F1F5F9;border-radius:14px 14px 14px 4px;padding:8px 12px;align-self:flex-start;display:flex;flex-direction:column;gap:4px}
