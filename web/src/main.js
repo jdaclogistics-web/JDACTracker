@@ -95,7 +95,7 @@ function render() {
   <div class="shell cmd sbl"><div class="sb-bg" id="sbbg"></div>
   <aside class="sb" id="sb" aria-label="Navigation">
     <div class="sb-brand"><span class="sb-logoimg"><img src="./jdac-logo-blue.png" alt="JDAC — The Logistics Aggregator"></span><div><b>JDAC Parent</b><span>JDAC Sales Pvt Ltd</span></div></div>
-    <nav class="sb-nav">${MENU(me.role).map(([k, l, subs], i) => `<div class="sb-g ${grp === k ? 'on' : ''} ${subs && (grp === k || sbOpen.has(k)) ? 'open' : ''}" data-g="${k}">
+    <nav class="sb-nav">${MENU(me.role).map(([k, l, subs], i) => `<div class="sb-g ${grp === k ? 'on' : ''} ${subs && grp === k ? 'open' : ''}" data-g="${k}">
       <button class="sb-i" data-k="${k}"><i>${i + 1}</i><b>${l}</b>${subs ? '<em>▸</em>' : ''}</button>
       ${subs ? `<div class="sb-sub">${subs.map(([sk, sl]) => `<button data-k="${k}" data-s="${esc(sk)}" class="${grp === k && curSub === sk ? 'on' : ''}">${esc(sl)}</button>`).join('')}</div>` : ''}</div>`).join('')}</nav>
     <div class="sb-foot"><button data-k="profile" class="${tab === 'profile' ? 'on' : ''}">Profile</button><button data-k="settings" class="${tab === 'settings' ? 'on' : ''}">Settings</button><button data-k="logout" class="out">Logout</button></div>
@@ -113,10 +113,11 @@ function render() {
     const k = b.dataset.k, sk = b.dataset.s
     if (k === 'logout') return doLogout()
     if (sk === undefined) { // main item: open its page; items with a list also unfold
-      if (b.closest('.sb-g')?.querySelector('.sb-sub')) { if (grp === k && sbOpen.has(k)) { sbOpen.delete(k); b.closest('.sb-g').classList.remove('open'); return } sbOpen.add(k) }
+      if (b.closest('.sb-g')?.querySelector('.sb-sub')) { if (grp === k && b.closest('.sb-g').classList.contains('open')) { sbOpen.clear(); b.closest('.sb-g').classList.remove('open'); return } }
+      sbOpen.clear(); sbOpen.add(k) // only one list stays open: the one you are in
       return navTo(k)
     }
-    sbOpen.add(k)
+    sbOpen.clear(); sbOpen.add(k)
     if (k === 'companies') { if (sk === HR_CO) return navTo('hr'); if (me.role === 'hr') { ccState.company = sk; return navTo('desks') } return navTo('company', sk) }
     navTo(k, null, { sub: sk })
   }))
