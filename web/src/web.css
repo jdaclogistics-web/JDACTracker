@@ -434,3 +434,4 @@ body.cmdmode .ep-foot button.on{color:var(--jo)}body.cmdmode .ep-bar2{background
 body.cmdmode .ms{--mband:#21418C;--mbink:#fff;--mfill:#21418C;--mink:#172B63;--macc:#F15922}
 body.cmdmode .ms-m .tr i{background:#FFB08A}body.cmdmode .ms-band .ms-dl b{color:#FFB08A}
 body.cmdmode .tds th,body.cmdmode .att2 thead th{background:#F5F7FC}
+body.cmdmode .cm-3 i{background:var(--jo);color:#fff}
