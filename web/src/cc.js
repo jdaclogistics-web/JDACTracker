@@ -733,7 +733,7 @@ const motivation = () => MOTIVATION[Math.floor((Date.now() + 330 * 60000) / 864e
 export function viewCommand(v, go, role = 'boss', only = '') {
   const hr = role === 'hr'
   v.innerHTML = `
-  <section class="cm-hero"><div class="cm-k">JDAC COMMAND CENTRE</div><h1>${esc(motivation())}</h1>
+  <section class="cm-hero"><div class="cm-k">JDAC PARENT · COMMAND CENTRE</div><h1>${esc(motivation())}</h1>
     <p>First see today's team. Second open the company you want to manage. Everything else stays below as a tool.</p>
     <div class="cm-3"><button data-jump="s1"><i>1</i>See team</button><button data-jump="s2"><i>2</i>Open company</button><button data-jump="s3"><i>3</i>Use tools</button></div></section>
   <div id="mscard"></div>
@@ -1089,7 +1089,7 @@ async function salarySlip(r, m, dim) {
     </div>
     <div class="net"><span>NET PAYABLE SALARY (A − B)</span><b>₹ ${n(c.total)}</b></div>
     <div class="sig"><div><small>Checked and authorised by</small><img src="${asset('sign-hr.png')}" alt="Signature"><b>Nameera Shaikh – HR Manager – Sign</b></div></div>
-    <div class="foot">Computer-generated salary slip · JDAC Tracker</div></div>
+    <div class="foot">Computer-generated salary slip · JDAC Parent</div></div>
   <button class="pbtn" onclick="print()">Download / Print (Save as PDF)</button></body></html>`
   if (w) { w.document.write(html); w.document.close(); return }
   const el = document.createElement('div'); el.className = 'tm-modal'

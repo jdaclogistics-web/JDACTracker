@@ -16,6 +16,7 @@ const ROLE_TABS = {
 }
 // Left navigation panel: main items, some with a drop-down list
 const HR_CO = 'JDAC HR & Payroll'
+const PAGE_NAME = { milestone: 'Dashboard / Milestone 1', who: "Dashboard / Who's doing what", tools: 'Dashboard / Tools', dailyreports: 'Daily reports', emppage: 'Team / Employee page', profile: 'Profile', settings: 'Settings', staff: 'Settings / Staff & logins', desks: 'Create employee interfaces', old: 'Records', audit: 'Audit log', system: 'System' }
 const sbOpen = new Set()
 const MENU = (role) => [
   ['home', 'Dashboard'],
@@ -37,7 +38,7 @@ function viewSettings(v, go) {
   v.innerHTML = `<div class="cc-top"><b>Settings</b></div><section class="card" style="padding:4px 14px"><div class="list">${items.map(([k, l, d]) => `<button class="li" data-set="${k}"><div class="nm"><b>${l}</b><span>${d}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div></section>`
   v.querySelectorAll('[data-set]').forEach((b) => (b.onclick = () => go(b.dataset.set)))
 }
-const ROLE_LABEL = { hr: 'HR panel', boss: 'Boss panel', developer: 'Developer · main access' }
+const ROLE_LABEL = { hr: 'HR', boss: 'Director', developer: 'Developer · main access' }
 const ROLE_ACCENT = { hr: '#7C3AED', boss: '#059669', developer: '#0E7490' }
 
 window.addEventListener('jdac-logout', () => { me = null; renderLogin('Session expired — login again') })
@@ -59,8 +60,8 @@ async function boot() {
 
 function renderLogin(err = '') {
   cleanup()
-  app.innerHTML = `<div class="wlogin"><form class="card" id="lf">
-    <div class="wbrand"><img src="./jdac-logo-blue.png" alt="JDAC — The Logistics Aggregator"><div class="sub">Tracker Admin panel — HR · Boss · Developer</div></div>
+  app.innerHTML = `<div class="wlogin"><div class="wl-side"><img src="./jdac-logo.png" alt="JDAC"><h2>One panel for every JDAC company</h2><p>Team, attendance, bookings, payroll and accounts — in one place.</p><ul><li>Live team and attendance</li><li>Bookings and orders as they are punched</li><li>Payroll, salary slips and accounts</li></ul></div><form class="card" id="lf">
+    <div class="wbrand"><img src="./jdac-logo-blue.png" alt="JDAC — The Logistics Aggregator"><h1 class="wttl">JDAC Parent</h1><div class="sub">Management panel · HR · Boss · Developer</div></div>
     <label class="f" style="margin-top:18px">User ID (Employee ID)<input class="inp" id="lm" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. JD1001" required></label>
     <label class="f" style="margin-top:10px">Password<span class="pwrap"><input class="inp" id="lp" type="password" autocomplete="current-password" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 18)}</button></span></label>
     ${err ? `<div class="err" style="margin-top:10px">${esc(err)}</div>` : ''}
@@ -93,17 +94,20 @@ function render() {
     <button class="ibtn" id="out" aria-label="Logout">${ic('logout', 18)}</button></header>
   <div class="shell cmd sbl"><div class="sb-bg" id="sbbg"></div>
   <aside class="sb" id="sb" aria-label="Navigation">
-    <div class="sb-brand"><span class="sb-logoimg"><img src="./jdac-logo-blue.png" alt="JDAC — The Logistics Aggregator"></span><div><b>JDAC Tracker</b><span>JDAC Sales Pvt Ltd</span></div></div>
+    <div class="sb-brand"><span class="sb-logoimg"><img src="./jdac-logo-blue.png" alt="JDAC — The Logistics Aggregator"></span><div><b>JDAC Parent</b><span>JDAC Sales Pvt Ltd</span></div></div>
     <nav class="sb-nav">${MENU(me.role).map(([k, l, subs], i) => `<div class="sb-g ${grp === k ? 'on' : ''} ${subs && (grp === k || sbOpen.has(k)) ? 'open' : ''}" data-g="${k}">
       <button class="sb-i" data-k="${k}"><i>${i + 1}</i><b>${l}</b>${subs ? '<em>▸</em>' : ''}</button>
       ${subs ? `<div class="sb-sub">${subs.map(([sk, sl]) => `<button data-k="${k}" data-s="${esc(sk)}" class="${grp === k && curSub === sk ? 'on' : ''}">${esc(sl)}</button>`).join('')}</div>` : ''}</div>`).join('')}</nav>
     <div class="sb-foot"><button data-k="profile" class="${tab === 'profile' ? 'on' : ''}">Profile</button><button data-k="settings" class="${tab === 'settings' ? 'on' : ''}">Settings</button><button data-k="logout" class="out">Logout</button></div>
   </aside>
-  <main class="main" id="view"></main></div>`
+  <div class="pg"><div class="tb"><div class="tb-l"><span class="tb-crumb">${esc(PAGE_NAME[tab] || MENU(me.role).find((m) => m[0] === grp)?.[1] || 'Dashboard')}${curSub && grp !== 'home' ? ` <i>/</i> <b>${esc(MENU(me.role).find((m) => m[0] === grp)?.[2]?.find((x) => x[0] === curSub)?.[1] || curSub)}</b>` : ''}</span></div>
+    <div class="tb-r"><span class="tb-date">${fmtDate(istDate(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span><button class="tb-user" id="tbu"><span class="tb-av">${esc(initials(me.name))}</span><span><b>${esc(me.name)}</b><small>${esc(ROLE_LABEL[me.role] || me.role)}</small></span></button></div></div>
+  <main class="main" id="view"></main></div></div>`
   document.getElementById('out').onclick = doLogout
   const sb = document.getElementById('sb'), closeSb = () => { sb.classList.remove('show'); document.getElementById('sbbg').classList.remove('show') }
   document.getElementById('menu').onclick = () => { sb.classList.toggle('show'); document.getElementById('sbbg').classList.toggle('show') }
   document.getElementById('sbbg').onclick = closeSb
+  document.getElementById('tbu').onclick = () => { navStack.length = 0; tab = 'profile'; tabArg = null; tabOpts = {}; render() }
   const navTo = (t, arg = null, opts = {}) => { navStack.length = 0; tab = t; tabArg = arg; tabOpts = opts; render(); window.scrollTo(0, 0) }
   sb.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => {
     const k = b.dataset.k, sk = b.dataset.s
