@@ -3,7 +3,7 @@ import { get, post, patch, prefetch } from '@shared/api.js'
 import { esc, ic, fmtDate, fmtTime, toast, initials, avColor, istDate, downloadCsv } from '@shared/util.js'
 import { renderChatUI, injectChatCss } from '@shared/chat.js'
 import { stampedSelfie, browserPosition } from '@shared/selfie.js'
-import { renderOrders, resetOrdersView } from '@shared/orders.js'
+import { renderOrders, resetOrdersView, renderPunch } from '@shared/orders.js'
 
 const inr = (n) => (n ? '₹' + Math.round(n).toLocaleString('en-IN') : '₹0')
 const inrL = (n) => (Math.abs(n) >= 100000 ? '₹' + (n / 100000).toFixed(n >= 1e6 ? 1 : 2).replace(/\.?0+$/, '') + 'L' : inr(n))
@@ -1084,6 +1084,7 @@ export async function viewEmpPage(v, id, go) {
       <section class="ep-card"><h3>Your work, in order</h3><p class="sub">Start the day, finish tasks, fill your section, then submit.</p>
         <div class="ep-steps"><button data-go="day"><i>▶️</i>1. Start day</button><button data-go="tasks"><i>📋</i>2. Tasks</button><button data-go="desks"><i>🗂️</i>3. Sections</button><button data-go="tasks"><i>📅</i>4. Calendar</button></div>
         <div id="dayx"></div></section>
+      <div id="eppunch"></div>
       <section class="ep-card ep-desks" id="desks"><h3>Desks</h3><p class="sub">Only the work the boss gave appears here.</p>
         ${h.desks.map((d) => `<div class="ep-row"><span class="ic">${icons[d.module] || d.icon || '🗂️'}</span><div><b>${esc(d.name)}</b><span>${esc(d.description || d.company || '')}</span></div><button class="btn ghost sm" data-desk="${esc(d.id)}" data-mod="${esc(d.module)}">Open</button></div>`).join('') || '<div class="empty">No desks switched on</div>'}</section>
       <section class="ep-card"><div class="row"><h3>⏭ Up next</h3><span class="sp"></span><button class="link" data-go="tasks">all tasks →</button></div>
@@ -1092,7 +1093,7 @@ export async function viewEmpPage(v, id, go) {
         ${h.projects.map((p) => `<div class="ep-row"><span class="ic">📁</span><div><b>${esc(p.name)}</b><span>${p.open} open tasks · ${p.members} members</span></div></div>`).join('') || '<p class="sub">No projects</p>'}</section>`,
       tasks: () => `<section class="ep-card"><div class="row"><h3>Tasks · ${h.up_next.length} open</h3><span class="sp"></span>${edit ? '<button class="btn dark sm" id="addt">+ Add task</button>' : ''}</div>
         ${h.up_next.map(taskRow).join('') || '<p class="sub">Nothing pending ✨</p>'}</section>
-        <section class="ep-card"><h3>🧾 ${h.order_word === 'booking' ? 'Bookings' : 'Orders'} punched by ${esc(h.name.split(' ')[0])}</h3><p class="sub">Punched in their app under Tasks. Tap Today, This week or This month.</p><div id="eporders"></div></section>`,
+        <section class="ep-card"><h3>🧾 ${h.order_word === 'booking' ? 'Bookings' : 'Orders'} punched by ${esc(h.name.split(' ')[0])}</h3><p class="sub">Punched from the Home screen. Tap Today, This week or This month to view.</p><div id="eporders"></div></section>`,
       chat: () => `<div id="epchat"></div>`,
       me: () => `<section class="ep-card"><div class="ep-top" style="color:inherit"><span class="av">${esc(initials(h.name))}</span><div><b style="color:#0F172A">${esc(h.name)}</b><span>${esc(h.designation || '')}</span></div>${edit ? '<button class="btn dark sm" id="edp" style="margin-left:auto">Edit profile</button>' : ''}</div>
         <div class="ep-kv">${[['Employee ID', emp.emp_code || emp.username], ['Mobile', emp.phone ? '+91 ' + emp.phone : ''], ['Team', emp.team], ['Department', emp.department], ['City', emp.work_location], ['Joining date', emp.joining_date ? fmtDate(emp.joining_date) : ''], ['Shift', emp.shift_start ? emp.shift_start + ' – ' + emp.shift_end : ''], ['Status', emp.status || (emp.active ? 'Active' : 'Inactive')]].map(([k, val]) => `<div><span>${k}</span><b>${esc(val || '—')}</b></div>`).join('')}</div></section>` }
@@ -1134,5 +1135,7 @@ export async function viewEmpPage(v, id, go) {
     v.querySelector('#edp')?.addEventListener('click', () => editPerson(emp, E.employees, again))
     if (tab === 'chat') { injectChatCss(); renderChatUI(v.querySelector('#epchat'), { as: Number(id) }) }
     if (tab === 'tasks') renderOrders(v.querySelector('#eporders'), { as: Number(id), word: h.order_word })
+    if (tab === 'home') renderPunch(v.querySelector('#eppunch'), { as: Number(id), word: h.order_word, canAdd: edit, onHistory: () => { epState.tab = 'tasks'; again() }, onSwitch: () => { epState.mode = 'edit'; again() },
+      viewHint: `You are in Viewer mode. To punch ${h.order_word === 'booking' ? 'a booking' : 'an order'} for ${esc(h.name.split(' ')[0])}, switch to Editor.<br><button id="pcswitch">✏️ Switch to Editor</button>` })
   } catch (e) { v.innerHTML = err(e) }
 }

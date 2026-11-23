@@ -5,7 +5,7 @@ import { esc, istDate, istShift, fmtTime, fmtDate, duration, agoText, toast, ic,
 import { liveUpdate, BUILD } from './liveupdate.js'
 import { currentPosition, takeSelfie, deviceId, isNative, openAppSettings, askPermissionsOnce } from './native.js'
 import { startTracking, stopTracking, setFieldMode, trackingState, onTracking } from './tracking.js'
-import { homeBlocks, bindHome, loadMyHome, myHomeData, renderTasks, renderChat, renderDesk } from './work.js'
+import { homeBlocks, bindHome, loadMyHome, myHomeData, renderTasks, renderChat, renderDesk, mountPunch, renderOrdersPage } from './work.js'
 import { flush, queueSize, onQueueChange, lastSyncAt } from './queue.js'
 
 const app = document.getElementById('app')
@@ -107,12 +107,15 @@ function render() {
   if (tab === 'leave') return renderLeave(v)
   if (tab === 'month') return renderMonth(v)
   if (tab === 'me') return renderMe(v)
-  if (tab === 'tasks') return renderTasks(v, go, tabArg)
+  if (tab === 'tasks') return renderTasks(v, go)
+  if (tab === 'orders') return renderOrdersPage(v, go)
   if (tab === 'chat') return renderChat(v, tabArg || '')
   if (tab === 'desk') return renderDesk(v, go, tabArg, tabArg2, tabArg3)
   v.innerHTML = '<div id="day" class="stack"></div><div id="wk" class="stack"></div>'
   const wk = document.getElementById('wk')
-  const paint = () => { if (!document.body.contains(wk)) return; wk.innerHTML = homeBlocks(myHomeData, session, go); bindHome(wk, go) }
+  const punchEl = document.createElement('div'); let punchOn = false
+  const paint = () => { if (!document.body.contains(wk)) return; wk.innerHTML = homeBlocks(myHomeData, session, go); bindHome(wk, go)
+    const slot = wk.querySelector('#punchslot'); if (slot) { slot.replaceWith(punchEl); if (!punchOn && myHomeData) { punchOn = true; mountPunch(punchEl, go) } } }
   paint()
   loadMyHome().then(() => { paint(); const hb = document.querySelector('.wk-bar'); if (hb && myHomeData) { const x = document.createElement('div'); x.innerHTML = header(); hb.replaceWith(x.firstElementChild); document.getElementById('hout').onclick = headerLogout } })
   return renderHome(document.getElementById('day'))

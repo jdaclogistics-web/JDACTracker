@@ -24,7 +24,16 @@ const CSS = `
 .od-k button{background:#fff;border:1.5px solid #E2E8F0;border-radius:14px;padding:10px 12px;text-align:left;cursor:pointer;font:inherit}.od-k button.on{border-color:#0B1220;background:#F8FAFC;box-shadow:0 2px 8px rgba(11,18,32,.08)}
 .od-k button b{display:block;font-size:19px;line-height:1.1}.od-k button span{font-size:12px;color:#64748B;font-weight:600}.od-k button small{display:block;font-size:12px;color:#059669;font-weight:700;margin-top:2px}
 .od-row{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;border:1px solid #E2E8F0;border-radius:14px;padding:10px;background:#F8FAFC}.od-row .w{grid-column:1/-1}.od-row em{grid-column:1/-1;font-style:normal;font-size:11px;font-weight:800;color:#94A3B8;letter-spacing:.08em}
-.od-form .od-more{background:#fff;color:#0B1220;border:1.5px dashed #94A3B8}.od-dayh{font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748B;margin:10px 0 2px}`
+.od-form .od-more{background:#fff;color:#0B1220;border:1.5px dashed #94A3B8}.od-dayh{font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748B;margin:10px 0 2px}
+.pc{background:#fff;border:1px solid #E2E8F0;border-radius:20px;overflow:hidden;box-shadow:0 4px 14px rgba(11,18,32,.05)}
+.pc-h{display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#0B1730,#0E3B33);color:#fff}.pc-h .ic{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
+.pc-h b{display:block;font-size:16.5px}.pc-h span{font-size:12px;color:#A7F3D0}.pc-h .tot{margin-left:auto;text-align:right}.pc-h .tot b{font-size:19px}.pc-h .tot span{color:#CBD5E1}
+.pc-b{padding:14px 16px}.pc-b .od-form{margin-top:0}.pc-b .od-row{background:#fff;border:0;padding:0;border-radius:0}.pc-b .od-row+.od-row{border-top:1px dashed #E2E8F0;padding-top:12px;margin-top:2px}.pc-b .od-row em{color:#059669}
+.pc-b .od-row:first-child em{display:none}
+.pc-save{background:linear-gradient(135deg,#059669,#0D9488)!important}
+.pc-l{border-top:1px solid #EEF2F6;padding:10px 16px 12px;background:#FAFBFC}.pc-l h4{margin:0 0 2px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#64748B;display:flex;align-items:center;gap:8px}.pc-l h4 a{margin-left:auto;text-transform:none;letter-spacing:0;font-size:13px;color:#059669;font-weight:700;cursor:pointer}
+.pc-l .od-li .n{width:24px;height:24px;border-radius:50%;background:#DCFCE7;color:#15803D;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.pc-note{padding:12px 16px;font-size:13px;color:#64748B}.pc-note button{border:0;background:#0B1220;color:#fff;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;margin-top:8px}`
 let cssOn = false
 const st = { month: null, sel: null, form: false, view: 'today' }
 
@@ -37,7 +46,7 @@ const q = (x) => Number(x.qty) || 1
 
 export async function renderOrders(v, opts = {}) {
   if (!cssOn) { const el = document.createElement('style'); el.textContent = CSS; document.head.appendChild(el); cssOn = true }
-  const today = istDate(), ro = !!opts.as, view = st.view
+  const today = istDate(), ro = !!opts.as, view = st.view, noForm = ro || opts.viewOnly // punching is done on Home
   const w = opts.word === 'booking' ? 'booking' : 'order', W = w[0].toUpperCase() + w.slice(1) // CSEs punch bookings, others orders
   const month = st.month || today.slice(0, 7), sel = st.sel || today
   const [y, m] = month.split('-').map(Number), dim = new Date(Date.UTC(y, m, 0)).getUTCDate()
@@ -78,8 +87,8 @@ export async function renderOrders(v, opts = {}) {
   }
   v.innerHTML = `<div class="od-stack">
     <div class="od-k">${[['today', 'Today', t.today_n, t.today], ['week', 'This week', t.week_n, t.week], ['month', 'This month', t.month_n, t.month]].map(([k, l, n, a]) => `<button data-view="${k}" class="${view === k ? 'on' : ''}"><span>${l}</span><b>${n || 0}</b><small>${inr(a)}</small></button>`).join('')}</div>
-    ${ro ? '' : `<button class="od-new" id="odn">${st.form ? '✕ Close' : `＋ Punch new ${w}`}</button>`}
-    ${!ro && st.form ? `<section class="od-card"><h3>New ${w}</h3><form class="od-form" id="odf"><div id="odrows" style="display:contents">${rowHtml(1, w)}</div>
+    ${noForm ? '' : `<button class="od-new" id="odn">${st.form ? '✕ Close' : `＋ Punch new ${w}`}</button>`}
+    ${!noForm && st.form ? `<section class="od-card"><h3>New ${w}</h3><form class="od-form" id="odf"><div id="odrows" style="display:contents">${rowHtml(1, w)}</div>
       <button type="button" class="od-more" id="odmore">＋ Add another ${w}</button>
       <label>Date<input id="odt" type="date" value="${today}" max="${today}" required></label><label>Note (optional)<input id="ot" maxlength="200" placeholder="items, remarks"></label>
       <button id="odsave">Save</button></form></section>` : ''}
@@ -115,3 +124,37 @@ export async function renderOrders(v, opts = {}) {
   }))
 }
 export const resetOrdersView = () => { st.month = null; st.sel = null; st.form = false; st.view = 'today' }
+
+// Punch card for the Home screen: a short form (name, number, amount, client contact) and today's submissions under it.
+// opts: { word, as (employee id, admin page), canAdd (false = view only), onHistory (open today / week / month view), onModeHint (html when view-only), onSaved }
+export async function renderPunch(v, opts = {}) {
+  if (!cssOn) { const el = document.createElement('style'); el.textContent = CSS; document.head.appendChild(el); cssOn = true }
+  const today = istDate(), w = opts.word === 'booking' ? 'booking' : 'order', W = w[0].toUpperCase() + w.slice(1)
+  const canAdd = opts.canAdd !== false
+  if (!v.querySelector('.pc')) v.innerHTML = '<div class="skel"></div>'
+  let r
+  try { r = await get(`/api/bookings?from=${today}&to=${today}${opts.as ? '&as=' + opts.as : ''}`, { fresh: true }) } catch (e) { v.innerHTML = `<div class="err">${esc(e.message)}</div>`; return }
+  const L = r.rows.filter((x) => x.date === today), t = r.totals
+  v.innerHTML = `<section class="pc">
+    <div class="pc-h"><span class="ic">🧾</span><div><b>Punch ${w}</b><span>Fill the form and save — it goes into today's list</span></div><div class="tot"><b>${t.today_n || 0}</b><span> today · ${inr(t.today)}</span></div></div>
+    ${canAdd ? `<div class="pc-b"><form class="od-form" id="pcf"><div id="pcrows" style="display:contents">${rowHtml(1, w)}</div>
+      <label class="w">Note (optional)<input id="pcn" maxlength="200" placeholder="items, remarks"></label>
+      <button type="button" class="od-more" id="pcmore">＋ Add another ${w}</button><button id="pcsave" class="pc-save">Save ${w}</button></form></div>`
+    : `<div class="pc-note">${opts.viewHint || 'View only.'}</div>`}
+    <div class="pc-l"><h4>Today's submissions · ${t.today_n || 0}${opts.onHistory ? '<a id="pchist">This week / month →</a>' : ''}</h4>
+      ${L.map((x, i) => `<div class="od-li"><span class="n">${L.length - i}</span><div><b>${esc(x.customer || x.booking_no)}${q(x) > 1 ? ` <span style="font-weight:700;color:#059669">× ${q(x)}</span>` : ''}</b><span>${esc(x.booking_no)}${x.contact ? ' · 📞 ' + esc(x.contact) : ''}${x.note ? ' · ' + esc(x.note) : ''}</span></div><b>${inr(x.amount)}</b></div>`).join('') || `<div class="od-empty">No ${w}s punched yet today</div>`}</div></section>`
+  v.querySelector('#pchist')?.addEventListener('click', opts.onHistory)
+  v.querySelector('#pcswitch')?.addEventListener('click', () => opts.onSwitch?.())
+  const f = v.querySelector('#pcf'); if (!f) return
+  f.querySelector('#pcmore').onclick = () => { const box = f.querySelector('#pcrows'); box.insertAdjacentHTML('beforeend', rowHtml(box.querySelectorAll('[data-r]').length + 1, w)); box.lastElementChild.querySelector('input').focus() }
+  f.onsubmit = async (e) => {
+    e.preventDefault(); const btn = f.querySelector('#pcsave'); btn.disabled = true; btn.textContent = 'Saving…'
+    const note = f.querySelector('#pcn').value.trim(); let saved = 0
+    try {
+      for (const el of [...f.querySelectorAll('[data-r]')]) { if (el.dataset.done) continue
+        const g = (k) => el.querySelector(`[data-f=${k}]`).value.trim()
+        await post('/api/bookings', { customer: g('customer'), qty: g('qty'), amount: g('amount'), contact: g('contact'), note, ...(opts.as ? { emp_id: opts.as } : {}) }); el.dataset.done = '1'; saved++ }
+      toast(`${saved} ${w}${saved > 1 ? 's' : ''} saved ✓ — added to today's list`); opts.onSaved?.(); renderPunch(v, opts)
+    } catch (er) { btn.disabled = false; btn.textContent = `Save ${w}`; toast(er.message, 'bad') }
+  }
+}

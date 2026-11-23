@@ -174,10 +174,13 @@ export function registerDesks(on, X) {
     return json({ today, from, to, totals: { today: st.s, week: sw.s, month: sm.s, today_n: st.n, week_n: sw.n, month_n: sm.n }, rows: results, per_cse: Object.values(per).sort((a, b) => b.amount - a.amount) })
   })
   on('POST', '/api/bookings', async (env, req) => {
-    const me = await authUser(env, req); const b = await body(req)
+    let me = await authUser(env, req); const b = await body(req)
     const amount = dN(b.amount); if (amount <= 0) throw bad('Enter amount')
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
     if (date > istDate()) throw bad('No future dates')
+    // Boss / HR can punch on behalf of an employee (from that employee's page)
+    const actor = me
+    if (b.emp_id && isAdmin(me) && Number(b.emp_id) !== me.id) { const e = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(b.emp_id)).first(); if (!e) throw new HttpError(404, 'Employee not found'); me = e }
     const customer = String(b.customer || '').trim().slice(0, 80) || null, note = String(b.note || '').trim().slice(0, 200) || null
     // order / booking number is optional: without one we number it ORD-<emp>-<yymmdd>-<n>
     let no = String(b.booking_no || '').trim().slice(0, 40)
@@ -191,6 +194,7 @@ export function registerDesks(on, X) {
     const company = /govaa/i.test(me.department || '') ? 'GovaaBazaar' : 'JDAC Logistics'
     const qty = Math.max(1, Math.min(9999, Math.round(dN(b.qty)) || 1)), contact = String(b.contact || '').replace(/[^\d+]/g, '').slice(0, 15) || null
     await env.DB.prepare('INSERT INTO daily_bookings (emp_id, date, booking_no, amount, customer, note, company, qty, contact) VALUES (?,?,?,?,?,?,?,?,?)').bind(me.id, date, no, amount, customer, note, company, qty, contact).run()
+    if (actor.id !== me.id) await audit(env, actor.id, 'booking_for', 'daily_bookings', no, null, { for: me.name, amount, customer })
     dropCache()
     return json({ ok: true, booking_no: no })
   })
