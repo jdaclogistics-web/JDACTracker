@@ -132,9 +132,10 @@ export async function viewCompany(v, go, name, opts = {}) {
   v.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => re({ tab: b.dataset.tab, mv: null })))
   const B = v.querySelector('#cobody')
   if (tab === 'overview') {
-    B.innerHTML = `<div class="cc-kpis">${c.kpis.map(([l, val, k]) => `<div class="card"><span class="lbl">${esc(l)}</span><b>${k === 'money' ? inr(val) : num(val)}</b></div>`).join('')}</div>
+    B.innerHTML = `${['JDAC Logistics', 'GovaaBazaar'].includes(name) ? '<div id="punched"></div>' : ''}<div class="cc-kpis">${c.kpis.map(([l, val, k]) => `<div class="card"><span class="lbl">${esc(l)}</span><b>${k === 'money' ? inr(val) : num(val)}</b></div>`).join('')}</div>
       ${name === 'JDAC Logistics' && c.manager ? `<section class="card"><div class="row"><h2 class="h3">Sales team · this month</h2><span class="sp"></span><button class="link" id="gosales">Open ${ic('chev', 14)}</button></div>${salesTable(c.manager.sales_team)}</section>` : ''}`
     B.querySelector('#gosales')?.addEventListener('click', () => re({ tab: 'desks', mv: 'sales' }))
+    if (B.querySelector('#punched')) punchedCard(B.querySelector('#punched'), name, { range: range === 'month' ? 'month' : range === 'week' ? 'week' : 'today' })
   } else if (tab === 'desks') {
     if (opts.mv === 'sales') return managerSales(B, c, go, re)
     if (opts.mv === 'ops') return managerOps(B, c, go, re, opts.filter)
@@ -228,13 +229,37 @@ async function invoicesList(A, company, filter, again) {
 export async function viewAccounts(v, go, opts = {}, viewBiz) {
   const sub = opts.sub || 'summary'
   v.innerHTML = `<div class="cc-top"><b>Accounts</b><span class="sp"></span>${switcher('acsw')}</div>
-    <div class="chips">${[['summary', 'Group summary'], ['invoices', 'Invoices & payments'], ['vittiya', 'Live money · Vittiya']].map(([k, l]) => `<button class="chip ${sub === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div><div id="acb">${skel}</div>`
+    <div class="chips">${[['summary', 'Group summary'], ['punched', 'Bookings & orders received'], ['invoices', 'Invoices & payments'], ['vittiya', 'Live money · Vittiya']].map(([k, l]) => `<button class="chip ${sub === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div><div id="acb">${skel}</div>`
   v.querySelector('#acsw').onchange = (e) => { ccState.company = e.target.value; saveState(); viewAccounts(v, go, opts, viewBiz) }
   v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => viewAccounts(v, go, { ...opts, sub: b.dataset.sub }, viewBiz)))
   const A = v.querySelector('#acb')
   if (sub === 'vittiya') return viewBiz(A)
+  if (sub === 'punched') return punchedCard(A, ['JDAC Logistics', 'GovaaBazaar'].includes(ccState.company) ? ccState.company : null, { range: 'month' })
   if (sub === 'summary') return viewCC(A, go, opts.X || { setTimer: () => {} })
   try { await invoicesList(A, ccState.company === 'All' ? null : ccState.company, opts.filter, () => viewAccounts(v, go, opts, viewBiz)) } catch (e) { A.innerHTML = err(e) }
+}
+
+
+// ── Bookings / orders punched by staff (from their Home screen) — shown on the company page, Accounts and the dashboard ──
+const coOf = (x) => x.company || 'JDAC Logistics'
+const punchRange = (r) => { const today = istDate(); if (r === 'today') return [today, today]; if (r === 'month') return [today.slice(0, 8) + '01', today]
+  const t = new Date(today + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return [t.toISOString().slice(0, 10), today] }
+async function punchedCard(el, company, opts = {}) {
+  const range = opts.range || 'today', [from, to] = punchRange(range), today = istDate()
+  const word = company === 'GovaaBazaar' ? 'Orders' : company ? 'Bookings' : 'Bookings & orders'
+  let r
+  try { r = await get(`/api/bookings?all=1&from=${from}&to=${to}`, { fresh: true }) } catch (e) { el.innerHTML = err(e); return }
+  const rows = r.rows.filter((x) => !company || coOf(x) === company), qn = (x) => Number(x.qty) || 1
+  const per = {}; for (const x of rows) { const p = (per[x.emp_id] ||= { name: x.name || '—', n: 0, amt: 0, today: 0 }); p.n += qn(x); p.amt += x.amount; if (x.date === today) p.today += x.amount }
+  const P = Object.values(per).sort((a, b) => b.amt - a.amt), tot = rows.reduce((a, x) => a + x.amount, 0), cnt = rows.reduce((a, x) => a + qn(x), 0), newN = rows.filter((x) => x.date === today).reduce((a, x) => a + qn(x), 0)
+  el.innerHTML = `<section class="card pn-card"><div class="row wrap"><h2 class="h3">🧾 ${word} punched</h2>${newN ? `<span class="pn-new">${newN} new today</span>` : ''}<span class="sp"></span>
+      <div class="cc-seg lt">${[['today', 'Today'], ['week', 'Week'], ['month', 'Month']].map(([k, l]) => `<button data-pr="${k}" class="${range === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+    <div class="pn-k"><div><b>${cnt}</b><span>${word.toLowerCase()}</span></div><div><b>${inr(tot)}</b><span>amount</span></div><div><b>${P.length}</b><span>people punched</span></div></div>
+    ${P.length ? `<table class="cc-tbl"><thead><tr><th>Person</th><th class="r">Count</th><th class="r">Amount</th><th class="r">Today</th></tr></thead><tbody>${P.map((p) => `<tr><td><b>${esc(p.name)}</b></td><td class="r">${p.n}</td><td class="r">${inr(p.amt)}</td><td class="r">${inr(p.today)}</td></tr>`).join('')}
+      <tr><td><b>Total</b></td><td class="r"><b>${cnt}</b></td><td class="r"><b>${inr(tot)}</b></td><td class="r"><b>${inr(P.reduce((a, p) => a + p.today, 0))}</b></td></tr></tbody></table>` : ''}
+    <details class="pn-list" ${rows.length && rows.length <= 8 ? 'open' : ''}><summary>All entries · ${rows.length}<i>▾</i></summary>
+      ${rows.map((x) => `<div class="wd-o"><div><b>${esc(x.customer || x.booking_no)}${qn(x) > 1 ? ` <em>× ${qn(x)}</em>` : ''}</b><span>${fmtDate(x.date)} · by ${esc(x.name || '—')}${x.contact ? ' · 📞 ' + esc(x.contact) : ''} · ${esc(x.booking_no)}${x.note ? ' · ' + esc(x.note) : ''}</span></div><b>${inr(x.amount)}</b></div>`).join('') || `<div class="empty">Nothing punched ${range === 'today' ? 'today' : 'in this period'} yet</div>`}</details></section>`
+  el.querySelectorAll('[data-pr]').forEach((b) => (b.onclick = () => punchedCard(el, company, { ...opts, range: b.dataset.pr })))
 }
 
 // ═════════════════════════ DESKS ═════════════════════════
@@ -355,7 +380,7 @@ async function bookingsAdmin(v, head, back, opts) {
   const today = istDate(), t = new Date(today + 'T00:00:00Z'); const dow = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dow)
   const from = st.range === 'today' ? today : st.range === 'week' ? t.toISOString().slice(0, 10) : st.range === 'month' ? today.slice(0, 8) + '01' : st.from || today.slice(0, 8) + '01'
   try {
-    const [r, emps] = await Promise.all([get(`/api/bookings?all=1&from=${from}&to=${st.to || today}${st.emp ? '&emp=' + st.emp : ''}`), get('/api/admin/employees')])
+    const [r, emps] = await Promise.all([get(`/api/bookings?all=1&from=${from}&to=${st.to || today}${st.emp ? '&emp=' + st.emp : ''}`, { fresh: true }), get('/api/admin/employees')])
     const tot = r.rows.reduce((a, x) => a + x.amount, 0)
     v.innerHTML = head.replace(' · all', '') + `<div class="row wrap"><select class="inp sm2" id="rg">${[['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['custom', 'Custom']].map(([k, l]) => `<option value="${k}" ${st.range === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
       ${st.range === 'custom' ? `<input class="inp sm2" type="date" id="f1" value="${from}"><input class="inp sm2" type="date" id="f2" value="${st.to || today}">` : ''}
@@ -366,7 +391,7 @@ async function bookingsAdmin(v, head, back, opts) {
         ${r.per_cse.map((p) => `<tr><td><b>${esc(p.name)}</b></td><td class="r">${p.bookings}</td><td class="r">${inr(p.amount)}</td><td class="r">${inr(p.today)}</td></tr>`).join('')}
         <tr><td><b>Total</b></td><td class="r"><b>${r.rows.length}</b></td><td class="r"><b>${inr(tot)}</b></td><td class="r"><b>${inr(r.per_cse.reduce((a, p) => a + p.today, 0))}</b></td></tr></tbody></table></section>
       <section class="card"><div class="row"><h2 class="h3">All entries</h2><span class="sp"></span><span class="sub">latest first</span></div>
-        <div class="list">${r.rows.map((x) => `<div class="li"><div class="nm"><b>${esc(x.booking_no)}</b><span>${fmtDate(x.date)} · ${esc(x.name || '—')}</span></div><b>${inr(x.amount)}</b>
+        <div class="list">${r.rows.map((x) => `<div class="li"><div class="nm"><b>${esc(x.customer || x.booking_no)}</b><span>${fmtDate(x.date)} · ${esc(x.name || '—')} · ${esc(x.booking_no)}${x.contact ? ' · 📞 ' + esc(x.contact) : ''}</span></div><b>${inr(x.amount)}</b>
           <button class="link" data-ed="${x.id}" data-no="${esc(x.booking_no)}" data-amt="${x.amount}">Edit</button></div>`).join('') || '<div class="empty">No bookings</div>'}</div></section>
       <div class="cc-note">Today's total also shows as "CSE bookings" on Logistics Overview and Home</div>`
     const re = (o) => bookingsAdmin(v, head, back, { ...opts, bk: { ...st, ...o } })
@@ -696,7 +721,6 @@ const CC_TOOLS = [
   ['accounts', 'Accounts', 'live money & Vittiya', 'dollar', '#0D9488'],
   ['desks', 'Create employee interfaces', 'build sections & assign people', 'layout', '#4F46E5'],
   ['attendance', 'Attendance', 'today · week · month · leave · live', 'calcheck', '#16A34A'],
-  ['live', 'Live tracking', 'map & field status', 'pin', '#0D9488'],
   ['dailyreports', 'Daily reports', 'bookings & orders by person', 'doc', '#2563EB'],
   ['insights', 'Insights', 'accounts: sales, profit, money in', 'bars', '#C026D3'],
 ]
@@ -714,7 +738,7 @@ export function viewCommand(v, go, role = 'boss', only = '') {
   <div class="cm-h" id="s1"><i>1</i><div><b>First step — see today's team</b><span>Who started, who is working, who needs a push</span></div></div>
   <button class="cm-row" data-go="team-today"><span class="cm-ic" style="background:linear-gradient(135deg,#7C3AED,#C026D3)">${ic('pulse', 20, '#fff')}</span><div class="nm"><b>Who's doing what</b><span id="wdw">today's team view</span></div>${ic('chev', 18, '#9AA4B5')}</button>
   <div class="cm-h" id="s2"><i>2</i><div><b>Second step — open one company</b><span>Dashboard → money in → buying → expenses → work</span></div></div>
-  <div class="cm-grid cos">${CC_COS.map(([n, i, c, sub], k) => `<button class="cm-co" data-co="${esc(n)}"><span class="cm-n">${k + 1}</span><span class="cm-ic big" style="background:${c}">${ic(i, 26, '#fff')}</span><div class="nm"><b>${esc(n)}</b><span>${esc(sub)}</span></div><span class="cm-go">→</span></button>`).join('')}</div>
+  <div class="cm-grid cos">${CC_COS.map(([n, i, c, sub], k) => `<button class="cm-co" data-co="${esc(n)}"><span class="cm-n">${k + 1}</span><span class="cm-ic big" style="background:${c}">${ic(i, 26, '#fff')}</span><div class="nm"><b>${esc(n)}</b><span>${esc(sub)}</span><em class="cm-new" data-new="${esc(n)}" hidden></em></div><span class="cm-go">→</span></button>`).join('')}</div>
   <div class="cm-h" id="s3"><i>+</i><div><b>Tools when you need them</b><span>Accounts, employee interfaces, attendance, tracking and reports</span></div></div>
   <div class="cm-grid tools">${CC_TOOLS.filter(([k]) => !(hr && (k === 'accounts' || k === 'insights'))).map(([k, l, sub, i, c]) => `<button class="cm-row" data-tool="${k}"><span class="cm-ic" style="background:${c}">${ic(i, 20, '#fff')}</span><div class="nm"><b>${l}</b><span>${sub}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div>`
   // "Open company" / "Use tools" pages = the same cards on their own page
@@ -725,6 +749,9 @@ export function viewCommand(v, go, role = 'boss', only = '') {
   v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : hr ? (ccState.company = b.dataset.co, saveState(), go('desks')) : go('company', b.dataset.co))))
   v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'insights' ? go('accounts', null, { sub: 'summary' }) : go(t, tbl || null) }))
   prefetch('/api/admin/employees', '/api/desks', '/api/admin/report?month=' + istDate().slice(0, 7))
+  // notify: bookings / orders punched today show as a green badge on the company card
+  get(`/api/bookings?all=1&from=${istDate()}&to=${istDate()}`, { fresh: true }).then((r) => { const by = {}; for (const x of r.rows) { const o = (by[coOf(x)] ||= { n: 0, amt: 0 }); o.n += Number(x.qty) || 1; o.amt += x.amount }
+    v.querySelectorAll('[data-new]').forEach((el) => { const o = by[el.dataset.new]; if (o) { el.hidden = false; el.textContent = `🧾 ${o.n} punched today${hr ? '' : ' · ' + inr(o.amt)}` } }) }).catch(() => {})
   if (!only) get('/api/admin/today').then((t) => { const el = v.querySelector('#wdw'); if (el) el.textContent = `today's team view · ${t.summary.in} in · ${t.summary.late} late · ${t.summary.absent} not started` }).catch(() => {})
 }
 
