@@ -408,3 +408,4 @@ table.pay{border-collapse:separate;border-spacing:0;font-size:12.5px;white-space
 .ms-plan section{background:#fff;border:1px solid var(--mline);border-radius:14px;padding:14px 16px;margin-top:12px}.ms-plan h3{font-size:18px;margin-bottom:6px}.ms-plan ol,.ms-plan ul{margin:6px 0;padding-left:22px}.ms-plan li{margin:4px 0}
 .ms-plan table{width:100%;border-collapse:collapse;font-size:15px}.ms-plan td,.ms-plan th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--mline);vertical-align:top}
 @media(max-width:700px){.ms-tracks{grid-template-columns:1fr}.ms-week div{font-size:11px}.ms-week div b{font-size:12px}.ms-score{grid-template-columns:1fr}.ms-m{grid-template-columns:7em minmax(0,1fr) 2.6em;font-size:13.5px}.ms-add{grid-template-columns:1fr 1fr}.ms-add button{grid-column:1/-1}.ms-band{padding:18px 16px}}
+.sb-brand{flex-direction:column;align-items:flex-start;gap:10px}.sb-logoimg{padding:8px 12px}.sb-logoimg img{height:30px}
