@@ -4,6 +4,7 @@ import './web.css'
 import L from 'leaflet'
 import { auth, login, logout, get, post, patch, photoUrl } from '@shared/api.js'
 import { viewCC, viewCompany, viewDesk, viewTasks2, viewChat, viewDesks, viewDeskAdmin, viewPeople2, viewAccounts, viewCommand, viewTeam, viewHR, viewEmpPage, viewWho, ccState } from './cc.js'
+import { viewMilestone } from './milestone.js'
 import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials, avColor, downloadCsv, minsAgo } from '@shared/util.js'
 
 const app = document.getElementById('app')
@@ -59,7 +60,7 @@ async function boot() {
 function renderLogin(err = '') {
   cleanup()
   app.innerHTML = `<div class="wlogin"><form class="card" id="lf">
-    <div class="wbrand"><img src="./jdac-logo-color.png" alt="JDAC — The Logistics Aggregator"><div class="sub">Tracker Admin panel — HR · Boss · Developer</div></div>
+    <div class="wbrand"><img src="./jdac-logo-blue.png" alt="JDAC — The Logistics Aggregator"><div class="sub">Tracker Admin panel — HR · Boss · Developer</div></div>
     <label class="f" style="margin-top:18px">User ID (Employee ID)<input class="inp" id="lm" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. JD1001" required></label>
     <label class="f" style="margin-top:10px">Password<span class="pwrap"><input class="inp" id="lp" type="password" autocomplete="current-password" required><button type="button" class="eye" id="le" aria-label="Show password">${ic('eye', 18)}</button></span></label>
     ${err ? `<div class="err" style="margin-top:10px">${esc(err)}</div>` : ''}
@@ -80,9 +81,9 @@ function render() {
   cleanup()
   document.body.classList.add('cmdmode')
   const tabs = ROLE_TABS[me.role]
-  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old', 'emppage', 'who', 'companies', 'tools', 'profile', 'settings'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
+  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old', 'emppage', 'who', 'companies', 'tools', 'profile', 'settings', 'milestone'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
-  const grp = { home: 'home', who: 'home', tools: 'home', dailyreports: 'home', tasks: 'tasks', company: 'companies', companies: 'companies', hr: 'companies', desks: me.role === 'hr' ? 'companies' : '', desk: 'companies', deskadmin: 'companies',
+  const grp = { home: 'home', milestone: 'home', who: 'home', tools: 'home', dailyreports: 'home', tasks: 'tasks', company: 'companies', companies: 'companies', hr: 'companies', desks: me.role === 'hr' ? 'companies' : '', desk: 'companies', deskadmin: 'companies',
     team: 'team', emppage: 'team', attendance: 'attendance', live: 'attendance', leaves: 'attendance', accounts: 'accounts', biz: 'accounts', chat: 'chat' }[tab] || ''
   const curSub = tab === 'company' ? tabArg : tab === 'hr' ? HR_CO : tab === 'desks' && me.role === 'hr' ? ccState.company : tab === 'tasks' ? tabOpts.sub || 'projects' : tab === 'team' ? tabOpts.sub || 'dir' : tab === 'attendance' ? tabOpts.sub || 'today' : tab === 'accounts' ? tabOpts.sub || 'summary' : ''
   app.innerHTML = `
@@ -92,7 +93,7 @@ function render() {
     <button class="ibtn" id="out" aria-label="Logout">${ic('logout', 18)}</button></header>
   <div class="shell cmd sbl"><div class="sb-bg" id="sbbg"></div>
   <aside class="sb" id="sb" aria-label="Navigation">
-    <div class="sb-brand"><span class="sb-logo">JD</span><div><b>JDAC Tracker</b><span>JDAC Sales Pvt Ltd</span></div></div>
+    <div class="sb-brand"><span class="sb-logoimg"><img src="./jdac-logo-blue.png" alt="JDAC — The Logistics Aggregator"></span><div><b>JDAC Tracker</b><span>JDAC Sales Pvt Ltd</span></div></div>
     <nav class="sb-nav">${MENU(me.role).map(([k, l, subs], i) => `<div class="sb-g ${grp === k ? 'on' : ''} ${subs && (grp === k || sbOpen.has(k)) ? 'open' : ''}" data-g="${k}">
       <button class="sb-i" data-k="${k}"><i>${i + 1}</i><b>${l}</b>${subs ? '<em>▸</em>' : ''}</button>
       ${subs ? `<div class="sb-sub">${subs.map(([sk, sl]) => `<button data-k="${k}" data-s="${esc(sk)}" class="${grp === k && curSub === sk ? 'on' : ''}">${esc(sl)}</button>`).join('')}</div>` : ''}</div>`).join('')}</nav>
@@ -145,6 +146,7 @@ function render() {
   if (tab === 'people' && boss) return viewPeople2(v, go, X, tabOpts)
   if (tab === 'tasks') return viewTasks2(v, go, tabOpts)
   if (tab === 'chat') return viewChat(v)
+  if (tab === 'milestone') return viewMilestone(v, go, tabOpts)
   if (tab === 'profile') return viewProfile(v)
   if (tab === 'settings') return viewSettings(v, go)
   if (tab === 'who') return viewWho(v, go, X)
@@ -180,7 +182,7 @@ async function viewHome(v) {
       const live = t.rows.filter((r) => (r.emp.team === 'Warehouse' || r.emp.live_track) && r.session && !r.session.end_at)
       const pct = s.total ? Math.round((s.in / s.total) * 100) : 0
       const acc = ROLE_ACCENT[me.role]
-  const grp = { home: 'home', who: 'home', tools: 'home', dailyreports: 'home', tasks: 'tasks', company: 'companies', companies: 'companies', hr: 'companies', desks: me.role === 'hr' ? 'companies' : '', desk: 'companies', deskadmin: 'companies',
+  const grp = { home: 'home', milestone: 'home', who: 'home', tools: 'home', dailyreports: 'home', tasks: 'tasks', company: 'companies', companies: 'companies', hr: 'companies', desks: me.role === 'hr' ? 'companies' : '', desk: 'companies', deskadmin: 'companies',
     team: 'team', emppage: 'team', attendance: 'attendance', live: 'attendance', leaves: 'attendance', accounts: 'accounts', biz: 'accounts', chat: 'chat' }[tab] || ''
   const curSub = tab === 'company' ? tabArg : tab === 'hr' ? HR_CO : tab === 'desks' && me.role === 'hr' ? ccState.company : tab === 'tasks' ? tabOpts.sub || 'projects' : tab === 'team' ? tabOpts.sub || 'dir' : tab === 'attendance' ? tabOpts.sub || 'today' : tab === 'accounts' ? tabOpts.sub || 'summary' : ''
       v.innerHTML = `

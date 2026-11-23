@@ -4,6 +4,7 @@ import { esc, ic, fmtDate, fmtTime, toast, initials, avColor, istDate, downloadC
 import { renderChatUI, injectChatCss } from '@shared/chat.js'
 import { stampedSelfie, browserPosition } from '@shared/selfie.js'
 import { renderOrders, resetOrdersView, renderPunch } from '@shared/orders.js'
+import { milestoneCard } from './milestone.js'
 
 const inr = (n) => (n ? '₹' + Math.round(n).toLocaleString('en-IN') : '₹0')
 const inrL = (n) => (Math.abs(n) >= 100000 ? '₹' + (n / 100000).toFixed(n >= 1e6 ? 1 : 2).replace(/\.?0+$/, '') + 'L' : inr(n))
@@ -735,6 +736,7 @@ export function viewCommand(v, go, role = 'boss', only = '') {
   <section class="cm-hero"><div class="cm-k">JDAC COMMAND CENTRE</div><h1>${esc(motivation())}</h1>
     <p>First see today's team. Second open the company you want to manage. Everything else stays below as a tool.</p>
     <div class="cm-3"><button data-jump="s1"><i>1</i>See team</button><button data-jump="s2"><i>2</i>Open company</button><button data-jump="s3"><i>3</i>Use tools</button></div></section>
+  <div id="mscard"></div>
   <div class="cm-h" id="s1"><i>1</i><div><b>First step — see today's team</b><span>Who started, who is working, who needs a push</span></div></div>
   <button class="cm-row" data-go="team-today"><span class="cm-ic" style="background:linear-gradient(135deg,#7C3AED,#C026D3)">${ic('pulse', 20, '#fff')}</span><div class="nm"><b>Who's doing what</b><span id="wdw">today's team view</span></div>${ic('chev', 18, '#9AA4B5')}</button>
   <div class="cm-h" id="s2"><i>2</i><div><b>Second step — open one company</b><span>Dashboard → money in → buying → expenses → work</span></div></div>
@@ -749,6 +751,7 @@ export function viewCommand(v, go, role = 'boss', only = '') {
   v.querySelectorAll('[data-co]').forEach((b) => (b.onclick = () => (b.dataset.co === HR_CO ? go('hr') : hr ? (ccState.company = b.dataset.co, saveState(), go('desks')) : go('company', b.dataset.co))))
   v.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => { const [t, tbl] = b.dataset.tool.split(':'); t === 'insights' ? go('accounts', null, { sub: 'summary' }) : go(t, tbl || null) }))
   prefetch('/api/admin/employees', '/api/desks', '/api/admin/report?month=' + istDate().slice(0, 7))
+  if (!only && v.querySelector('#mscard')) milestoneCard(v.querySelector('#mscard'), go)
   // notify: bookings / orders punched today show as a green badge on the company card
   get(`/api/bookings?all=1&from=${istDate()}&to=${istDate()}`, { fresh: true }).then((r) => { const by = {}; for (const x of r.rows) { const o = (by[coOf(x)] ||= { n: 0, amt: 0 }); o.n += Number(x.qty) || 1; o.amt += x.amount }
     v.querySelectorAll('[data-new]').forEach((el) => { const o = by[el.dataset.new]; if (o) { el.hidden = false; el.textContent = `🧾 ${o.n} punched today${hr ? '' : ' · ' + inr(o.amt)}` } }) }).catch(() => {})
@@ -1042,10 +1045,10 @@ async function loadAsset(f) {
   return assetData[f]
 }
 // load logo + signature early so the slip opens with them
-setTimeout(() => { loadAsset('jdac-logo-color.png'); loadAsset('sign-hr.png') }, 3000)
+setTimeout(() => { loadAsset('jdac-logo-blue.png'); loadAsset('sign-hr.png') }, 3000)
 async function salarySlip(r, m, dim) {
   const w = window.open('', '_blank') // open first (pop-up blockers), fill after images are ready
-  const [logo, sign] = await Promise.all([loadAsset('jdac-logo-color.png'), loadAsset('sign-hr.png')])
+  const [logo, sign] = await Promise.all([loadAsset('jdac-logo-blue.png'), loadAsset('sign-hr.png')])
   const c = payCalc(r, dim), d = r.data, R = r.rates
   const asset = (f) => (f === 'sign-hr.png' ? sign : logo)
   const n = (x) => Math.round(N0(x)).toLocaleString('en-IN')
@@ -1070,7 +1073,7 @@ async function salarySlip(r, m, dim) {
     .foot{text-align:center;font-size:10px;color:#94A3B8;padding:6px}.pbtn{display:block;margin:14px auto 0;padding:10px 22px;border:0;border-radius:10px;background:#0B1220;color:#fff;font-weight:700;cursor:pointer}
     @media print{body{padding:0}.pbtn{display:none}}</style></head><body>
   <div class="slip">
-    <div class="hd"><img src="${asset('jdac-logo-color.png')}" alt="JDAC"><div class="t"><h1>${COMPANY.name} — SALARY SLIP</h1><p>${COMPANY.addr}, Email: ${COMPANY.email}</p></div><div class="mo"><span>MONTH</span><b>${mm}</b></div></div>
+    <div class="hd"><img src="${asset('jdac-logo-blue.png')}" alt="JDAC"><div class="t"><h1>${COMPANY.name} — SALARY SLIP</h1><p>${COMPANY.addr}, Email: ${COMPANY.email}</p></div><div class="mo"><span>MONTH</span><b>${mm}</b></div></div>
     <div class="grid">
       <div><table class="k"><tr><td>Employee name</td><td>${esc(r.name)}</td></tr><tr><td>Designation</td><td>${esc(r.designation || '—')}</td></tr><tr><td>Employee code</td><td>${esc(r.emp_code || '—')}</td></tr><tr><td>Days in month</td><td>${dim}</td></tr></table>
         <div class="sec">SALARY DETAILS</div>

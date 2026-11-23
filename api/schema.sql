@@ -208,3 +208,5 @@ CREATE TABLE IF NOT EXISTS form_answers (id INTEGER PRIMARY KEY AUTOINCREMENT, f
 CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_docno ON legacy_records (json_extract(data, '$.company'), json_extract(data, '$.kind'), json_extract(data, '$.docNo')) WHERE tbl = 'invoices';
 
 CREATE TABLE IF NOT EXISTS payroll (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER NOT NULL, month TEXT NOT NULL, data TEXT, updated_by INTEGER, updated_at TEXT, UNIQUE (emp_id, month));
+
+CREATE TABLE IF NOT EXISTS milestone (date TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, data TEXT, updated_by INTEGER, updated_at TEXT, PRIMARY KEY (date, kind, key));

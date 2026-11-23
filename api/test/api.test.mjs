@@ -153,4 +153,10 @@ console.log('24h auto-logout')
   const c2 = await call('GET', '/api/cc/chat?as=' + meId, null, HR)
   ok(c2.data.viewing_as && c2.data.groups.length === c1.data.groups.length, 'admin previews exactly the groups an employee sees')
 }
+{ // milestone scoreboard
+  await call('POST', '/api/admin/milestone', { type: 'actual', target: 'jp_fb', value: 3 }, HR)
+  await call('POST', '/api/admin/milestone', { type: 'task', target: 'jp_fb', title: 'Call 10 leads', owner: 'Darshan' }, HR)
+  const m = await call('GET', '/api/admin/milestone', null, HR)
+  ok(m.status === 200 && m.data.actuals.jp_fb === 3 && m.data.tasks.length === 1 && m.data.auto.jd_cse >= 1, 'milestone numbers, tasks and auto counts')
+}
 console.log(`\nALL ${pass} CHECKS PASSED`)

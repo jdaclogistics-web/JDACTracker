@@ -405,6 +405,43 @@ on('GET', '/api/admin/report', async (env, req, url) => {
   return json({ month: m, employees: emps.results.map(pub), sessions: sess.results, marks: marks.results, leaves: leaves.results })
 })
 
+// ── Milestone 1 daily scoreboard (dashboard) ───────────────────────────────
+// One small table: kind = actual | task | focus, per date.
+on('GET', '/api/admin/milestone', async (env, req, url) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('date') || '') ? url.searchParams.get('date') : istDate()
+  const { results } = await env.DB.prepare('SELECT kind, key, data FROM milestone WHERE date = ?').bind(date).all()
+  const actuals = {}, tasks = []; let focus = {}
+  for (const r of results) { const d = JSON.parse(r.data || '{}'); if (r.kind === 'actual') actuals[r.key] = Number(d.value) || 0; else if (r.kind === 'task') tasks.push({ id: r.key, ...d }); else if (r.kind === 'focus') focus = d }
+  // numbers the tracker already knows: bookings punched by the logistics team, and Govaa Bazaar orders (₹)
+  const auto = {}
+  try {
+    const { results: bk } = await env.DB.prepare('SELECT company, COALESCE(SUM(COALESCE(qty,1)),0) n, COALESCE(SUM(amount),0) s FROM daily_bookings WHERE date = ? GROUP BY company').bind(date).all()
+    for (const b of bk) { if ((b.company || 'JDAC Logistics') === 'JDAC Logistics') auto.jd_cse = (auto.jd_cse || 0) + b.n; else if (b.company === 'GovaaBazaar') auto.gb_offline = (auto.gb_offline || 0) + b.s }
+  } catch { /* */ }
+  return json({ date, actuals, auto, tasks: tasks.sort((a, b) => (a.at || 0) - (b.at || 0)), focus })
+})
+on('POST', '/api/admin/milestone', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : istDate()
+  const put = (kind, key, data) => env.DB.prepare('INSERT INTO milestone (date, kind, key, data, updated_by, updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT (date, kind, key) DO UPDATE SET data = excluded.data, updated_by = excluded.updated_by, updated_at = excluded.updated_at').bind(date, kind, key, JSON.stringify(data), me.id, nowIso()).run()
+  const getTask = async (id) => { const r = await env.DB.prepare("SELECT data FROM milestone WHERE date = ? AND kind = 'task' AND key = ?").bind(date, String(id)).first(); return r ? JSON.parse(r.data) : null }
+  if (b.type === 'actual') await put('actual', String(b.target).slice(0, 40), { value: Math.max(0, Number(b.value) || 0) })
+  else if (b.type === 'task') await put('task', 't' + Date.now() + Math.floor(Math.random() * 1000), { target: String(b.target || '').slice(0, 40), title: String(b.title || '').trim().slice(0, 200), owner: String(b.owner || 'Unassigned').trim().slice(0, 60), done: false, at: Date.now() })
+  else if (b.type === 'task_done') { const t = await getTask(b.id); if (t) await put('task', String(b.id), { ...t, done: !!b.done }) }
+  else if (b.type === 'task_del') await env.DB.prepare("DELETE FROM milestone WHERE date = ? AND kind = 'task' AND key = ?").bind(date, String(b.id)).run()
+  else if (b.type === 'focus') await put('focus', 'focus', b.focus && typeof b.focus === 'object' ? JSON.parse(JSON.stringify(b.focus).slice(0, 6000)) : {})
+  else if (b.type === 'carry') { // copy yesterday's open tasks to this day
+    const y = new Date(Date.parse(date + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10)
+    const { results } = await env.DB.prepare("SELECT data FROM milestone WHERE date = ? AND kind = 'task'").bind(y).all()
+    const left = results.map((r) => JSON.parse(r.data)).filter((t) => !t.done); let i = 0
+    for (const t of left) await put('task', 't' + Date.now() + (i++), { ...t, done: false, at: Date.now() + i })
+    return json({ ok: true, copied: left.length })
+  } else throw bad('type?')
+  return json({ ok: true })
+})
+
 // ── Payroll (monthly sheet) ────────────────────────────────────────────────
 // Rates live on the employee (fixed = salary_inhand, da_local, da_hq, da_up, mobile_allow, ta_rate per km).
 // Month inputs are auto-filled from attendance and can be overridden; saved per employee per month.
@@ -1083,6 +1120,7 @@ async function runMigrations(env) {
     await audit(env, null, 'directory_import', 'employees', null, null, { rows: rows.length })
     await mark('mig_directory_v1')
   }
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS milestone (date TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, data TEXT, updated_by INTEGER, updated_at TEXT, PRIMARY KEY (date, kind, key))').run()
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS payroll (id INTEGER PRIMARY KEY AUTOINCREMENT, emp_id INTEGER NOT NULL, month TEXT NOT NULL, data TEXT, updated_by INTEGER, updated_at TEXT, UNIQUE (emp_id, month))').run()
   if (!(await done('mig_org_v2'))) {
     // 19 Nov 2026 (Darshan): Boss = Darshan Sir; left: Rahul, Ashish, Cathrine, Priyanka; Mohin → Operation Manager; Balaji → CSE; departments for the org chart
