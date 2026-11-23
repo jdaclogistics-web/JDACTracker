@@ -3,7 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import './web.css'
 import L from 'leaflet'
 import { auth, login, logout, get, post, patch, photoUrl } from '@shared/api.js'
-import { viewCC, viewCompany, viewDesk, viewTasks2, viewChat, viewDesks, viewDeskAdmin, viewPeople2, viewAccounts, viewCommand, viewTeam, viewHR, viewEmpPage, viewWho } from './cc.js'
+import { viewCC, viewCompany, viewDesk, viewTasks2, viewChat, viewDesks, viewDeskAdmin, viewPeople2, viewAccounts, viewCommand, viewTeam, viewHR, viewEmpPage, viewWho, ccState } from './cc.js'
 import { esc, istDate, fmtTime, fmtDate, duration, agoText, toast, ic, initials, avColor, downloadCsv, minsAgo } from '@shared/util.js'
 
 const app = document.getElementById('app')
@@ -12,6 +12,29 @@ const ROLE_TABS = {
   hr: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['attendance', 'Attendance', 'cal', 1], ['live', 'Live map', 'pin', 1], ['leaves', 'Leave', 'check', 1], ['staff', 'Employees', 'users', 1], ['report', 'Month sheet', 'download', 1], ['old', 'HR records', 'grid', 1]],
   boss: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Staff & logins', 'lock', 1], ['attendance', 'Attendance', 'cal', 1], ['old', 'Records', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
   developer: [['home', 'Dashboard', 'grid'], ['tasks', 'Tasks', 'task'], ['chat', 'Chat', 'chat', 0, 1], ['team', 'Team', 'users'], ['logout', 'Logout', 'logout'], ['accounts', 'Accounts', 'wallet', 1], ['desks', 'Desks', 'grid', 1], ['live', 'Live map', 'pin', 1], ['staff', 'Logins', 'lock', 1], ['attendance', 'Attendance', 'cal', 1], ['old', 'Records', 'grid', 1], ['system', 'System', 'grid', 1], ['audit', 'Audit', 'shield', 1]],
+}
+// Left navigation panel: main items, some with a drop-down list
+const HR_CO = 'JDAC HR & Payroll'
+const sbOpen = new Set()
+const MENU = (role) => [
+  ['home', 'Dashboard'],
+  ['tasks', 'Tasks', [['projects', 'Projects'], ['forms', 'Forms'], ['calendar', 'Calendar'], ['timeline', 'Timeline']]],
+  ['companies', 'Companies', [['JDAC Studios', 'JDAC Studios'], ['GovaaBazaar', 'Govaa Bazaar'], [HR_CO, 'HR & Payroll'], ['Jupiter Equipment', 'Jupiter Equipment'], ['JDAC Logistics', 'JDAC Logistics']]],
+  ['team', 'Team', [['today', 'Today'], ['dir', 'Employee Master'], ['org', 'Org chart']]],
+  ['attendance', 'Attendance', [['today', 'Today'], ['week', 'Week'], ['month', 'Month'], ['leave', 'Leave'], ['live', 'Live tracking']]],
+  ...(role === 'hr' ? [] : [['accounts', 'Accounts', [['summary', 'Group summary'], ['punched', 'Bookings & orders received'], ['invoices', 'Invoices & payments'], ['vittiya', 'Live money · Vittiya']]]]),
+  ['chat', 'Chat'],
+]
+function viewProfile(v) {
+  const kv = [['Name', me.name], ['Role', ROLE_LABEL[me.role] || me.role], ['User ID', me.username], ['Employee ID', me.emp_code], ['Mobile', me.phone ? '+91 ' + me.phone : ''], ['Designation', me.designation], ['Department', me.department], ['City', me.work_location]]
+  v.innerHTML = `<div class="cc-top"><b>My profile</b></div><section class="card"><div class="row"><span class="av" style="width:56px;height:56px;border-radius:50%;background:#F97316;color:#fff;font-weight:800;font-size:18px;display:inline-flex;align-items:center;justify-content:center">${esc(initials(me.name))}</span><div class="nm" style="margin-left:12px"><b style="font-size:18px">${esc(me.name)}</b><span>${esc(ROLE_LABEL[me.role] || me.role)}</span></div></div>
+    <div class="ep-kv">${kv.map(([k, val]) => `<div><span>${k}</span><b>${esc(val || '—')}</b></div>`).join('')}</div></section>`
+}
+function viewSettings(v, go) {
+  const items = [['desks', 'Create employee interfaces', 'Build desks and assign people', me.role !== 'hr'], ['staff', 'Staff & logins', 'Add people, reset logins', true], ['dailyreports', 'Daily reports', 'Bookings and orders by person', true],
+    ['old', 'Records', 'Old tracker data and new records', true], ['audit', 'Audit log', 'Who changed what', me.role !== 'hr'], ['system', 'System', 'Server usage and health', me.role === 'developer']].filter((x) => x[3])
+  v.innerHTML = `<div class="cc-top"><b>Settings</b></div><section class="card" style="padding:4px 14px"><div class="list">${items.map(([k, l, d]) => `<button class="li" data-set="${k}"><div class="nm"><b>${l}</b><span>${d}</span></div>${ic('chev', 18, '#9AA4B5')}</button>`).join('')}</div></section>`
+  v.querySelectorAll('[data-set]').forEach((b) => (b.onclick = () => go(b.dataset.set)))
 }
 const ROLE_LABEL = { hr: 'HR panel', boss: 'Boss panel', developer: 'Developer · main access' }
 const ROLE_ACCENT = { hr: '#7C3AED', boss: '#059669', developer: '#0E7490' }
@@ -57,17 +80,44 @@ function render() {
   cleanup()
   document.body.classList.add('cmdmode')
   const tabs = ROLE_TABS[me.role]
-  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old', 'emppage', 'who', 'companies', 'tools'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
+  if (!tabs.some((t) => t[0] === tab) && !((['desk', 'leaves', 'hr', 'people', 'desks', 'attendance', 'dailyreports', 'live', 'old', 'emppage', 'who', 'companies', 'tools', 'profile', 'settings'].includes(tab)) || (['company', 'deskadmin', 'biz', 'accounts'].includes(tab) && me.role !== 'hr'))) tab = 'home'
   const acc = ROLE_ACCENT[me.role]
+  const grp = { home: 'home', who: 'home', tools: 'home', dailyreports: 'home', tasks: 'tasks', company: 'companies', companies: 'companies', hr: 'companies', desks: me.role === 'hr' ? 'companies' : '', desk: 'companies', deskadmin: 'companies',
+    team: 'team', emppage: 'team', attendance: 'attendance', live: 'attendance', leaves: 'attendance', accounts: 'accounts', biz: 'accounts', chat: 'chat' }[tab] || ''
+  const curSub = tab === 'company' ? tabArg : tab === 'hr' ? HR_CO : tab === 'desks' && me.role === 'hr' ? ccState.company : tab === 'tasks' ? tabOpts.sub || 'projects' : tab === 'team' ? tabOpts.sub || 'dir' : tab === 'attendance' ? tabOpts.sub || 'today' : tab === 'accounts' ? tabOpts.sub || 'summary' : ''
   app.innerHTML = `
-  <header class="bar"><img class="blogo" src="./jdac-logo.png" alt="JDAC">
+  <header class="bar"><button class="ibtn sb-menu" id="menu" aria-label="Menu">☰</button><img class="blogo" src="./jdac-logo.png" alt="JDAC">
     ${false ? ''
       : `<div class="bt"><b>JDAC SALES PVT LTD</b><span>${fmtDate(istDate(), { day: 'numeric', month: 'short', year: 'numeric' })} <i class="parent">parent</i></span></div>`}
     <button class="ibtn" id="out" aria-label="Logout">${ic('logout', 18)}</button></header>
-  <div class="shell cmd"><nav class="nav side" aria-label="Panel">${tabs.map(([k, l, i, more, big]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''} ${more ? 'more' : ''} ${big ? 'big' : ''}" style="${tab === k && !big ? `color:${acc}` : ''}">${big ? `<span class="fab">${ic(i, 26, '#fff')}</span>` : ic(i, 22)}<span>${l}</span></button>`).join('')}</nav>
+  <div class="shell cmd sbl"><div class="sb-bg" id="sbbg"></div>
+  <aside class="sb" id="sb" aria-label="Navigation">
+    <div class="sb-brand"><span class="sb-logo">JD</span><div><b>JDAC Tracker</b><span>JDAC Sales Pvt Ltd</span></div></div>
+    <nav class="sb-nav">${MENU(me.role).map(([k, l, subs], i) => `<div class="sb-g ${grp === k ? 'on' : ''} ${subs && (grp === k || sbOpen.has(k)) ? 'open' : ''}" data-g="${k}">
+      <button class="sb-i" data-k="${k}"><i>${i + 1}</i><b>${l}</b>${subs ? '<em>▸</em>' : ''}</button>
+      ${subs ? `<div class="sb-sub">${subs.map(([sk, sl]) => `<button data-k="${k}" data-s="${esc(sk)}" class="${grp === k && curSub === sk ? 'on' : ''}">${esc(sl)}</button>`).join('')}</div>` : ''}</div>`).join('')}</nav>
+    <div class="sb-foot"><button data-k="profile" class="${tab === 'profile' ? 'on' : ''}">Profile</button><button data-k="settings" class="${tab === 'settings' ? 'on' : ''}">Settings</button><button data-k="logout" class="out">Logout</button></div>
+  </aside>
   <main class="main" id="view"></main></div>`
   document.getElementById('out').onclick = doLogout
-  app.querySelectorAll('.nav button').forEach((b) => (b.onclick = () => { if (b.dataset.tab === 'logout') return doLogout(); navStack.length = 0; tab = b.dataset.tab; tabArg = null; tabOpts = {}; render() }))
+  const sb = document.getElementById('sb'), closeSb = () => { sb.classList.remove('show'); document.getElementById('sbbg').classList.remove('show') }
+  document.getElementById('menu').onclick = () => { sb.classList.toggle('show'); document.getElementById('sbbg').classList.toggle('show') }
+  document.getElementById('sbbg').onclick = closeSb
+  const navTo = (t, arg = null, opts = {}) => { navStack.length = 0; tab = t; tabArg = arg; tabOpts = opts; render(); window.scrollTo(0, 0) }
+  sb.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => {
+    const k = b.dataset.k, sk = b.dataset.s
+    if (k === 'logout') return doLogout()
+    if (sk === undefined) { // main item: open its page; items with a list also unfold
+      if (b.closest('.sb-g')?.querySelector('.sb-sub')) { if (grp === k && sbOpen.has(k)) { sbOpen.delete(k); b.closest('.sb-g').classList.remove('open'); return } sbOpen.add(k) }
+      return navTo(k)
+    }
+    sbOpen.add(k)
+    if (k === 'companies') { if (sk === HR_CO) return navTo('hr'); if (me.role === 'hr') { ccState.company = sk; return navTo('desks') } return navTo('company', sk) }
+    navTo(k, null, { sub: sk })
+  }))
+  // tabs clicked inside a page keep the left panel's highlight in step
+  document.getElementById('view').addEventListener('click', (e) => { const t = e.target.closest('[data-sub]'); if (!t) return
+    const g = sb.querySelector('.sb-g.on'); const hit = g?.querySelector(`.sb-sub [data-s="${CSS.escape(t.dataset.sub)}"]`); if (hit) { g.querySelectorAll('.sb-sub button').forEach((x) => x.classList.toggle('on', x === hit)) } })
   const v0 = document.getElementById('view')
   const go = (t, arg = null, opts = {}) => {
     navStack.push({ tab, tabArg, tabOpts }); if (navStack.length > 30) navStack.shift()
@@ -75,7 +125,7 @@ function render() {
     tab = t; tabArg = arg; tabOpts = opts || {}; render(); window.scrollTo(0, 0)
   }
   // Tools / अंदर के pages पर "← Back" — जहाँ से आए थे वहीं लौटो
-  const FOOT = ['home', 'tasks', 'chat', 'team'], OWN_BACK = ['company', 'hr', 'desk', 'deskadmin']
+  const FOOT = ['home', 'tasks', 'chat', 'team', 'attendance', 'accounts', 'companies', 'profile', 'settings'], OWN_BACK = ['company', 'hr', 'desk', 'deskadmin']
   let v = v0
   if (!FOOT.includes(tab) && !OWN_BACK.includes(tab) && !(tab === 'desks' && (tabOpts.desk || tabOpts.create))) {
     v0.insertAdjacentHTML('afterbegin', `<div class="bk-bar"><button id="bk">← Back</button></div><div id="view2" class="stack"></div>`)
@@ -95,11 +145,13 @@ function render() {
   if (tab === 'people' && boss) return viewPeople2(v, go, X, tabOpts)
   if (tab === 'tasks') return viewTasks2(v, go, tabOpts)
   if (tab === 'chat') return viewChat(v)
+  if (tab === 'profile') return viewProfile(v)
+  if (tab === 'settings') return viewSettings(v, go)
   if (tab === 'who') return viewWho(v, go, X)
   if (tab === 'companies') return viewCommand(v, go, me.role, 'cos')
   if (tab === 'tools') return viewCommand(v, go, me.role, 'tools')
   if (tab === 'emppage') return viewEmpPage(v, tabArg, go)
-  if (tab === 'attendance') return viewAttendance(v, tabOpts, X)
+  if (tab === 'attendance') return viewAttendance(v, tabOpts, X, (sub) => { tabOpts = { sub }; render() })
   if (tab === 'dailyreports') return viewDailyReports(v, tabOpts)
   if (tab === 'old' && tabArg) return viewOld(v, tabArg)
   ;({ home: viewHome, people: viewPeople, live: viewLive, leaves: viewLeaves, staff: viewStaff, report: viewReport, biz: viewBiz, old: viewOld, system: viewSystem, audit: viewAudit }[tab])(v)
@@ -128,6 +180,9 @@ async function viewHome(v) {
       const live = t.rows.filter((r) => (r.emp.team === 'Warehouse' || r.emp.live_track) && r.session && !r.session.end_at)
       const pct = s.total ? Math.round((s.in / s.total) * 100) : 0
       const acc = ROLE_ACCENT[me.role]
+  const grp = { home: 'home', who: 'home', tools: 'home', dailyreports: 'home', tasks: 'tasks', company: 'companies', companies: 'companies', hr: 'companies', desks: me.role === 'hr' ? 'companies' : '', desk: 'companies', deskadmin: 'companies',
+    team: 'team', emppage: 'team', attendance: 'attendance', live: 'attendance', leaves: 'attendance', accounts: 'accounts', biz: 'accounts', chat: 'chat' }[tab] || ''
+  const curSub = tab === 'company' ? tabArg : tab === 'hr' ? HR_CO : tab === 'desks' && me.role === 'hr' ? ccState.company : tab === 'tasks' ? tabOpts.sub || 'projects' : tab === 'team' ? tabOpts.sub || 'dir' : tab === 'attendance' ? tabOpts.sub || 'today' : tab === 'accounts' ? tabOpts.sub || 'summary' : ''
       v.innerHTML = `
       <section class="card hero" style="background:${me.role === 'hr' ? '#2E1065' : '#0B1220'}">
         <div class="hl">Attendance today · ${s.total} employees</div>
@@ -431,10 +486,10 @@ async function viewStaff(v) {
 
 // ── Month sheet / report ────────────────────────────────────────────────
 // ── Attendance: Today · Week · Month · Live ─────────────────────────────
-async function viewAttendance(v, opts = {}, X) {
+async function viewAttendance(v, opts = {}, X, nav) {
   const sub = opts.sub || 'today'
   v.innerHTML = `<div class="cc-tabs at-tabs"><b class="at-ttl">Attendance</b>${[['today', 'Today'], ['week', 'Week'], ['month', 'Month'], ['leave', 'Leave'], ['live', 'Live tracking']].map(([k, l]) => `<button data-sub="${k}" class="${sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="atb" class="stack"></div>`
-  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => viewAttendance(v, { sub: b.dataset.sub }, X)))
+  v.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => (nav ? nav(b.dataset.sub) : viewAttendance(v, { sub: b.dataset.sub }, X))))
   const B = v.querySelector('#atb')
   if (sub === 'today') return viewPeople2(B, null, X, { sub: 'today', bare: true })
   if (sub === 'live') return viewLive(B)
