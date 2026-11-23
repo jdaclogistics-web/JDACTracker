@@ -33,7 +33,10 @@ const CSS = `
 .pc-save{background:linear-gradient(135deg,#059669,#0D9488)!important}
 .pc-l{border-top:1px solid #EEF2F6;padding:10px 16px 12px;background:#FAFBFC}.pc-l h4{margin:0 0 2px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#64748B;display:flex;align-items:center;gap:8px}.pc-l h4 a{margin-left:auto;text-transform:none;letter-spacing:0;font-size:13px;color:#059669;font-weight:700;cursor:pointer}
 .pc-l .od-li .n{width:24px;height:24px;border-radius:50%;background:#DCFCE7;color:#15803D;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
-.pc-note{padding:12px 16px;font-size:13px;color:#64748B}.pc-note button{border:0;background:#0B1220;color:#fff;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;margin-top:8px}`
+.pc-note{padding:12px 16px;font-size:13px;color:#64748B}.pc-note button{border:0;background:#0B1220;color:#fff;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;margin-top:8px}
+.pc-l summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#64748B;font-weight:800;padding:2px 0}.pc-l summary::-webkit-details-marker{display:none}
+.pc-l summary b{margin-left:auto;font-size:13.5px;letter-spacing:0;color:#0F172A;text-transform:none}.pc-l summary i{font-style:normal;transition:transform .15s;color:#94A3B8}.pc-l[open] summary i{transform:rotate(180deg)}.pc-l[open] summary{margin-bottom:4px}
+.pc-l #pchist{display:block;text-align:center;margin-top:8px;font-size:13px;color:#059669;font-weight:700;cursor:pointer}`
 let cssOn = false
 const st = { month: null, sel: null, form: false, view: 'today' }
 
@@ -127,6 +130,7 @@ export const resetOrdersView = () => { st.month = null; st.sel = null; st.form =
 
 // Punch card for the Home screen: a short form (name, number, amount, client contact) and today's submissions under it.
 // opts: { word, as (employee id, admin page), canAdd (false = view only), onHistory (open today / week / month view), onModeHint (html when view-only), onSaved }
+let pcOpen = false // Today's submissions stays folded until tapped
 export async function renderPunch(v, opts = {}) {
   if (!cssOn) { const el = document.createElement('style'); el.textContent = CSS; document.head.appendChild(el); cssOn = true }
   const today = istDate(), w = opts.word === 'booking' ? 'booking' : 'order', W = w[0].toUpperCase() + w.slice(1)
@@ -141,8 +145,10 @@ export async function renderPunch(v, opts = {}) {
       <label class="w">Note (optional)<input id="pcn" maxlength="200" placeholder="items, remarks"></label>
       <button type="button" class="od-more" id="pcmore">＋ Add another ${w}</button><button id="pcsave" class="pc-save">Save ${w}</button></form></div>`
     : `<div class="pc-note">${opts.viewHint || 'View only.'}</div>`}
-    <div class="pc-l"><h4>Today's submissions · ${t.today_n || 0}${opts.onHistory ? '<a id="pchist">This week / month →</a>' : ''}</h4>
-      ${L.map((x, i) => `<div class="od-li"><span class="n">${L.length - i}</span><div><b>${esc(x.customer || x.booking_no)}${q(x) > 1 ? ` <span style="font-weight:700;color:#059669">× ${q(x)}</span>` : ''}</b><span>${esc(x.booking_no)}${x.contact ? ' · 📞 ' + esc(x.contact) : ''}${x.note ? ' · ' + esc(x.note) : ''}</span></div><b>${inr(x.amount)}</b></div>`).join('') || `<div class="od-empty">No ${w}s punched yet today</div>`}</div></section>`
+    <details class="pc-l" ${pcOpen ? 'open' : ''}><summary><span>Today's submissions</span><b>${t.today_n || 0} · ${inr(t.today)}</b><i>▾</i></summary>
+      ${L.map((x, i) => `<div class="od-li"><span class="n">${L.length - i}</span><div><b>${esc(x.customer || x.booking_no)}${q(x) > 1 ? ` <span style="font-weight:700;color:#059669">× ${q(x)}</span>` : ''}</b><span>${esc(x.booking_no)}${x.contact ? ' · 📞 ' + esc(x.contact) : ''}${x.note ? ' · ' + esc(x.note) : ''}</span></div><b>${inr(x.amount)}</b></div>`).join('') || `<div class="od-empty">No ${w}s punched yet today</div>`}
+      ${opts.onHistory ? '<a id="pchist">View this week / this month →</a>' : ''}</details></section>`
+  v.querySelector('details.pc-l').ontoggle = (e) => { pcOpen = e.target.open }
   v.querySelector('#pchist')?.addEventListener('click', opts.onHistory)
   v.querySelector('#pcswitch')?.addEventListener('click', () => opts.onSwitch?.())
   const f = v.querySelector('#pcf'); if (!f) return

@@ -414,7 +414,11 @@ export async function viewPeople2(v, go, X, opts = {}, tabName = 'people') {
   const B = v.querySelector('#pb')
   try {
     if (sub === 'today') {
-      const [t, D] = await Promise.all([get('/api/admin/today'), get('/api/desks').catch(() => ({ desks: [] }))])
+      const td = istDate()
+      const [t, D, O] = await Promise.all([get('/api/admin/today'), get('/api/desks').catch(() => ({ desks: [] })), get(`/api/bookings?all=1&from=${td}&to=${td}`, { fresh: true }).catch(() => ({ rows: [] }))])
+      // today's bookings / orders: who punched what, and from which customer
+      const ord = {}; for (const x of O.rows) { const o = (ord[x.emp_id] ||= { n: 0, amt: 0, L: [] }); o.n += Number(x.qty) || 1; o.amt += x.amount; o.L.push(x) }
+      const oTot = Object.values(ord).reduce((a, o) => ({ n: a.n + o.n, amt: a.amt + o.amt }), { n: 0, amt: 0 })
       const mainDesk = {}; for (const d of D.desks) for (const p of d.people) if (!mainDesk[p.id]) mainDesk[p.id] = d.name
       const s = t.summary
       const chip = (r) => {
@@ -427,8 +431,10 @@ export async function viewPeople2(v, go, X, opts = {}, tabName = 'people') {
       }
       const nIn = t.rows.filter((r) => r.session && !r.session.end_at).length, nOut = t.rows.filter((r) => r.session?.end_at).length, nLate = t.rows.filter((r) => r.session && r.late).length
       B.innerHTML = `<div class="cc-strip five"><div class="g"><b>${nIn}</b><span>In</span></div><div class="o"><b>${nLate}</b><span>Late</span></div><div class="n"><b>${nOut}</b><span>Out</span></div><div class="r"><b>${s.absent}</b><span>Not started</span></div><div class="b"><b>${s.leave}</b><span>Leave</span></div></div>
+        <details class="card wd-ord" ${oTot.n ? '' : ''}><summary><span>🧾 Bookings &amp; orders received today</span><b>${oTot.n} · ${inr(oTot.amt)}</b><i>▾</i></summary>
+          ${O.rows.map((x) => `<div class="wd-o"><div><b>${esc(x.customer || x.booking_no)}${(Number(x.qty) || 1) > 1 ? ` <em>× ${Number(x.qty)}</em>` : ''}</b><span>by ${esc(x.name || '—')}${x.contact ? ' · 📞 ' + esc(x.contact) : ''} · ${esc(x.booking_no)}</span></div><b>${inr(x.amount)}</b></div>`).join('') || '<div class="empty">Nothing punched yet today</div>'}</details>
         <section class="card" style="padding:4px 14px"><div class="list">${t.rows.map((r) => `<button class="li cc-pl" data-emp="${r.emp.id}"><div class="av" style="background:${avColor(r.emp.id)};color:#fff;border-radius:50%;width:34px;height:34px">${esc(initials(r.emp.name))}</div>
-          <div class="nm"><b>${esc(r.emp.name)} <span class="sub" style="display:inline">· ${esc(mainDesk[r.emp.id] || r.emp.designation || r.emp.team)}</span></b></div>${chip(r)}</button>`).join('')}</div></section>
+          <div class="nm"><b>${esc(r.emp.name)} <span class="sub" style="display:inline">· ${esc(mainDesk[r.emp.id] || r.emp.designation || r.emp.team)}</span></b>${ord[r.emp.id] ? `<span class="wd-from">🧾 ${ord[r.emp.id].n} · ${inr(ord[r.emp.id].amt)} — ${esc([...new Set(ord[r.emp.id].L.map((x) => x.customer || x.booking_no))].slice(0, 3).join(', '))}${ord[r.emp.id].L.length > 3 ? '…' : ''}</span>` : ''}</div>${chip(r)}</button>`).join('')}</div></section>
         <div class="cc-note y">Tap a name: check-in photo, route, today's report, desks</div>`
       B.querySelectorAll('[data-emp]').forEach((b) => (b.onclick = () => X.openRoute(B, Number(b.dataset.emp), istDate())))
     } else if (sub === 'dir') {
