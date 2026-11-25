@@ -18,9 +18,7 @@ window.addEventListener('online', () => flush())
 
 // ── Boot ────────────────────────────────────────────────────────────────
 const ADMIN_HOME = ['boss', 'hr']
-const goAdmin = () => { if (me && ADMIN_HOME.includes(me.role) && !new URLSearchParams(location.search).has('staff')) { location.replace('./tracker.html'); return true } return false }
-// Boss APK (VITE_BOSS=1): opens straight into the JDAC Tracker panel (it has its own login)
-if (import.meta.env.VITE_BOSS) location.replace('./tracker.html')
+const goAdmin = () => { if (me && ADMIN_HOME.includes(me.role) && !new URLSearchParams(location.search).has('staff')) { location.replace('./admin.html'); return true } return false }
 async function boot() {
   if (!auth.token) return renderLogin()
   me = auth.me
@@ -304,8 +302,7 @@ function renderMe(v) {
   <section class="card"><div class="row"><div class="av" style="background:#F59E0B;color:#0B1220;border-radius:50%;width:52px;height:52px;font-size:17px">${esc(initials(me.name))}</div>
     <div class="nm"><b style="font-size:17px">${esc(me.name)}</b><span>${esc(me.designation || '')}</span><span>${esc(me.team)} team${me.work_location ? ' · ' + esc(me.work_location) : ''}</span></div></div>
     <div class="tiles t3" style="margin-top:12px"><div class="tile"><b>${esc(me.shift_start)}</b><span>Shift in</span></div><div class="tile"><b>${esc(me.shift_end)}</b><span>Shift out</span></div><div class="tile"><b>${esc(me.emp_code || me.username || '')}</b><span>Employee ID</span></div></div></section>
-  <a class="card tip" href="./tracker.html" style="text-decoration:none;color:inherit">${ic('shield', 20, '#2563EB')}<div><b>Open JDAC Tracker</b><p>Tasks, leaves, attendance and team — new design.</p></div></a>
-  ${admin ? `<a class="card tip" href="./admin.html" style="text-decoration:none;color:inherit">${ic('shield', 20, '#6D28D9')}<div><b>Old admin panel</b><p>Previous dashboard design.</p></div></a>` : ''}
+  ${admin ? `<a class="card tip" href="./admin.html" style="text-decoration:none;color:inherit">${ic('shield', 20, '#6D28D9')}<div><b>Open admin panel</b><p>Dashboard, companies, team, tasks — in this app.</p></div></a>` : ''}
   <section class="card"><div class="row"><h2 class="h3">My profile</h2><span class="sp"></span><span class="sub" style="margin:0">view only</span></div>
     <div class="me-kv">${[['Employee ID', me.emp_code || me.username], ['Name', me.name], ['Status', me.status || 'Active'], ['Designation', me.designation], ['Department', me.department], ['Team', me.team], ['Mobile', me.phone ? '+91 ' + me.phone : ''], ['City', me.work_location],
       ['Joining date', me.joining_date ? fmtDate(me.joining_date) : ''], ['Exit date', me.exit_date ? fmtDate(me.exit_date) : ''], ['Shift', me.shift_start ? me.shift_start + ' – ' + me.shift_end : ''], ['Salary in hand', me.salary_inhand ? '₹' + Math.round(me.salary_inhand).toLocaleString('en-IN') + ' / month' : '']]
