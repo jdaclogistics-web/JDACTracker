@@ -213,7 +213,7 @@ export function companyPage(D, emps, today, name, range = 'month', desks = [], c
 }
 
 // ── Employee ───────────────────────────────────────────────────────────────
-export function myHome(D, emp, today, myDesks = []) {
+export function myHome(D, emp, today, myDesks = [], mates = []) {
   const isMine = (t) => (emp.legacy_id && String(t.assigneeId) === String(emp.legacy_id)) || String(t.assignee_emp || '') === String(emp.id)
   const tasks = D.tasks.filter(isMine)
   const open = tasks.filter((t) => !/done|closed|complete/i.test(s(t.status)))
@@ -227,8 +227,14 @@ export function myHome(D, emp, today, myDesks = []) {
   const entries = D.day_entries.filter((e) => String(e.personId) === String(emp.legacy_id) && d10(e.date) === today).length
   const checklist = (id) => D.task_checklist.filter((c) => String(c.taskId) === String(id))
   return { name: emp.name, designation: emp.designation || emp.team, tasks_total: tasks.filter((t) => !/done|closed|complete/i.test(s(t.status)) || d10(t.closedAt) === today).length, tasks_done: doneToday, overdue, entries, desks, projects,
-    up_next: open.sort((a, b) => (d10(a.due) || '9').localeCompare(d10(b.due) || '9')).slice(0, 30).map((t) => ({ id: t._rid, title: s(t.title), due: d10(t.due), priority: s(t.priority), status: s(t.status), notes: s(t.notes),
-      checklist: checklist(t.id).map((c) => ({ id: c._rid, title: s(c.title), done: String(c.done) === '1' || c.done === true })) })) }
+    up_next: open.sort(byDue).slice(0, 60).map(row),
+    // Team: tasks I gave to teammates + open tasks of my teammates
+    team: mates.map((m) => ({ id: m.id, name: m.name, designation: m.designation || '' })),
+    team_tasks: D.tasks.filter((t) => !/done|closed|complete/i.test(s(t.status)) && !isMine(t) && (String(t.created_by_emp || '') === String(emp.id) || mates.some((m) => String(t.assignee_emp || '') === String(m.id) || (m.legacy_id != null && String(t.assigneeId) === String(m.legacy_id)))))
+      .sort(byDue).slice(0, 60).map((t) => ({ ...row(t), mine_given: String(t.created_by_emp || '') === String(emp.id), assignee: s(t.assignee_name) || (mates.find((m) => String(t.assignee_emp || '') === String(m.id) || (m.legacy_id != null && String(t.assigneeId) === String(m.legacy_id))) || {}).name || '' })) }
+  function byDue(a, b) { return (d10(a.due) || '9').localeCompare(d10(b.due) || '9') }
+  function row(t) { return { id: t._rid, title: s(t.title), due: d10(t.due), priority: s(t.priority), status: s(t.status), notes: s(t.notes), by: s(t.createdBy_name), src: t.self_added ? 'self' : t.team_task ? 'team' : 'boss',
+      checklist: checklist(t.id).map((c) => ({ id: c._rid, title: s(c.title), done: String(c.done) === '1' || c.done === true })) } }
 }
 
 export function cargoDesk(D, emp, emps, today, cses, showAll = false) {

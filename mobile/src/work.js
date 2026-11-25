@@ -59,23 +59,38 @@ function bindTaskChecks(v, after) {
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────
+let TK_TAB = 'boss'
 export async function renderTasks(v, go) {
   v.innerHTML = `<div id="tkb" class="stack"><div class="skel"></div></div>`
   const B = v.querySelector('#tkb')
   const h = await loadMyHome()
   if (!h) { B.innerHTML = '<div class="err">No internet</div>'; return }
-  B.innerHTML = `<button class="wk-new" id="addtask" style="border:0;border-radius:16px;padding:14px;font-weight:800;font-size:15px;color:#fff">＋ Add my task</button>
-    <section class="card"><div class="row"><h2 class="h3">My tasks</h2><span class="sp"></span><span class="sub">${h.up_next.length} open · ${h.tasks_done} done today</span></div>
-    <div class="list">${h.up_next.map((t) => taskRow(t) + (t.notes || t.checklist.length ? `<div class="wk-tn">${t.notes ? esc(t.notes) : ''}${t.checklist.map((c) => `<div>${c.done ? '☑' : '☐'} ${esc(c.title)}</div>`).join('')}</div>` : '')).join('') || '<div class="empty">Nothing pending — add a task or enjoy the clear day ✨</div>'}</div></section>`
+  const all = h.up_next || [], boss = all.filter((t) => t.src === 'boss'), self = all.filter((t) => t.src === 'self'), team = [...all.filter((t) => t.src === 'team'), ...(h.team_tasks || [])]
+  const tabs = [['boss', '👔 Boss given', boss.length], ['self', '🙋 My tasks', self.length], ['team', '👥 Team', team.length]]
+  const extra = (t) => (t.notes || t.checklist.length ? `<div class="wk-tn">${t.notes ? esc(t.notes) : ''}${t.checklist.map((c) => `<div>${c.done ? '☑' : '☐'} ${esc(c.title)}</div>`).join('')}</div>` : '')
+  const tag = (t) => (t.src === 'team' && t.by ? `<div class="wk-tn">From ${esc(t.by)}</div>` : t.assignee ? `<div class="wk-tn">${t.mine_given ? 'You gave to' : 'For'} <b>${esc(t.assignee)}</b>${!t.mine_given && t.by ? ' · by ' + esc(t.by) : ''}</div>` : '')
+  const list = TK_TAB === 'boss' ? boss : TK_TAB === 'self' ? self : team
+  const add = TK_TAB === 'self' ? '＋ Add my task' : TK_TAB === 'team' ? '＋ Give task to teammate' : ''
+  const empty = TK_TAB === 'boss' ? 'No task from Boss / HR right now ✨' : TK_TAB === 'self' ? 'Add what you plan to do today' : (h.team || []).length ? 'No team tasks — give one to a teammate' : 'No teammates found in your department'
+  B.innerHTML = `<div class="tk-tabs" role="tablist">${tabs.map(([k, l, n]) => `<button role="tab" aria-selected="${TK_TAB === k}" class="${TK_TAB === k ? 'on' : ''}" data-tk="${k}">${l}<em>${n}</em></button>`).join('')}</div>
+    ${add ? `<button class="wk-new" id="addtask" style="border:0;border-radius:16px;padding:14px;font-weight:800;font-size:15px;color:#fff">${add}</button>` : ''}
+    <section class="card"><div class="row"><h2 class="h3">${tabs.find((x) => x[0] === TK_TAB)[1]}</h2><span class="sp"></span><span class="sub">${list.length} open${TK_TAB === 'boss' ? ' · ' + h.tasks_done + ' done today' : ''}</span></div>
+    <div class="list">${list.map((t) => taskRow(t) + tag(t) + extra(t)).join('') || `<div class="empty">${empty}</div>`}</div></section>`
+  if (!document.getElementById('tkcss')) { const st = document.createElement('style'); st.id = 'tkcss'; st.textContent = '.tk-tabs{display:flex;gap:6px;background:#EEF1F6;border-radius:14px;padding:4px}.tk-tabs button{flex:1;border:0;background:none;border-radius:11px;padding:9px 4px;font:700 13px system-ui;color:#475569;display:flex;flex-direction:column;align-items:center;gap:2px}.tk-tabs button.on{background:#fff;color:#0F172A;box-shadow:0 1px 4px rgba(0,0,0,.08)}.tk-tabs em{font-style:normal;font-size:11px;color:#64748B}'; document.head.appendChild(st) }
+  B.querySelectorAll('[data-tk]').forEach((b) => (b.onclick = () => { TK_TAB = b.dataset.tk; renderTasks(v, go) }))
   bindTaskChecks(B, () => renderTasks(v, go))
-  B.querySelector('#addtask').onclick = () => sheet(`<div class="row"><h2 class="h3">New task</h2><span class="sp"></span><button class="link" data-close>Close</button></div>
-    <form id="tf" class="stack" style="margin-top:10px"><label class="f">What do you need to do?<input class="inp" id="tt" required maxlength="120" placeholder="e.g. Reels for Bahiram, visit 5 shops"></label>
+  const ab = B.querySelector('#addtask'); if (!ab) return
+  const forTeam = TK_TAB === 'team'
+  if (forTeam && !(h.team || []).length) { ab.onclick = () => toast('No teammates in your department yet', 'bad'); return }
+  ab.onclick = () => sheet(`<div class="row"><h2 class="h3">${forTeam ? 'Give a task to a teammate' : 'New task'}</h2><span class="sp"></span><button class="link" data-close>Close</button></div>
+    <form id="tf" class="stack" style="margin-top:10px">${forTeam ? `<label class="f">Teammate<select class="inp" id="ta" required>${h.team.map((m) => `<option value="${m.id}">${esc(m.name)}${m.designation ? ' · ' + esc(m.designation) : ''}</option>`).join('')}</select></label>` : ''}
+    <label class="f">What needs to be done?<input class="inp" id="tt" required maxlength="120" placeholder="${forTeam ? 'e.g. Call 10 new leads' : 'e.g. Reels for Bahiram, visit 5 shops'}"></label>
     <label class="f">Due date<input class="inp" type="date" id="td" value="${istDate()}" min="${istDate()}"></label>
     ${h.projects.length ? `<label class="f">Project<select class="inp" id="tp"><option value="">—</option>${h.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>` : ''}
     <label class="f">Priority<select class="inp" id="tpr"><option>Normal</option><option>High</option><option>Low</option></select></label>
-    <label class="f">Notes (optional)<input class="inp" id="tn" maxlength="300"></label><button class="btn pri">Add task</button></form>`, (el, close) => {
+    <label class="f">Notes (optional)<input class="inp" id="tn" maxlength="300"></label><button class="btn pri">${forTeam ? 'Give task' : 'Add task'}</button></form>`, (el, close) => {
     el.querySelector('#tf').onsubmit = async (e) => { e.preventDefault()
-      try { await post('/api/my/task', { title: el.querySelector('#tt').value, due: el.querySelector('#td').value, project_id: el.querySelector('#tp')?.value || '', priority: el.querySelector('#tpr').value, notes: el.querySelector('#tn').value }); close(); toast('Task added ✓'); renderTasks(v, go) } catch (er) { toast(er.message, 'bad') } }
+      try { await post('/api/my/task', { title: el.querySelector('#tt').value, due: el.querySelector('#td').value, project_id: el.querySelector('#tp')?.value || '', priority: el.querySelector('#tpr').value, notes: el.querySelector('#tn').value, ...(forTeam ? { assignee_emp: Number(el.querySelector('#ta').value) } : {}) }); close(); toast(forTeam ? 'Task given ✓' : 'Task added ✓'); renderTasks(v, go) } catch (er) { toast(er.message, 'bad') } }
   })
 }
 

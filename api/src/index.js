@@ -806,7 +806,8 @@ on('GET', '/api/my/home', async (env, req, url) => {
   let who = me
   const as = url.searchParams.get('as')
   if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
-  const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id))
+  const mates = (await env.DB.prepare("SELECT id, legacy_id, name, designation FROM employees WHERE active = 1 AND id != ? AND role NOT IN ('developer','boss') AND ((? <> '' AND COALESCE(department,'') = ?) OR (? = '' AND team = ?))").bind(who.id, who.department || '', who.department || '', who.department || '', who.team || 'Office').all()).results
+  const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id), mates)
   try { const td = istDate(); const q = (f) => env.DB.prepare('SELECT COALESCE(SUM(amount),0) s, COALESCE(SUM(COALESCE(qty,1)),0) n FROM daily_bookings WHERE emp_id = ? AND date BETWEEN ? AND ?').bind(who.id, f, td).first()
     const [a, m] = await Promise.all([q(td), q(td.slice(0, 8) + '01')]); out.orders = { today_n: a.n, today: a.s, month_n: m.n, month: m.s } } catch { out.orders = { today_n: 0, today: 0, month_n: 0, month: 0 } }
   // CSE / logistics staff punch "bookings"; Govaa Bazaar and others punch "orders"
@@ -878,8 +879,17 @@ on('POST', '/api/my/task', async (env, req) => {
   const title = String(b.title || '').trim().slice(0, 120); if (!title) throw bad('Write the task')
   const D = await loadAll(env)
   const pid = b.project_id && projectIdsOf(D, me).has(String(b.project_id)) ? (Number(b.project_id) || String(b.project_id)) : null
+  // Team task: give it to a teammate (same department, or same team when no department)
+  let to = me
+  if (b.assignee_emp && Number(b.assignee_emp) !== me.id) {
+    to = await env.DB.prepare('SELECT * FROM employees WHERE id = ? AND active = 1').bind(Number(b.assignee_emp)).first()
+    if (!to) throw new HttpError(404, 'Teammate not found')
+    const same = me.department ? (to.department || '') === me.department : to.team === me.team
+    if (!same && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'You can give tasks only to your own team')
+  }
+  const team = to.id !== me.id
   const id = await legacyPut(env, 'tasks', { title, status: 'To do', type: 'One-time', priority: ['High', 'Low'].includes(b.priority) ? b.priority : 'Normal', due: /^\d{4}-\d{2}-\d{2}$/.test(b.due || '') ? b.due : istDate(),
-    notes: String(b.notes || '').slice(0, 500), projectId: pid, assigneeId: me.legacy_id ?? null, assignee_emp: me.id, createdAt: nowIso(), createdBy_name: me.name, self_added: true })
+    notes: String(b.notes || '').slice(0, 500), projectId: pid, assigneeId: to.legacy_id ?? null, assignee_emp: to.id, assignee_name: to.name, createdAt: nowIso(), createdBy_name: me.name, created_by_emp: me.id, ...(team ? { team_task: true } : { self_added: true }) })
   return json({ ok: true, id })
 })
 // Who is in a project (decides whose chat shows the project group, and "My projects")
@@ -913,7 +923,7 @@ on('POST', '/api/admin/project-members', async (env, req) => {
 on('POST', '/api/my/task-done', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
   const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task not found')
-  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'This is not your task')
+  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && String(t.created_by_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'This is not your task')
   await legacySet(env, 'tasks', b.id, { ...t, status: b.done === false ? 'Open' : 'Done', closedAt: b.done === false ? null : nowLocal() })
   return json({ ok: true })
 })
