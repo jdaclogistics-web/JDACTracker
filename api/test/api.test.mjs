@@ -186,4 +186,18 @@ console.log('24h auto-logout')
   const fin = (await call('GET', '/api/it/tasks', null, HR)).data.tasks.find((t) => t.id === a.data.id)
   ok(fin.status === 'Done' && fin.notes.length === 4 && fin.owner_name === 'Nayan', 'JDAC approves; full update trail kept')
 }
+{ // Shared Tasks: XENMAG tasks visible to Zenmeg, others not
+  const NT2 = (await call('POST', '/api/partner/login', { username: 'ZEN-NAYAN', password: 'Zen@2026' })).data.token
+  await call('POST', '/api/team/projects', { projects: [{ id: 'xenmag', n: 'XENMAG', m: [] }, { id: 'smm', n: 'SMM', m: [] }] }, HR)
+  const s1 = await call('POST', '/api/team/tasks', { tasks: [{ id: 'kA1', t: 'WhatsApp API', proj: 'xenmag', o: 'nayan', due: istDate(), st: 'To do' }, { id: 'kA2', t: 'Reel', proj: 'smm', o: 'swapnil', due: istDate(), st: 'To do' }] }, HR)
+  ok(s1.status === 200 && s1.data.saved === 2, 'admin saves tasks to the shared store')
+  const g = await call('GET', '/api/team/tasks', null, NT2)
+  ok(g.data.tasks.length === 1 && g.data.tasks[0].id === 'kA1' && g.data.projects.length === 1, 'Zenmeg sees only XENMAG tasks and team')
+  ok((await call('POST', '/api/team/tasks', { tasks: [{ id: 'kA2', t: 'x', proj: 'xenmag' }] }, NT2)).status === 403, 'Zenmeg cannot take over another team task')
+  ok((await call('POST', '/api/team/tasks', { tasks: [{ id: 'kA1', t: 'WhatsApp API', proj: 'xenmag', o: 'nayan', due: istDate(), st: 'Working' }] }, NT2)).status === 200, 'Zenmeg updates its own task')
+  ok((await call('POST', '/api/team/tasks', { tasks: [{ id: 'kA1', deleted: true }] }, NT2)).status === 403, 'Zenmeg cannot delete')
+  ok((await call('POST', '/api/team/projects', { projects: [{ id: 'a', n: 'b' }] }, NT2)).status === 403, 'partner cannot change teams')
+  const all = await call('GET', '/api/team/tasks', null, HR)
+  ok(all.data.tasks.length === 2 && all.data.tasks.find((t) => t.id === 'kA1').st === 'Working', 'admin sees all tasks with Zenmeg update')
+}
 console.log(`\nALL ${pass} CHECKS PASSED`)
