@@ -90,6 +90,14 @@ ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234'
   const L = await call('GET', '/api/admin/registrations', null, HR); const g = L.data.registrations.find(x => x.phone === '9333333333'); ok(g && g.status === 'pending', 'HR sees pending request')
   const a = await call('POST', '/api/admin/registrations/' + g.id, { action: 'approve' }, HR); ok(a.status === 200 && a.data.username === 'JD1004', 'approve creates login ' + JSON.stringify(a))
   ok((await call('POST', '/api/login', { username: 'JD1004', password: 'neha1234' })).status === 200, 'approved employee logs in with own password') }
+{ const NT = (await call('POST', '/api/login', { username: 'JD1004', password: 'neha1234' })).data.token, me = (await call('GET', '/api/me', null, NT)).data.me
+  ok((await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'both' }, NT)).status === 403, 'employee cannot send nudges')
+  ok((await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'both' }, HR)).status === 403, 'HR / admin cannot send nudges (developer only)')
+  await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'both' }, DEV); let g = (await call('GET', '/api/me/nudge', null, NT)).data
+  ok(g.tour && g.ext, 'developer sends demo + extension to a user')
+  await call('POST', '/api/me/nudge', { seen: 'tour' }, NT); g = (await call('GET', '/api/me/nudge', null, NT)).data; ok(!g.tour && g.ext, 'seen demo clears only the demo')
+  await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'tour' }, DEV); const a = (await call('GET', '/api/admin/nudges', null, HR)).data.nudges[me.id]
+  ok((await call('GET', '/api/me/nudge', null, NT)).data.tour && a.n === 2, 'developer can send again (count 2)') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
 ok(sys.status === 200 && sys.data.employees === 7, 'developer system panel works')

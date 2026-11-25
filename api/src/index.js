@@ -538,6 +538,45 @@ async function createEmployee(env, me, b) {
   await audit(env, me.id, 'employee_create', 'employees', username, null, { username, name: b.name, role, team: b.team })
   return { ok: true, username, emp_code: empCode }
 }
+// ── Nudges: the Developer login re-sends the demo tour and the Chrome extension to any user (as many times as needed) ──
+const nudgeKey = (id) => 'nudge:' + id
+on('POST', '/api/admin/nudge', async (env, req) => {
+  const me = await authUser(env, req); needDev(me)
+  const b = await body(req)
+  const ids = (Array.isArray(b.emp_ids) ? b.emp_ids : []).map(Number).filter(Boolean).slice(0, 500)
+  const what = ['tour', 'ext', 'both'].includes(b.what) ? b.what : 'both'
+  if (!ids.length) throw bad('Pick at least one person')
+  const at = nowIso()
+  for (const id of ids) {
+    const old = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(nudgeKey(id)).first()
+    const v = old ? JSON.parse(old.value) : { n: 0 }
+    if (what !== 'ext') { v.tour = at; v.tour_seen = null }
+    if (what !== 'tour') { v.ext = at; v.ext_seen = null }
+    v.n = (v.n || 0) + 1; v.by = me.name; v.at = at
+    await env.DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(nudgeKey(id), JSON.stringify(v)).run()
+  }
+  return json({ ok: true, sent: ids.length })
+})
+on('GET', '/api/admin/nudges', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const r = (await env.DB.prepare("SELECT key, value FROM app_settings WHERE key LIKE 'nudge:%'").all()).results
+  return json({ nudges: Object.fromEntries(r.map((x) => [x.key.slice(6), JSON.parse(x.value)])) })
+})
+on('GET', '/api/me/nudge', async (env, req) => {
+  const me = await authUser(env, req)
+  const r = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(nudgeKey(me.id)).first()
+  const v = r ? JSON.parse(r.value) : {}
+  return json({ tour: v.tour && !v.tour_seen ? v.tour : null, ext: v.ext && !v.ext_seen ? v.ext : null, by: v.by || null })
+})
+on('POST', '/api/me/nudge', async (env, req) => {
+  const me = await authUser(env, req); const b = await body(req)
+  const r = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(nudgeKey(me.id)).first()
+  const v = r ? JSON.parse(r.value) : {}
+  if (b.seen === 'tour' || b.seen === 'both') v.tour_seen = nowIso()
+  if (b.seen === 'ext' || b.seen === 'both') v.ext_seen = nowIso()
+  await env.DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(nudgeKey(me.id), JSON.stringify(v)).run()
+  return json({ ok: true })
+})
 // ── Self registration (public link) → HR / Boss approves → login is created ──
 const REG_SQL = "CREATE TABLE IF NOT EXISTS registrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT, designation TEXT, department TEXT, work_location TEXT, joining_date TEXT, pass_hash TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, decided_at TEXT, decided_by INTEGER, username TEXT, note TEXT)"
 on('POST', '/api/register', async (env, req) => {
