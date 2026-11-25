@@ -31,11 +31,11 @@ async function lvLoad(){LV.busy=true;LV.err='';render();try{
  }else{const rs=await Promise.all(mons.map(m=>lapi('GET','/api/me/month?month='+m)));const e=lvEmp(me);D.emp=[e];D.attx={};rs.forEach((r,i)=>lvFill([e],mons[i],r.sessions.map(s=>({...s,emp_id:me.id})),r.marks.map(x=>({...x,emp_id:me.id})),[]));
   const t=rs[0].sessions.find(s=>s.date===TODAY);D.att=[{k:e.k,in:t?istHM(t.start_at):'',out:t&&t.end_at?istHM(t.end_at):'',st:t?'In':'Not in',gps:''}]}
  S.me=lvKey(me);if(!allowed(S.v))S.v=tabsFor()[0][0];LV.ok=true;LV.at=new Date();save()}catch(x){LV.err=x.message||'Could not reach the server'}LV.busy=false;render()}
-function lvLoginHTML(){return `<div class="lvwrap"><div class="lvcard"><img src="${typeof JLOGO!=='undefined'?JLOGO:''}" alt="JDAC" class="lvlogo"><h1>JDAC Parent</h1><p class="mut sm">Log in with your Employee ID and password (your 10-digit mobile number).</p>
- <label for="lvu">Employee ID</label><input id="lvu" autocomplete="username" placeholder="JD1001" value="${h((LV.me||{}).username||'')}"><label for="lvp">Password</label><input id="lvp" type="password" autocomplete="current-password" placeholder="Mobile number" data-enter="lvIn">
+function lvLoginHTML(){return `<div class="lvwrap"><div class="lvcard"><img src="${typeof JLOGO!=='undefined'?JLOGO:''}" alt="JDAC" class="lvlogo"><h1>JDAC Parent</h1><p class="mut sm">Use the same login as the tracker app: Employee ID (or username / mobile number) and your password.</p>
+ <label for="lvu">Employee ID / username / mobile</label><input id="lvu" autocomplete="username" placeholder="JD1001" value="${h((LV.me||{}).username||'')}"><label for="lvp">Password</label><input id="lvp" type="password" autocomplete="current-password" placeholder="Password" data-enter="lvIn">
  ${LV.err?`<div class="lverr">${h(LV.err)}</div>`:''}<button class="btn w" style="margin-top:14px" data-a="lvIn" ${LV.busy?'disabled':''}>${LV.busy?'Logging in…':'Log in'}</button>
  <p class="xs mut" style="margin-top:14px">Old panel: <a href="./old/">open the previous design</a></p></div></div>`}
-A.lvIn=async()=>{const u=val('lvu'),p=document.getElementById('lvp').value;if(!u||!p){LV.err='Enter Employee ID and password';return render()}LV.busy=true;LV.err='';render();
+A.lvIn=async()=>{const u=val('lvu'),p=document.getElementById('lvp').value;if(!u||!p){LV.err='Enter your login ID and password';return render()}LV.busy=true;LV.err='';render();
  try{const r=await lapi('POST','/api/login',{username:u.trim(),password:p,device_id:'web'});LV.tok=r.token;LV.me=r.me;localStorage.setItem('jdac_token',r.token);localStorage.setItem('jdac_me',JSON.stringify(r.me));LV.busy=false;await lvLoad()}catch(x){LV.busy=false;LV.err=x.message;render()}};
 A.lvOut=()=>{closeM&&closeM();lvOut()};A.lvSync=()=>lvLoad();
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='lvp'){e.preventDefault();A.lvIn()}});
