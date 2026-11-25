@@ -582,6 +582,8 @@ tr.mistot td{background:#EEF2FB;font-weight:700}
 .lverr{margin-top:10px;background:#FDECEA;color:#C0392B;border-radius:8px;padding:8px 10px;font-size:13px}
 .proto.lvon{background:#E7F6EE!important;color:#1E7A4C!important}
 .lvme{display:flex;align-items:center;gap:8px;background:#EEF2FB;border-radius:10px;padding:10px 12px;margin-bottom:12px}.lvme div{flex:1}.lvme b{display:block}.lvme span{font-size:12px;color:#666}
+
+.ac.NR{background:none!important;color:#B8BEC9!important;font-weight:400}
 </style>
 </head>
 <body>
@@ -3059,19 +3061,21 @@ function lvEmp(e){const k=lvKey(e),old=(D.emp||[]).find(x=>x.rid===e.id)||{};con
 function lvFill(E,mon,ses,marks,leaves){const [y,m]=mon.split('-').map(Number),dim=new Date(y,m,0).getDate();
  const S2=new Map(ses.map(s=>[s.emp_id+'|'+s.date,s])),M2=new Map(marks.map(x=>[x.emp_id+'|'+x.date,x.status])),L2=new Map(leaves.map(x=>[x.emp_id+'|'+x.date,x]));
  E.forEach(e=>{const ax=D.attx[e.id]=D.attx[e.id]||{};for(let d=1;d<=dim;d++){const ds=mon+'-'+String(d).padStart(2,'0');if(ds>=TODAY)break;if(ds<e.doj||(e.dox&&ds>e.dox)){delete ax[ds];continue}
-  const k=e.rid+'|'+ds,mk=M2.get(k),s=S2.get(k);let c=mk?MK[mk]:L2.get(k)?'L':s?'P':(new Date(ds+'T12:00:00').getDay()===woDay(e)?'WO':'A');ax[ds]=c;
+  const k=e.rid+'|'+ds,mk=M2.get(k),s=S2.get(k);let c=mk?MK[mk]:L2.get(k)?'L':s?'P':(new Date(ds+'T12:00:00').getDay()===woDay(e)?'WO':'NR');ax[ds]=c;
   if(s){D.attIn=D.attIn||{};D.attIn[e.id+'|'+ds]=istHM(s.start_at)}}})}
 async function lvLoad(){LV.busy=true;LV.err='';render();try{
  const me=LV.me,adm=['boss','hr','developer'].includes(me.role),mons=[0,1,2].map(i=>{const d=new Date(TODAY+'T12:00:00');d.setDate(1);d.setMonth(d.getMonth()-i);return d.toISOString().slice(0,7)});
- if(adm){const [em,td,...rp]=await Promise.all([lapi('GET','/api/admin/employees'),lapi('GET','/api/admin/today'),...mons.map(m=>lapi('GET','/api/admin/report?month='+m))]);
-  const E=em.employees.filter(e=>!['developer'].includes(e.role)||e.id===me.id).map(lvEmp);D.emp=E;D.attx={};
+ if(adm){const [em,td,lr,...rp]=await Promise.all([lapi('GET','/api/admin/employees'),lapi('GET','/api/admin/today'),lapi('GET','/api/admin/leaves'),...mons.map(m=>lapi('GET','/api/admin/report?month='+m))]);
+  em.employees.forEach(lvKey);const E=em.employees.filter(e=>!['developer','boss'].includes(e.role)).map(lvEmp);D.emp=E;D.attx={};
   rp.forEach(r=>lvFill(E,r.month,r.sessions,r.marks,r.leaves));
   D.att=td.rows.map(r=>{const e=E.find(x=>x.rid===r.emp.id);if(!e)return null;const s=r.session;const st=r.status==='leave'?'Leave':r.status==='off'?'Week off':r.status==='marked'?({Present:'In','Half Day':'In',Absent:'Not in',Leave:'Leave','Week Off':'Week off'}[r.mark.status]||'Not in'):s?(r.late?'Late':'In'):'Not in';
    return {k:e.k,in:s?istHM(s.start_at):'',out:s&&s.end_at?istHM(s.end_at):'',st,gps:r.last?(r.status==='no_signal'?'No signal '+r.last_min+' min':'Live · '+(r.last_min!=null?r.last_min+' min ago':'')):(s?(e.city||''):''),rid:r.emp.id,sid:s?s.id:null}}).filter(Boolean);
-  if(td.rows.length){const tk=D.att.filter(a=>a.st==='In'||a.st==='Late').map(a=>a.k)}
+  const kOf=id=>{const x=em.employees.find(z=>z.id===id);return x?lvKey(x):'u'+id};
+  D.leave=lr.leaves.map(l=>({id:'R'+l.id,rid:l.id,k:kOf(l.emp_id),from:l.date,to:l.date,why:l.reason||'—',type:l.kind||'Full day',st:l.status,at:String(l.created_at||l.date).slice(0,10)}));
+  D.autoOut=[];D.attReq=(D.attReq||[]).filter(r=>r.live);
  }else{const rs=await Promise.all(mons.map(m=>lapi('GET','/api/me/month?month='+m)));const e=lvEmp(me);D.emp=[e];D.attx={};rs.forEach((r,i)=>lvFill([e],mons[i],r.sessions.map(s=>({...s,emp_id:me.id})),r.marks.map(x=>({...x,emp_id:me.id})),[]));
   const t=rs[0].sessions.find(s=>s.date===TODAY);D.att=[{k:e.k,in:t?istHM(t.start_at):'',out:t&&t.end_at?istHM(t.end_at):'',st:t?'In':'Not in',gps:''}]}
- S.me=lvKey(me);if(!allowed(S.v))S.v=tabsFor()[0][0];LV.ok=true;LV.at=new Date();save()}catch(x){LV.err=x.message||'Could not reach the server'}LV.busy=false;render()}
+ S.me=lvKey(me);if(!adm){D.leave=[];try{const ml=await lapi('GET','/api/leaves/mine');D.leave=ml.leaves.map(l=>({id:'R'+l.id,rid:l.id,k:S.me,from:l.date,to:l.date,why:l.reason||'—',type:l.kind||'Full day',st:l.status,at:String(l.created_at||l.date).slice(0,10)}))}catch(x){}D.autoOut=[]}if(!allowed(S.v))S.v=tabsFor()[0][0];LV.ok=true;LV.at=new Date();save()}catch(x){LV.err=x.message||'Could not reach the server'}LV.busy=false;render()}
 function lvLoginHTML(){return `<div class="lvwrap"><div class="lvcard"><img src="${typeof JLOGO!=='undefined'?JLOGO:''}" alt="JDAC" class="lvlogo"><h1>JDAC Parent</h1><p class="mut sm">Use the same login as the tracker app: Employee ID (or username / mobile number) and your password.</p>
  <label for="lvu">Employee ID / username / mobile</label><input id="lvu" autocomplete="username" placeholder="JD1001" value="${h(LV.u||(LV.me||{}).username||'')}"><label for="lvp">Password</label><input id="lvp" type="password" autocomplete="current-password" placeholder="Password" data-enter="lvIn">
  ${LV.err?`<div class="lverr">${h(LV.err)}</div>`:''}<button class="btn w" style="margin-top:14px" data-a="lvIn" ${LV.busy?'disabled':''}>${LV.busy?'Logging in…':'Log in'}</button>
@@ -3089,6 +3093,16 @@ if(LIVE){const _rLV=render;render=function(){if(!LV.tok||!LV.me){document.getEle
  /* person switch: real users see their own login, admins can still preview others */
  const _who=A.whoSheet;A.whoSheet=()=>{const adm=['boss','hr','developer'].includes((LV.me||{}).role);if(!adm)return sheet(`<h2>${h(LV.me.name)}</h2><p class="mut sm">${h(LV.me.designation||'')} · ${h(LV.me.username)}</p><button class="btn sec w" data-a="lvSync">Refresh data</button><button class="btn w" style="margin-top:8px;background:var(--r)" data-a="lvOut">Log out</button>`);
   _who();const s=document.querySelector('.sheet');if(s)s.insertAdjacentHTML('afterbegin',`<div class="lvme"><div><b>Logged in: ${h(LV.me.name)}</b><span>${h(LV.me.role)} · ${h(LV.me.username)} · live data</span></div><button class="btn sm sec" data-a="lvSync">Refresh</button><button class="btn sm" style="background:var(--r)" data-a="lvOut">Log out</button></div>`)};
+
+ /* "NR" = no record in the database for that day (shown as –, not counted as absent) */
+ ACODE.NR=['No record in the tracker',''];
+ const _attSum=attSum;attSum=function(e,f,t){const c=_attSum(e,f,t);c.NR=c.NR||0;if(isNaN(c.days))c.days=c.P+c.L+c.HD*0.5;return c};
+ const _rNR=render;render=function(){_rNR.apply(this,arguments);try{document.querySelectorAll('.ac.NR').forEach(b=>{b.textContent='–'})}catch(x){}};
+ /* leave decisions and new leave requests go to the database */
+ const _lvAp=A.lvAp;A.lvAp=async e=>{const l=D.leave.find(x=>x.id===e.dataset.id);if(l&&l.rid){try{await lapi('POST','/api/admin/leaves/'+l.rid+'/decide',{status:'Approved'})}catch(x){return toast('Not saved: '+x.message)}}_lvAp(e)};
+ const _lvRj=A.lvRj;A.lvRj=async e=>{const l=D.leave.find(x=>x.id===e.dataset.id);if(l&&l.rid){try{await lapi('POST','/api/admin/leaves/'+l.rid+'/decide',{status:'Rejected'})}catch(x){return toast('Not saved: '+x.message)}}_lvRj(e)};
+ const _lvSave=A.lvSave;A.lvSave=async e=>{const n=D.leave.length;_lvSave(e);const l=D.leave.length>n?D.leave[D.leave.length-1]:null;if(!l||l.k!==S.me)return;
+  try{for(let d=l.from;d<=l.to;d=addD(d,1)){const r=await lapi('POST','/api/leaves',{date:d,kind:l.type==='Half day'?'Half day':'Full day',reason:(l.why||'Leave').length<3?'Leave request':l.why})}l.rid=1;toast('Leave request sent to Nameera')}catch(x){toast('Not saved: '+x.message)}};
  if(LV.tok&&LV.me)lvLoad();
  setInterval(()=>{if(LV.ok&&document.visibilityState==='visible'&&!document.querySelector('.sheet'))lapi('GET','/api/admin/today').then(()=>{}).catch(()=>{})},600000);
 }
