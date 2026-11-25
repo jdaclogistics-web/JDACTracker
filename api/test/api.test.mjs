@@ -84,23 +84,9 @@ ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234'
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'dev-phone-B' })).status === 403, 'developer blocked on another phone')
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'web' })).status === 200, 'developer web panel still works')
 { const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'JD1003', 'Employee IDs keep counting up') }
-{ const r = await call('POST', '/api/register', { name: 'Neha Patil', phone: '9333333333', password: 'neha1234', designation: 'CSE' }); ok(r.status === 200, 'public register request saved')
-  ok((await call('POST', '/api/register', { name: 'Neha Patil', phone: '9333333333' })).status === 409, 'duplicate pending request blocked')
-  ok((await call('GET', '/api/admin/registrations', null)).status === 401, 'registrations list needs login')
-  const L = await call('GET', '/api/admin/registrations', null, HR); const g = L.data.registrations.find(x => x.phone === '9333333333'); ok(g && g.status === 'pending', 'HR sees pending request')
-  const a = await call('POST', '/api/admin/registrations/' + g.id, { action: 'approve' }, HR); ok(a.status === 200 && a.data.username === 'JD1004', 'approve creates login ' + JSON.stringify(a))
-  ok((await call('POST', '/api/login', { username: 'JD1004', password: 'neha1234' })).status === 200, 'approved employee logs in with own password') }
-{ const NT = (await call('POST', '/api/login', { username: 'JD1004', password: 'neha1234' })).data.token, me = (await call('GET', '/api/me', null, NT)).data.me
-  ok((await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'both' }, NT)).status === 403, 'employee cannot send nudges')
-  ok((await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'both' }, HR)).status === 403, 'HR / admin cannot send nudges (developer only)')
-  await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'both' }, DEV); let g = (await call('GET', '/api/me/nudge', null, NT)).data
-  ok(g.tour && g.ext, 'developer sends demo + extension to a user')
-  await call('POST', '/api/me/nudge', { seen: 'tour' }, NT); g = (await call('GET', '/api/me/nudge', null, NT)).data; ok(!g.tour && g.ext, 'seen demo clears only the demo')
-  await call('POST', '/api/admin/nudge', { emp_ids: [me.id], what: 'tour' }, DEV); const a = (await call('GET', '/api/admin/nudges', null, HR)).data.nudges[me.id]
-  ok((await call('GET', '/api/me/nudge', null, NT)).data.tour && a.n === 2, 'developer can send again (count 2)') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
-ok(sys.status === 200 && sys.data.employees === 7, 'developer system panel works')
+ok(sys.status === 200 && sys.data.employees === 6, 'developer system panel works')
 
 console.log('End day + correction')
 ok((await call('POST', '/api/day/end', { lat: 18.56, lng: 73.86, client_id: 'end0' }, T)).status === 400, 'day cannot be closed without a selfie')
@@ -158,13 +144,6 @@ console.log('24h auto-logout')
   const t = await call('POST', '/api/my/task', { title: 'Visit 5 shops' }, T)
   const h = await call('GET', '/api/my/home', null, T)
   ok(t.status === 200 && h.data.up_next.some((x) => x.title === 'Visit 5 shops'), 'employee adds their own task')
-  ok(h.data.up_next.find((x) => x.title === 'Visit 5 shops').src === 'self' && h.data.team.some((x) => x.name === 'Neha Patil'), 'own task is marked self, teammates listed')
-  { const neha = h.data.team.find((x) => x.name === 'Neha Patil'); const g = await call('POST', '/api/my/task', { title: 'Call 10 leads', assignee_emp: neha.id }, T)
-    const NT = (await call('POST', '/api/login', { username: 'JD1004', password: 'neha1234' })).data.token, nh = await call('GET', '/api/my/home', null, NT)
-    ok(g.status === 200 && nh.data.up_next.some((x) => x.title === 'Call 10 leads' && x.src === 'team' && x.by === 'Imran'), 'employee gives a team task to a teammate')
-    ok((await call('GET', '/api/my/home', null, T)).data.team_tasks.some((x) => x.title === 'Call 10 leads' && x.mine_given && x.assignee === 'Neha Patil'), 'giver sees it under Team')
-    const ash = (await call('GET', '/api/admin/employees', null, HR)).data.employees.find((e) => e.username === 'JD1001')
-    ok((await call('POST', '/api/my/task', { title: 'x', assignee_emp: ash.id }, T)).status === 403, 'cannot give tasks outside own team') }
   const pm = await call('POST', '/api/admin/project-members', { name: 'Bahiram', emp_ids: [] }, HR); const pid = pm.data.project_id
   ok((await call('GET', '/api/cc/chat?group=' + pid, null, T)).status === 403, 'non-member cannot open a project chat')
   const meId = (await call('GET', '/api/me', null, T)).data.me.id

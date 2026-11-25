@@ -508,9 +508,7 @@ function roleAllowed(me, role) {
 }
 on('POST', '/api/admin/employees', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
-  return json(await createEmployee(env, me, await body(req)))
-})
-async function createEmployee(env, me, b) {
+  const b = await body(req)
   const phone = b.phone ? phone10(b.phone) : ''
   if (phone && phone.length !== 10) throw bad('Mobile must be 10 digits')
   if (!b.name) throw bad('Enter the name')
@@ -536,84 +534,7 @@ async function createEmployee(env, me, b) {
       .bind(username, String(b.name).trim(), phone || null, b.password ? await hashPassword(String(b.password)) : 'phone', role, b.team === 'Warehouse' ? 'Warehouse' : 'Office', b.designation || null, b.department || null, b.work_location || null, b.shift_start || '10:00', b.shift_end || '19:00', b.joining_date || null, empCode, sal, b.offer_letter || null, b.appointment_letter || null, b.documents || null).run()
   } catch (e) { if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'This username or mobile already exists'); throw e }
   await audit(env, me.id, 'employee_create', 'employees', username, null, { username, name: b.name, role, team: b.team })
-  return { ok: true, username, emp_code: empCode }
-}
-// ── Nudges: the Developer login re-sends the demo tour and the Chrome extension to any user (as many times as needed) ──
-const nudgeKey = (id) => 'nudge:' + id
-on('POST', '/api/admin/nudge', async (env, req) => {
-  const me = await authUser(env, req); needDev(me)
-  const b = await body(req)
-  const ids = (Array.isArray(b.emp_ids) ? b.emp_ids : []).map(Number).filter(Boolean).slice(0, 500)
-  const what = ['tour', 'ext', 'both'].includes(b.what) ? b.what : 'both'
-  if (!ids.length) throw bad('Pick at least one person')
-  const at = nowIso()
-  for (const id of ids) {
-    const old = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(nudgeKey(id)).first()
-    const v = old ? JSON.parse(old.value) : { n: 0 }
-    if (what !== 'ext') { v.tour = at; v.tour_seen = null }
-    if (what !== 'tour') { v.ext = at; v.ext_seen = null }
-    v.n = (v.n || 0) + 1; v.by = me.name; v.at = at
-    await env.DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(nudgeKey(id), JSON.stringify(v)).run()
-  }
-  return json({ ok: true, sent: ids.length })
-})
-on('GET', '/api/admin/nudges', async (env, req) => {
-  const me = await authUser(env, req); needAdmin(me)
-  const r = (await env.DB.prepare("SELECT key, value FROM app_settings WHERE key LIKE 'nudge:%'").all()).results
-  return json({ nudges: Object.fromEntries(r.map((x) => [x.key.slice(6), JSON.parse(x.value)])) })
-})
-on('GET', '/api/me/nudge', async (env, req) => {
-  const me = await authUser(env, req)
-  const r = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(nudgeKey(me.id)).first()
-  const v = r ? JSON.parse(r.value) : {}
-  return json({ tour: v.tour && !v.tour_seen ? v.tour : null, ext: v.ext && !v.ext_seen ? v.ext : null, by: v.by || null })
-})
-on('POST', '/api/me/nudge', async (env, req) => {
-  const me = await authUser(env, req); const b = await body(req)
-  const r = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(nudgeKey(me.id)).first()
-  const v = r ? JSON.parse(r.value) : {}
-  if (b.seen === 'tour' || b.seen === 'both') v.tour_seen = nowIso()
-  if (b.seen === 'ext' || b.seen === 'both') v.ext_seen = nowIso()
-  await env.DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(nudgeKey(me.id), JSON.stringify(v)).run()
-  return json({ ok: true })
-})
-// ── Self registration (public link) → HR / Boss approves → login is created ──
-const REG_SQL = "CREATE TABLE IF NOT EXISTS registrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT, designation TEXT, department TEXT, work_location TEXT, joining_date TEXT, pass_hash TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, decided_at TEXT, decided_by INTEGER, username TEXT, note TEXT)"
-on('POST', '/api/register', async (env, req) => {
-  const b = await body(req)
-  const name = String(b.name || '').trim().slice(0, 80), phone = phone10(b.phone || '')
-  if (name.length < 2) throw bad('Enter your full name')
-  if (phone.length !== 10) throw bad('Mobile must be 10 digits')
-  if (b.password && String(b.password).length < 6) throw bad('Password must be at least 6 characters')
-  await env.DB.prepare(REG_SQL).run()
-  if (await env.DB.prepare('SELECT 1 AS x FROM employees WHERE phone = ?').bind(phone).first()) throw new HttpError(409, 'This mobile already has a login. Use Log in, or ask HR to reset your password.')
-  if (await env.DB.prepare("SELECT 1 AS x FROM registrations WHERE phone = ? AND status = 'pending'").bind(phone).first()) throw new HttpError(409, 'Your request is already waiting for HR approval')
-  const t = (x, n = 80) => (x ? String(x).trim().slice(0, n) : null)
-  await env.DB.prepare('INSERT INTO registrations (name, phone, email, designation, department, work_location, joining_date, pass_hash, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-    .bind(name, phone, t(b.email, 120), t(b.designation), t(b.department), t(b.work_location), t(b.joining_date, 10), b.password ? await hashPassword(String(b.password)) : null, nowIso()).run()
-  return json({ ok: true })
-})
-on('GET', '/api/admin/registrations', async (env, req) => {
-  const me = await authUser(env, req); needAdmin(me)
-  await env.DB.prepare(REG_SQL).run()
-  const r = (await env.DB.prepare("SELECT id, name, phone, email, designation, department, work_location, joining_date, status, created_at, decided_at, username, note FROM registrations ORDER BY status = 'pending' DESC, id DESC LIMIT 200").all()).results
-  return json({ registrations: r })
-})
-on('POST', '/api/admin/registrations/:id', async (env, req, url, p) => {
-  const me = await authUser(env, req); needAdmin(me)
-  await env.DB.prepare(REG_SQL).run()
-  const b = await body(req)
-  const g = await env.DB.prepare('SELECT * FROM registrations WHERE id = ?').bind(Number(p.id)).first()
-  if (!g) throw new HttpError(404, 'Request not found')
-  if (g.status !== 'pending') throw bad('Already ' + g.status)
-  if (b.action === 'reject') {
-    await env.DB.prepare("UPDATE registrations SET status = 'rejected', decided_at = ?, decided_by = ?, note = ? WHERE id = ?").bind(nowIso(), me.id, b.note || null, g.id).run()
-    return json({ ok: true })
-  }
-  const r = await createEmployee(env, me, { name: g.name, phone: g.phone, designation: b.designation ?? g.designation, department: b.department ?? g.department, work_location: b.work_location ?? g.work_location, joining_date: b.joining_date ?? g.joining_date, team: b.team, role: b.role === 'hr' ? 'hr' : 'employee', shift_start: b.shift_start, shift_end: b.shift_end, salary_inhand: b.salary_inhand })
-  if (g.pass_hash) await env.DB.prepare('UPDATE employees SET pass_hash = ? WHERE username = ?').bind(g.pass_hash, r.username).run()
-  await env.DB.prepare("UPDATE registrations SET status = 'approved', decided_at = ?, decided_by = ?, username = ? WHERE id = ?").bind(nowIso(), me.id, r.username, g.id).run()
-  return json({ ...r, own_password: !!g.pass_hash })
+  return json({ ok: true, username, emp_code: empCode })
 })
 // Team directory: upload an Excel / CSV sheet → update or add people (matched by Employee ID, then name)
 on('POST', '/api/admin/directory-import', async (env, req) => {
@@ -845,8 +766,7 @@ on('GET', '/api/my/home', async (env, req, url) => {
   let who = me
   const as = url.searchParams.get('as')
   if (as && ADMIN_ROLES.includes(me.role)) who = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(Number(as)).first() || me
-  const mates = (await env.DB.prepare("SELECT id, legacy_id, name, designation FROM employees WHERE active = 1 AND id != ? AND role NOT IN ('developer','boss') AND ((? <> '' AND COALESCE(department,'') = ?) OR (? = '' AND team = ?))").bind(who.id, who.department || '', who.department || '', who.department || '', who.team || 'Office').all()).results
-  const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id), mates)
+  const out = myHome(await loadAll(env), who, istDate(), await myDesks(env, who.id))
   try { const td = istDate(); const q = (f) => env.DB.prepare('SELECT COALESCE(SUM(amount),0) s, COALESCE(SUM(COALESCE(qty,1)),0) n FROM daily_bookings WHERE emp_id = ? AND date BETWEEN ? AND ?').bind(who.id, f, td).first()
     const [a, m] = await Promise.all([q(td), q(td.slice(0, 8) + '01')]); out.orders = { today_n: a.n, today: a.s, month_n: m.n, month: m.s } } catch { out.orders = { today_n: 0, today: 0, month_n: 0, month: 0 } }
   // CSE / logistics staff punch "bookings"; Govaa Bazaar and others punch "orders"
@@ -918,17 +838,8 @@ on('POST', '/api/my/task', async (env, req) => {
   const title = String(b.title || '').trim().slice(0, 120); if (!title) throw bad('Write the task')
   const D = await loadAll(env)
   const pid = b.project_id && projectIdsOf(D, me).has(String(b.project_id)) ? (Number(b.project_id) || String(b.project_id)) : null
-  // Team task: give it to a teammate (same department, or same team when no department)
-  let to = me
-  if (b.assignee_emp && Number(b.assignee_emp) !== me.id) {
-    to = await env.DB.prepare('SELECT * FROM employees WHERE id = ? AND active = 1').bind(Number(b.assignee_emp)).first()
-    if (!to) throw new HttpError(404, 'Teammate not found')
-    const same = me.department ? (to.department || '') === me.department : to.team === me.team
-    if (!same && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'You can give tasks only to your own team')
-  }
-  const team = to.id !== me.id
   const id = await legacyPut(env, 'tasks', { title, status: 'To do', type: 'One-time', priority: ['High', 'Low'].includes(b.priority) ? b.priority : 'Normal', due: /^\d{4}-\d{2}-\d{2}$/.test(b.due || '') ? b.due : istDate(),
-    notes: String(b.notes || '').slice(0, 500), projectId: pid, assigneeId: to.legacy_id ?? null, assignee_emp: to.id, assignee_name: to.name, createdAt: nowIso(), createdBy_name: me.name, created_by_emp: me.id, ...(team ? { team_task: true } : { self_added: true }) })
+    notes: String(b.notes || '').slice(0, 500), projectId: pid, assigneeId: me.legacy_id ?? null, assignee_emp: me.id, createdAt: nowIso(), createdBy_name: me.name, self_added: true })
   return json({ ok: true, id })
 })
 // Who is in a project (decides whose chat shows the project group, and "My projects")
@@ -962,7 +873,7 @@ on('POST', '/api/admin/project-members', async (env, req) => {
 on('POST', '/api/my/task-done', async (env, req) => {
   const me = await authUser(env, req); const b = await body(req)
   const t = await legacyGet(env, 'tasks', b.id); if (!t) throw new HttpError(404, 'Task not found')
-  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && String(t.created_by_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'This is not your task')
+  if (String(t.assigneeId) !== String(me.legacy_id) && String(t.assignee_emp || '') !== String(me.id) && !ADMIN_ROLES.includes(me.role)) throw new HttpError(403, 'This is not your task')
   await legacySet(env, 'tasks', b.id, { ...t, status: b.done === false ? 'Open' : 'Done', closedAt: b.done === false ? null : nowLocal() })
   return json({ ok: true })
 })
