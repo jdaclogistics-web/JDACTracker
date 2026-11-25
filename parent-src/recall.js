@@ -1,12 +1,22 @@
 /* ===================== LEAD CENTRE · RE-CALL DESK — old, follow-up, re-call and expired leads to call again ===================== */
-const RC_Q={fu:['Follow-up due','a','Follow-up date is today or already passed'],rc:['Re-call','b','Callback asked, no answer, busy or not reachable'],ex:['Expired / cold','r','Open lead with no call for 15+ days'],lt:['Lost — try again','r','Lost for price / later / not now, 30+ days ago']};
-const RC_SKIP=/irrel|wrong|junk|spam|duplicate|fake|not interested at all|dnd/i;
+const RC_Q={fu:['Follow-up due','a','Follow-up / quotation sent / awaiting decision, or follow-up date passed'],rc:['Re-call','b','Not connected (NC), callback asked, no answer or busy'],ex:['Expired / cold','r','Open lead with no call for 15+ days'],lt:['Lost — try again','r','Lost (rate, FTL, cancelled, not interested) 30+ days ago — worth one more call']};
+const RC_SKIP=/^IR|irrel|wrong|junk|spam|duplicate|fake|dnd/i;
+const RC_WON=/book|conver|won|closed|complet|invoic|payment|pickup|delivery|placed|selected|paid/i;
+const RC_LOST=/^LS|cancel|not interested|lost|reject/i;
+const RC_FU=/follow|quotation|awaiting|decision|chase|contacted|interested/i;
+const RC_RC=/^NC$|not connect|call ?back|recall|re-call|busy|no answer|not answer|rnr|not reach|switch|ringing/i;
 const rcDays=d=>{if(!d)return 9999;const x=Date.parse(String(d).slice(0,10)+'T12:00:00');return isNaN(x)?9999:Math.round((Date.parse(TODAY+'T12:00:00')-x)/864e5)};
 function rcLeads(){const O=D.lcOver||{},M={};if(CAMP&&CAMP.l)CAMP.l.forEach(l=>M['m'+l.id]=l);
  return allLeads().map(r=>{const m=M[r.id]||{},o=O[r.id]||{},calls=o.calls||[];
   const fu=o.fu||String(m.nextFollowUp||'').slice(0,10)||'',la=(calls.length?calls[calls.length-1].at:'')||String(m.lastActivityAt||'').slice(0,10)||r.date,st=String(r.st||'');
-  let q='';if(r.b==='won')q='';else if(r.b==='lost'){if(!RC_SKIP.test(st+' '+(r.note||''))&&rcDays(la)>=30&&r.ph)q='lt'}
-  else if(fu&&fu<=TODAY)q='fu';else if(/call ?back|recall|re-call|busy|no answer|not answer|rnr|not reach|switch|ringing|later/i.test(st+' '+(calls.length?calls[calls.length-1].res:'')))q='rc';else if(rcDays(la)>=15)q='ex';
+  const lastRes=calls.length?calls[calls.length-1].res:'',stx=st.replace(/[^\w\s-]/g,'').trim();let q='';
+  if(RC_SKIP.test(stx)||/wrong number/i.test(lastRes)||RC_WON.test(stx))q='';
+  else if(RC_LOST.test(stx)){if(rcDays(la)>=30)q='lt'}
+  else if(fu&&fu<=TODAY)q='fu';
+  else if(fu&&fu>TODAY)q='';
+  else if(RC_RC.test(stx)||/no answer|call back/i.test(lastRes))q='rc';
+  else if(RC_FU.test(stx)&&rcDays(la)>=2&&!/^contacted$/i.test(stx))q='fu';
+  else if(rcDays(la)>=15)q='ex';
   return Object.assign({},r,{fu,la,q,calls:calls.length,age:rcDays(la)})}).filter(r=>r.q&&r.ph)}
 const rcPri=r=>(r.q==='fu'?0:r.q==='rc'?1:r.q==='ex'?2:3)*1e5+Math.min(r.age,99999);
 const _vLeadsRC=V.leads;V.leads=()=>{const tabs=`<div class="rctabs"><button class="${S.lcMode!=='rc'?'on':''}" data-a="rcMode" data-t="">All leads</button><button class="${S.lcMode==='rc'?'on':''}" data-a="rcMode" data-t="rc">📞 Re-call desk${(()=>{try{const n=rcLeads().length;return n?`<em>${n}</em>`:''}catch(e){return ''}})()}</button></div>`;
@@ -23,7 +33,7 @@ const _vLeadsRC=V.leads;V.leads=()=>{const tabs=`<div class="rctabs"><button cla
  <div class="lcf"><div class="chips">${[['fu',RC_Q.fu[0]],['rc',RC_Q.rc[0]],['ex',RC_Q.ex[0]],['lt',RC_Q.lt[0]],['all','All']].map(([k,l])=>`<button class="${q===k?'on':''}" data-a="rcQ" data-t="${k}">${l} <em>${k==='all'?inCo.length:cnt(k)}</em></button>`).join('')}</div>
  <div class="row" style="gap:6px;flex-wrap:wrap"><select data-ch="rcCo" aria-label="Company"><option value="">All companies</option>${cos.map(c=>`<option ${co===c?'selected':''}>${h(c)}</option>`).join('')}</select><select data-ch="rcO" aria-label="Owner"><option value="">All owners</option><option value="-" ${own==='-'?'selected':''}>No owner</option>${owners.map(o=>`<option ${own===o?'selected':''}>${h(o)}</option>`).join('')}</select>
  ${sel.length?`<button class="btn sm" data-a="rcAssign">Assign ${sel.length} to…</button><button class="lnk" data-a="rcSelX">Clear</button>`:''}<button class="btn sm sec" data-a="rcXl">${ic('dl')}Export call list</button></div></div>
- <p class="xs mut" style="margin:6px 0 10px">${q==='all'?'Sorted: follow-ups first, then re-calls, expired and lost.':RC_Q[q]?RC_Q[q][2]:''} Wrong numbers, junk and irrelevant leads are left out.</p>
+ <p class="xs mut" style="margin:6px 0 10px">${q==='all'?'Sorted: follow-ups first, then re-calls, expired and lost.':RC_Q[q]?RC_Q[q][2]:''} Irrelevant (IR codes), wrong numbers and junk are left out.</p>
  <div class="xsheet"><table><thead><tr><th style="width:28px"><input type="checkbox" aria-label="Select all" data-a="rcAll" ${sel.length&&sel.length>=Math.min(L.length,300)?'checked':''}></th><th class="stk">Lead</th><th>Why</th><th>Stage</th><th>Last touch</th><th>Follow-up</th><th>Owner</th><th>Company / campaign</th><th>Call</th></tr></thead><tbody>${L.slice(0,300).map(r=>`<tr><td><input type="checkbox" aria-label="Select ${h(r.n)}" data-a="rcSel" data-id="${r.id}" ${sel.includes(r.id)?'checked':''}></td><td class="stk"><button data-a="lcOpen" data-id="${r.id}"><b>${h(r.n||'(no name)')}</b><span>${h(r.ph)}</span></button></td><td>${pill(RC_Q[r.q][0],RC_Q[r.q][1])}</td><td>${h(r.st||'–')}</td><td>${r.age>=9999?'–':r.age===0?'Today':r.age+' d ago'}${r.calls?`<br><span class="xs mut">${r.calls} re-call${r.calls>1?'s':''}</span>`:''}</td><td>${r.fu?(r.fu<TODAY?`<b style="color:var(--r)">${fmt(r.fu)}</b>`:fmt(r.fu)):'–'}</td><td>${h(r.own||'–')}</td><td><span class="xs">${h(r.co)}<br>${h(r.cp)}</span></td><td><div class="row nw" style="gap:4px"><a class="btn sm" href="tel:${h(r.ph)}" data-a="rcDial" data-id="${r.id}">Call</a><a class="btn sm sec" href="https://wa.me/${String(r.ph).replace(/\D/g,'').replace(/^(\d{10})$/,'91$1')}?text=${waT(r)}" target="_blank" rel="noopener">WA</a><button class="btn sm sec" data-a="rcLog" data-id="${r.id}">Log</button></div></td></tr>`).join('')||`<tr><td colspan="9">${empty(CAMPBUSY?'Loading leads…':'Nothing to call in this list 🎉','Pick another list or company')}</td></tr>`}</tbody></table></div>${L.length>300?`<p class="xs mut">Showing the first 300 of ${L.length}. Export to get all.</p>`:''}`};
 A.rcMode=e=>{S.lcMode=e.dataset.t;render()};A.rcQ=e=>{S.rcQ=e.dataset.t;S.rcSel=[];render()};
 document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.ch;if(k==='rcCo'){S.rcCo=e.target.value;S.rcSel=[];render()}if(k==='rcO'){S.rcO=e.target.value;render()}});
