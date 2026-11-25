@@ -12,6 +12,13 @@ jobs:
         with: { node-version: 22 }
       - run: cd web && npm install && npm run build
         env: { VITE_API_URL: '${{ vars.API_URL }}' }
+      # New JDAC Parent design → main link /JDACTracker/ ; old admin panel (real attendance data) → /JDACTracker/old/
+      - run: |
+          cd web
+          mv dist old && mkdir dist && mv old dist/old
+          mv dist/old/f dist/f
+          cp dist/old/parent/index.html dist/index.html && rm -rf dist/old/parent
+          cp dist/old/*.png dist/ 2>/dev/null || true
       # Employee app का web version → /JDACTracker/app/ (APK जैसा ही, browser में)
       - run: cd mobile && npm install && npx vite build --outDir ../web/dist/app --emptyOutDir false
         env: { VITE_API_URL: '${{ vars.API_URL }}' }
