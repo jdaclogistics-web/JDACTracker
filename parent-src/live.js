@@ -60,7 +60,7 @@ if(LIVE){const _rLV=render;render=function(){if(!LV.tok||!LV.me){document.getEle
  const _lvRj=A.lvRj;A.lvRj=async e=>{const l=D.leave.find(x=>x.id===e.dataset.id);if(l&&l.rid){try{await lapi('POST','/api/admin/leaves/'+l.rid+'/decide',{status:'Rejected'})}catch(x){return toast('Not saved: '+x.message)}}_lvRj(e)};
  const _lvSave=A.lvSave;A.lvSave=async e=>{const n=D.leave.length;_lvSave(e);const l=D.leave.length>n?D.leave[D.leave.length-1]:null;if(!l||l.k!==S.me)return;
   try{for(let d=l.from;d<=l.to;d=addD(d,1)){const r=await lapi('POST','/api/leaves',{date:d,kind:l.type==='Half day'?'Half day':'Full day',reason:(l.why||'Leave').length<3?'Leave request':l.why})}l.rid=1;toast('Leave request sent to Nameera')}catch(x){toast('Not saved: '+x.message)}};
- if(LV.tok&&LV.me)lvLoad();
- setInterval(()=>{if(LV.ok&&document.visibilityState==='visible'&&!document.querySelector('.sheet'))lapi('GET','/api/admin/today').then(()=>{}).catch(()=>{})},600000);
+ setTimeout(()=>{if(LV.tok&&LV.me)lvLoad()},0); /* after every module (IT partner login etc.) is loaded */
+ setInterval(()=>{if(LV.ok&&LV.me&&LV.me.role!=='partner'&&document.visibilityState==='visible'&&!document.querySelector('.sheet'))lapi('GET','/api/admin/today').then(()=>{}).catch(()=>{})},600000);
 }
 render();

@@ -3,6 +3,7 @@
 import { istDate, istMinutes, nowIso, hashPassword, verifyPassword, signToken, verifyToken, computeKm, phone10 } from './lib.js'
 import { loadAll, dropCache, homeSummary, companyPage, myHome, cargoDesk, COMPANIES, journeyOf } from './cc.js'
 import { DESK_TABLES, migrateDesks, registerDesks } from './desks.js'
+import { registerIt } from './it.js'
 import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64 } from './photos.js'
 
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
@@ -879,6 +880,7 @@ on('POST', '/api/my/task-done', async (env, req) => {
 })
 
 registerDesks(on, { authUser, needAdmin, json, body, bad, HttpError, istDate, audit, ADMIN_ROLES, loadAll, dropCache, legacyGet, legacySet, legacyPut, nowLocal })
+registerIt(on, { json, body, bad, HttpError, audit, ADMIN_ROLES, hashPassword, verifyPassword, signToken, verifyToken, nowIso, istDate, TOKEN_DAYS })
 
 // Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है
 on('GET', '/api/setup/import-page', async (env) => {
