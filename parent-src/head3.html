@@ -665,6 +665,25 @@ html.panemode .sf{height:calc(100vh - 150px)!important}html.panemode .sfleft{wid
 @media(max-width:900px){.spbtn{display:none}body.splitmode .shell{margin-right:0}.sppane{display:none}}
 
 html.panemode .bnav{display:none!important}html.panemode body{padding-bottom:0!important}html.panemode #main{padding-bottom:16px!important}
+
+.mw{position:fixed;right:20px;bottom:20px;width:320px;background:#fff;border:1px solid #D7DCE6;border-radius:14px;box-shadow:0 12px 36px rgba(20,30,60,.22);z-index:60;font-size:13px;overflow:hidden}
+.mw.min{width:260px}
+.mwh{display:flex;align-items:center;gap:8px;background:#1B3170;color:#fff;padding:9px 10px;cursor:move;user-select:none}.mw.pip .mwh{cursor:default}
+.mwh b{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.mwclk{font-variant-numeric:tabular-nums;font-weight:700;font-size:12px;background:rgba(255,255,255,.15);border-radius:6px;padding:2px 6px}
+.mwh button{background:none;border:0;color:#fff;font-size:15px;cursor:pointer;width:24px}
+.mwdot{width:9px;height:9px;border-radius:50%;background:#FF5A4F;box-shadow:0 0 0 3px rgba(255,90,79,.3);animation:mwp 1.6s infinite}@keyframes mwp{50%{opacity:.4}}
+.mwb{padding:10px}
+.mwbtn{display:flex;gap:6px;margin-bottom:8px}.mwbtn a,.mwbtn button{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #E3E7EF;background:#fff;border-radius:8px;padding:6px 4px;font:inherit;font-size:12px;font-weight:600;color:#222;cursor:pointer;text-decoration:none}
+.mwbtn .ico{width:14px;height:14px}.mwbtn .mwa{background:#1A73E8;color:#fff;border-color:#1A73E8}.mwbtn button.on{background:#FDECEA;color:#C0392B;border-color:#F2B8B2}
+.mwty{display:flex;gap:4px;margin-bottom:6px}.mwty button{flex:1;border:1px solid #E3E7EF;background:#F7F8FA;border-radius:7px;padding:4px;font:inherit;font-size:12px;cursor:pointer}.mwty button.on{background:#FFF1E8;border-color:#F7C9A6;color:#C2610E;font-weight:700}
+.mwin{display:flex;gap:4px}.mwin input{flex:1;min-width:0;margin:0!important;padding:7px 8px!important;font-size:13px;border:1px solid #D7DCE6;border-radius:8px}.mwin select{width:80px!important;margin:0!important;padding:4px!important;font-size:12px}
+.mwin button{border:0;background:#24408E;color:#fff;border-radius:8px;padding:0 10px;font:inherit;font-weight:700;cursor:pointer}
+.mwlast{margin-top:8px;max-height:110px;overflow-y:auto}.mwlast div{padding:4px 0;border-bottom:1px solid #F0F2F5;font-size:12.5px}.mwlast i{font-style:normal;color:#999;font-size:11px;margin-right:5px}.mwm{color:#888;font-style:italic}
+.mwft{display:flex;gap:6px;margin-top:8px}.mwft button{flex:1;border:1px solid #E3E7EF;background:#fff;border-radius:8px;padding:7px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}.mwft .mwend{background:#C0392B;color:#fff;border-color:#C0392B}
+body.mwpip{margin:0;background:#fff}.mw.pip{position:static;width:auto;border:0;border-radius:0;box-shadow:none}
+body.splitmode .shell{margin-right:var(--spw,min(48vw,760px))!important}.sppane{width:var(--spw,min(48vw,760px))!important}
+.spdrag{position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:col-resize;z-index:2}.spdrag::after{content:'';position:absolute;left:3px;top:50%;width:4px;height:44px;margin-top:-22px;border-radius:3px;background:#B8C2D6}
+.spdrag:hover::after,body.spdragging .spdrag::after{background:var(--o)}body.spdragging{cursor:col-resize;user-select:none}
 </style>
 </head>
 <body>

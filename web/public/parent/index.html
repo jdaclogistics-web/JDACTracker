@@ -665,6 +665,25 @@ html.panemode .sf{height:calc(100vh - 150px)!important}html.panemode .sfleft{wid
 @media(max-width:900px){.spbtn{display:none}body.splitmode .shell{margin-right:0}.sppane{display:none}}
 
 html.panemode .bnav{display:none!important}html.panemode body{padding-bottom:0!important}html.panemode #main{padding-bottom:16px!important}
+
+.mw{position:fixed;right:20px;bottom:20px;width:320px;background:#fff;border:1px solid #D7DCE6;border-radius:14px;box-shadow:0 12px 36px rgba(20,30,60,.22);z-index:60;font-size:13px;overflow:hidden}
+.mw.min{width:260px}
+.mwh{display:flex;align-items:center;gap:8px;background:#1B3170;color:#fff;padding:9px 10px;cursor:move;user-select:none}.mw.pip .mwh{cursor:default}
+.mwh b{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.mwclk{font-variant-numeric:tabular-nums;font-weight:700;font-size:12px;background:rgba(255,255,255,.15);border-radius:6px;padding:2px 6px}
+.mwh button{background:none;border:0;color:#fff;font-size:15px;cursor:pointer;width:24px}
+.mwdot{width:9px;height:9px;border-radius:50%;background:#FF5A4F;box-shadow:0 0 0 3px rgba(255,90,79,.3);animation:mwp 1.6s infinite}@keyframes mwp{50%{opacity:.4}}
+.mwb{padding:10px}
+.mwbtn{display:flex;gap:6px;margin-bottom:8px}.mwbtn a,.mwbtn button{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #E3E7EF;background:#fff;border-radius:8px;padding:6px 4px;font:inherit;font-size:12px;font-weight:600;color:#222;cursor:pointer;text-decoration:none}
+.mwbtn .ico{width:14px;height:14px}.mwbtn .mwa{background:#1A73E8;color:#fff;border-color:#1A73E8}.mwbtn button.on{background:#FDECEA;color:#C0392B;border-color:#F2B8B2}
+.mwty{display:flex;gap:4px;margin-bottom:6px}.mwty button{flex:1;border:1px solid #E3E7EF;background:#F7F8FA;border-radius:7px;padding:4px;font:inherit;font-size:12px;cursor:pointer}.mwty button.on{background:#FFF1E8;border-color:#F7C9A6;color:#C2610E;font-weight:700}
+.mwin{display:flex;gap:4px}.mwin input{flex:1;min-width:0;margin:0!important;padding:7px 8px!important;font-size:13px;border:1px solid #D7DCE6;border-radius:8px}.mwin select{width:80px!important;margin:0!important;padding:4px!important;font-size:12px}
+.mwin button{border:0;background:#24408E;color:#fff;border-radius:8px;padding:0 10px;font:inherit;font-weight:700;cursor:pointer}
+.mwlast{margin-top:8px;max-height:110px;overflow-y:auto}.mwlast div{padding:4px 0;border-bottom:1px solid #F0F2F5;font-size:12.5px}.mwlast i{font-style:normal;color:#999;font-size:11px;margin-right:5px}.mwm{color:#888;font-style:italic}
+.mwft{display:flex;gap:6px;margin-top:8px}.mwft button{flex:1;border:1px solid #E3E7EF;background:#fff;border-radius:8px;padding:7px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}.mwft .mwend{background:#C0392B;color:#fff;border-color:#C0392B}
+body.mwpip{margin:0;background:#fff}.mw.pip{position:static;width:auto;border:0;border-radius:0;box-shadow:none}
+body.splitmode .shell{margin-right:var(--spw,min(48vw,760px))!important}.sppane{width:var(--spw,min(48vw,760px))!important}
+.spdrag{position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:col-resize;z-index:2}.spdrag::after{content:'';position:absolute;left:3px;top:50%;width:4px;height:44px;margin-top:-22px;border-radius:3px;background:#B8C2D6}
+.spdrag:hover::after,body.spdragging .spdrag::after{background:var(--o)}body.spdragging{cursor:col-resize;user-select:none}
 </style>
 </head>
 <body>
@@ -3348,6 +3367,58 @@ A.splitT=()=>{S.split=!S.split;if(S.split&&S.spI==null){S.spI=S.v==='chat'?(S.ch
 A.splitSwap=()=>{const o=SPLIT_OPTS[+(S.spI||0)];S.v=o[0];if(o[1])S.chm=o[1];render();scrollTo(0,0)};
 /* keep both views in sync: when one side saves data, the other reloads it */
 window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{const nd=JSON.parse(e.newValue);for(const k in D)if(!(k in nd))delete D[k];Object.assign(D,nd);if(!document.querySelector('.sheet:not([hidden])'))render()}catch(x){}}});
+/* ===================== Floating meeting widget (works on every page) + pop-out window over Google Meet ===================== */
+let PIPW=null;
+const gmActive=()=>(D.meet||[]).find(m=>m.st&&!m.end);
+function gmStartSession(m){m.st=m.st||Date.now();m.end=null;m.log=m.log||[];m.tr=m.tr||[];S.gmN=m.id;S.mwMin=false;save();gmTick()}
+function mwHTML(m,pip){const c=meetCode(m.link),L=m.log||[],ty=S.gmTy||'note';
+ return `<div class="mwh" ${pip?'':'data-drag="mw"'}><span class="mwdot"></span><b title="${h(m.t)}">${h(m.t)}</b><span class="mwclk">${gmClock(m)}</span>${pip?'':`<button data-a="mwMin" title="${S.mwMin?'Expand':'Minimise'}">${S.mwMin?'▢':'–'}</button>`}</div>
+ ${S.mwMin&&!pip?'':`<div class="mwb"><div class="mwbtn">${c?`<a href="${meetUrl(c)}" target="_blank" rel="noopener" class="mwa">${ic('video')}Meet</a>`:`<a href="https://meet.google.com/new" target="_blank" rel="noopener" class="mwa">${ic('video')}New Meet</a>`}<button data-a="gmMic" class="${GMREC?'on':''}">${ic('mic')}${GMREC?'Listening':'Transcript'}</button>${pip?'':`<button data-a="mwPop" title="Keep this widget on top of Google Meet">⧉ Pop out</button>`}</div>
+ <div class="mwty">${[['note','Note'],['dec','Decision'],['act','Action']].map(([k,l])=>`<button class="${ty===k?'on':''}" data-a="mwTy" data-t="${k}">${l}</button>`).join('')}</div>
+ <div class="mwin"><input id="mwTx" placeholder="${ty==='act'?'Action point…':ty==='dec'?'Decision…':'Quick note…'}">${ty==='act'?`<select id="mwO">${STAFF.filter(k=>P[k]).map(k=>`<option value="${k}">${h(nmF(k).split(' ')[0])}</option>`).join('')}</select>`:''}<button data-a="mwAdd">Add</button></div>
+ <div class="mwlast">${L.slice(-3).reverse().map(x=>`<div><i>${x.at}</i>${x.k==='act'?'⚑ ':x.k==='dec'?'✔ ':''}${h(x.t)}</div>`).join('')||'<div class="mwm">No points yet</div>'}${GMREC&&(m.tr||[]).length?`<div class="mwm">“${h(m.tr[m.tr.length-1].t.slice(0,90))}”</div>`:''}</div>
+ <div class="mwft"><button data-a="mwOpen">Open notes</button><button data-a="mwEnd" class="mwend">End &amp; save</button></div></div>`}`}
+function mwPaint(){const m=gmActive(),inNotes=S.v==='chat'&&S.chm==='notes'&&S.gmN===(m&&m.id);let w=document.getElementById('mw');
+ if(!m||PANE){if(w)w.remove();if(PIPW&&!m){try{PIPW.close()}catch(x){}PIPW=null}return}
+ if(PIPW){mwPipPaint();if(w)w.remove();return}
+ if(inNotes){if(w)w.remove();return}
+ if(!w){w=document.createElement('div');w.id='mw';w.className='mw';document.body.appendChild(w);const pos=S.mwPos;if(pos){w.style.left=pos[0]+'px';w.style.top=pos[1]+'px';w.style.right='auto';w.style.bottom='auto'}}
+ w.classList.toggle('min',!!S.mwMin);w.innerHTML=mwHTML(m,false)}
+const _rMW=render;render=function(){_rMW.apply(this,arguments);try{mwPaint()}catch(x){}};
+setInterval(()=>{const m=gmActive();if(!m)return;const t=gmClock(m);document.querySelectorAll('#mw .mwclk').forEach(e=>e.textContent=t);if(PIPW)try{PIPW.document.querySelectorAll('.mwclk').forEach(e=>e.textContent=t)}catch(x){}},1000);
+/* drag the widget by its header */
+document.addEventListener('pointerdown',e=>{const hd=e.target.closest&&e.target.closest('[data-drag="mw"]');if(!hd||e.target.closest('button'))return;const w=document.getElementById('mw'),r=w.getBoundingClientRect(),dx=e.clientX-r.left,dy=e.clientY-r.top;e.preventDefault();
+ const mv=ev=>{const x=Math.max(4,Math.min(innerWidth-r.width-4,ev.clientX-dx)),y=Math.max(4,Math.min(innerHeight-40,ev.clientY-dy));w.style.left=x+'px';w.style.top=y+'px';w.style.right='auto';w.style.bottom='auto';S.mwPos=[x,y]};
+ const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);saveS()};addEventListener('pointermove',mv);addEventListener('pointerup',up)});
+A.mwMin=()=>{S.mwMin=!S.mwMin;saveS();mwPaint()};
+A.mwTy=e=>{S.gmTy=e.dataset.t;mwPaint();mwPipPaint();const d=PIPW?PIPW.document:document,i=d.getElementById('mwTx');if(i)i.focus()};
+A.mwAdd=e=>{const m=gmActive();if(!m)return;const d=(e&&e.ownerDocument)||document,t=(d.getElementById('mwTx')||{}).value||'';if(!t.trim())return;const k=S.gmTy||'note',x={k,t:t.trim(),at:gmClock(m)};if(k==='act'){x.o=(d.getElementById('mwO')||{}).value||S.me;x.due=addD(TODAY,1)}m.log.push(x);save();S.gmN=m.id;render();mwPipPaint();const i=d.getElementById('mwTx');if(i)i.focus()};
+A.mwOpen=()=>{const m=gmActive();if(!m)return;S.v='chat';S.chm='notes';S.gmN=m.id;render();scrollTo(0,0);try{window.focus()}catch(x){}};
+A.mwEnd=()=>{const m=gmActive();if(!m)return;S.gmN=m.id;A.gmEnd();S.v='chat';S.chm='notes';render();if(PIPW){try{PIPW.close()}catch(x){}PIPW=null}};
+/* make sure mic + add work from the widget even when another page is open */
+const _gmMicMW=A.gmMic;A.gmMic=()=>{const m=gmActive();if(m)S.gmN=m.id;_gmMicMW();setTimeout(()=>{mwPaint();mwPipPaint()},50)};
+/* start a meeting session when a meeting is opened */
+const _gmJoinMW=A.gmJoin;A.gmJoin=()=>{const c=meetCode(val('gmj'));if(!c)return toast('Enter a code like abc-defg-hij');let m=(D.meet||[]).find(x=>meetCode(x.link)===c);if(!m){m={id:nid('M'),t:'Meeting '+nowT(),dt:TODAY,when:'Notes',time:nowT(),with:[S.me],notes:'',acts:[],link:meetUrl(c),log:[],tr:[]};D.meet.push(m)}gmStartSession(m);window.open(meetUrl(c),'_blank','noopener');render()};
+A.gmNew=()=>{const m={id:nid('M'),t:'Meeting '+nowT(),dt:TODAY,when:'Notes',time:nowT(),with:[S.me],notes:'',acts:[],link:'',log:[],tr:[]};D.meet.push(m);gmStartSession(m);setTimeout(render,50);toast('Meeting started · widget is on screen, paste the Meet link in Open notes')};
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a.btn[href*="meet.google.com/"]');if(!a||a.dataset.a==='gmNew')return;const c=meetCode(a.getAttribute('href'));if(!c)return;const m=(D.meet||[]).find(x=>meetCode(x.link)===c);if(m&&!gmActive()){gmStartSession(m);setTimeout(render,50)}},true);
+/* pop-out: Document Picture-in-Picture keeps the widget on top of other windows (Chrome 116+) */
+A.mwPop=async()=>{if(!('documentPictureInPicture' in window))return toast('Pop-out needs Chrome 116 or newer — the widget stays on this page');
+ try{PIPW=await documentPictureInPicture.requestWindow({width:340,height:430});
+  [...document.querySelectorAll('style,link[rel=stylesheet]')].forEach(s=>PIPW.document.head.appendChild(s.cloneNode(true)));
+  PIPW.document.body.className='mwpip';PIPW.document.title='JDAC meeting';
+  PIPW.document.addEventListener('click',ev=>{const t=ev.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f||t.tagName==='A')return;ev.preventDefault();f(t)});
+  PIPW.document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='mwTx'){ev.preventDefault();A.mwAdd(ev.target)}});
+  PIPW.addEventListener('pagehide',()=>{PIPW=null;mwPaint()});mwPipPaint();mwPaint()}catch(x){PIPW=null;toast('Could not pop out: '+x.message)}};
+function mwPipPaint(){if(!PIPW)return;const m=gmActive();if(!m){try{PIPW.close()}catch(x){}PIPW=null;return}const keep=(PIPW.document.getElementById('mwTx')||{}).value;PIPW.document.body.innerHTML=`<div class="mw pip">${mwHTML(m,true)}</div>`;const i=PIPW.document.getElementById('mwTx');if(i&&keep)i.value=keep}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='mwTx'){e.preventDefault();A.mwAdd(e.target)}});
+
+/* ===================== Split view: drag to resize ===================== */
+const spW=()=>Math.max(320,Math.min(innerWidth-420,S.spW||Math.min(innerWidth*0.48,760)));
+const _rSpW=render;render=function(){_rSpW.apply(this,arguments);if(PANE)return;try{document.documentElement.style.setProperty('--spw',spW()+'px');const pn=document.getElementById('spPane');if(pn&&!pn.querySelector('.spdrag')){const d=document.createElement('div');d.className='spdrag';d.title='Drag to resize';pn.appendChild(d)}}catch(x){}};
+document.addEventListener('pointerdown',e=>{if(!e.target.classList||!e.target.classList.contains('spdrag'))return;e.preventDefault();const fr=document.getElementById('spFrame');if(fr)fr.style.pointerEvents='none';document.body.classList.add('spdragging');
+ const mv=ev=>{S.spW=Math.max(320,Math.min(innerWidth-420,innerWidth-ev.clientX));document.documentElement.style.setProperty('--spw',S.spW+'px')};
+ const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);if(fr)fr.style.pointerEvents='';document.body.classList.remove('spdragging');saveS()};addEventListener('pointermove',mv);addEventListener('pointerup',up)});
+addEventListener('resize',()=>{if(S.split)document.documentElement.style.setProperty('--spw',spW()+'px')});
 /* ===================== LIVE MODE · real login + real staff & attendance from the tracker database =====================
    Runs only on the real website (github.io). The claude.ai preview keeps sample data. */
 const LIVE=/github\.io$|^localhost$|^127\./.test(location.hostname);
