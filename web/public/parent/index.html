@@ -653,6 +653,16 @@ body.wamode header.hd{display:flex!important}
 .ctabs{max-width:none!important;width:fit-content;flex-wrap:wrap}
 .ctabs button{flex:0 0 auto!important;padding:9px 14px!important}
 body.wamode .hd .hrow{justify-content:flex-end}
+
+.spbtn.on{background:var(--oL);color:var(--o);border-color:var(--o)}
+body.splitmode .shell{margin-right:min(48vw,760px)}
+.sppane{position:fixed;top:0;right:0;bottom:0;width:min(48vw,760px);background:#F4F6FA;border-left:2px solid #D7DCE6;z-index:40;display:flex;flex-direction:column;box-shadow:-6px 0 20px rgba(20,30,60,.08)}
+.spbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-bottom:1px solid #E3E7EF}.spbar b{display:flex;align-items:center;gap:6px;font-size:13px;flex:1}.spbar select{width:auto;margin:0;padding:6px 8px;font-size:13px}
+.spbar .cb{background:none;border:1px solid #E3E7EF;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px}
+.sppane iframe{flex:1;border:0;width:100%;background:#F4F6FA}
+html.panemode .sb,html.panemode .hd{display:none!important}html.panemode .shell{display:block}html.panemode .sb-main{margin:0!important;padding:0!important}html.panemode #main{padding-top:10px}
+html.panemode .sf{height:calc(100vh - 150px)!important}html.panemode .sfleft{width:260px}html.panemode .sfdet{display:none}
+@media(max-width:900px){.spbtn{display:none}body.splitmode .shell{margin-right:0}.sppane{display:none}}
 </style>
 </head>
 <body>
@@ -970,8 +980,11 @@ migrate();
 
 /* ---------- state ---------- */
 let S={me:'darshan',v:'home',co:null,tab:null,q:'',tf:'all',tv:'list',cd:TODAY,cv:'day',cb:'',ct:'cal',chat:null,chm:'team',ptab:'today',mtab:'overview',mbk:'',lq:'',pk:null,bk:null,vt:''};
-try{const s=JSON.parse(sessionStorage.getItem(KEY+'-v3'));if(s)S=Object.assign(S,s)}catch(e){}
-function saveS(){try{sessionStorage.setItem(KEY+'-v3',JSON.stringify(S))}catch(e){}}
+const PANE=(()=>{try{return window.self!==window.top&&/[?&]pane=1/.test(location.search)}catch(e){return false}})();
+const SKEY=KEY+'-v3'+(PANE?'-pane':'');
+try{const s=JSON.parse(sessionStorage.getItem(SKEY)||(PANE?sessionStorage.getItem(KEY+'-v3'):null));if(s)S=Object.assign(S,s)}catch(e){}
+if(PANE){try{const q=new URLSearchParams(location.hash.slice(1));if(q.get('v'))S.v=q.get('v');if(q.get('chm'))S.chm=q.get('chm');S.gmN=null;S.wac=null}catch(e){}}
+function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify(S))}catch(e){}}
 const ME=()=>P[S.me];
 const K=()=>ME().kind;
 const isBoss=()=>K()==='boss';
@@ -3316,6 +3329,23 @@ const _meetViewNT3=meetView;meetView=function(){if(S.chm==='meet'&&S.gmN){S.chm=
 const _gmOpenN=A.gmOpenN;A.gmOpenN=e=>{S.chm='notes';_gmOpenN(e)};
 const _gmQuickGo=A.gmQuickGo;A.gmQuickGo=()=>{S.chm='notes';_gmQuickGo()};
 const _gmNotes=A.gmNotes;A.gmNotes=()=>{S.chm='notes';S.gmN=null;render()};
+/* ===================== SPLIT VIEW · two parts of the tracker side by side (desktop) ===================== */
+Object.assign(I,{split:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>'});
+const SPLIT_OPTS=[['home','','Dashboard'],['tasks','','Tasks'],['people','','HR Desk'],['chat','wa','WhatsApp'],['chat','email','Email'],['chat','team','Team chat'],['chat','call','Calls'],['chat','meet','Google Meet'],['chat','notes','JDAC Notetaker'],['money','','Accounts'],['camp','','Campaigns'],['contacts','','Contacts']];
+const splitSrc=()=>{const o=SPLIT_OPTS[+(S.spI||0)]||SPLIT_OPTS[0];return location.pathname+'?pane=1#v='+o[0]+(o[1]?'&chm='+o[1]:'')};
+if(PANE){document.documentElement.classList.add('panemode')}
+const _rSplit=render;render=function(){_rSplit.apply(this,arguments);if(PANE)return;
+ const app=document.getElementById('app');if(!app||!app.querySelector)return;
+ const hdr=app.querySelector('.hd .hrow');if(hdr&&!hdr.querySelector('.spbtn')){const sp=hdr.querySelector('.sp');const b=document.createElement('button');b.className='hbtn spbtn hide-m'+(S.split?' on':'');b.dataset.a='splitT';b.title='Split view: open a second section next to this one';b.innerHTML=ic('split')+'<span>Split view</span>';if(sp&&sp.nextSibling)hdr.insertBefore(b,sp.nextSibling);else hdr.appendChild(b)}
+ document.body.classList.toggle('splitmode',!!S.split);
+ let pn=document.getElementById('spPane');const main=app.querySelector('.sb-main');
+ if(S.split&&main){if(!pn){pn=document.createElement('aside');pn.id='spPane';pn.className='sppane';pn.innerHTML=`<div class="spbar"><b>${ic('split')}Second view</b><select id="spSel" aria-label="Second view">${SPLIT_OPTS.map((o,i)=>`<option value="${i}">${o[2]}</option>`).join('')}</select><button class="cb" data-a="splitSwap" title="Open this section on the left">⇆</button><button class="cb" data-a="splitT" title="Close split view" aria-label="Close split view">×</button></div><iframe id="spFrame" title="Second view" src="${splitSrc()}"></iframe>`;document.body.appendChild(pn);
+   pn.querySelector('#spSel').value=String(S.spI||0);pn.querySelector('#spSel').addEventListener('change',e=>{S.spI=+e.target.value;saveS();pn.querySelector('#spFrame').src=splitSrc()})}}
+ else if(pn)pn.remove()};
+A.splitT=()=>{S.split=!S.split;if(S.split&&S.spI==null){S.spI=S.v==='chat'?(S.chm==='notes'?3:8):3}saveS();render()};
+A.splitSwap=()=>{const o=SPLIT_OPTS[+(S.spI||0)];S.v=o[0];if(o[1])S.chm=o[1];render();scrollTo(0,0)};
+/* keep both views in sync: when one side saves data, the other reloads it */
+window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{const nd=JSON.parse(e.newValue);for(const k in D)if(!(k in nd))delete D[k];Object.assign(D,nd);if(!document.querySelector('.sheet:not([hidden])'))render()}catch(x){}}});
 /* ===================== LIVE MODE · real login + real staff & attendance from the tracker database =====================
    Runs only on the real website (github.io). The claude.ai preview keeps sample data. */
 const LIVE=/github\.io$|^localhost$|^127\./.test(location.hostname);

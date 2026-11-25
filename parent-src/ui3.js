@@ -75,8 +75,11 @@ migrate();
 
 /* ---------- state ---------- */
 let S={me:'darshan',v:'home',co:null,tab:null,q:'',tf:'all',tv:'list',cd:TODAY,cv:'day',cb:'',ct:'cal',chat:null,chm:'team',ptab:'today',mtab:'overview',mbk:'',lq:'',pk:null,bk:null,vt:''};
-try{const s=JSON.parse(sessionStorage.getItem(KEY+'-v3'));if(s)S=Object.assign(S,s)}catch(e){}
-function saveS(){try{sessionStorage.setItem(KEY+'-v3',JSON.stringify(S))}catch(e){}}
+const PANE=(()=>{try{return window.self!==window.top&&/[?&]pane=1/.test(location.search)}catch(e){return false}})();
+const SKEY=KEY+'-v3'+(PANE?'-pane':'');
+try{const s=JSON.parse(sessionStorage.getItem(SKEY)||(PANE?sessionStorage.getItem(KEY+'-v3'):null));if(s)S=Object.assign(S,s)}catch(e){}
+if(PANE){try{const q=new URLSearchParams(location.hash.slice(1));if(q.get('v'))S.v=q.get('v');if(q.get('chm'))S.chm=q.get('chm');S.gmN=null;S.wac=null}catch(e){}}
+function saveS(){try{sessionStorage.setItem(SKEY,JSON.stringify(S))}catch(e){}}
 const ME=()=>P[S.me];
 const K=()=>ME().kind;
 const isBoss=()=>K()==='boss';

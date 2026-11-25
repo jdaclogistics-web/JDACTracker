@@ -653,6 +653,16 @@ body.wamode header.hd{display:flex!important}
 .ctabs{max-width:none!important;width:fit-content;flex-wrap:wrap}
 .ctabs button{flex:0 0 auto!important;padding:9px 14px!important}
 body.wamode .hd .hrow{justify-content:flex-end}
+
+.spbtn.on{background:var(--oL);color:var(--o);border-color:var(--o)}
+body.splitmode .shell{margin-right:min(48vw,760px)}
+.sppane{position:fixed;top:0;right:0;bottom:0;width:min(48vw,760px);background:#F4F6FA;border-left:2px solid #D7DCE6;z-index:40;display:flex;flex-direction:column;box-shadow:-6px 0 20px rgba(20,30,60,.08)}
+.spbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-bottom:1px solid #E3E7EF}.spbar b{display:flex;align-items:center;gap:6px;font-size:13px;flex:1}.spbar select{width:auto;margin:0;padding:6px 8px;font-size:13px}
+.spbar .cb{background:none;border:1px solid #E3E7EF;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px}
+.sppane iframe{flex:1;border:0;width:100%;background:#F4F6FA}
+html.panemode .sb,html.panemode .hd{display:none!important}html.panemode .shell{display:block}html.panemode .sb-main{margin:0!important;padding:0!important}html.panemode #main{padding-top:10px}
+html.panemode .sf{height:calc(100vh - 150px)!important}html.panemode .sfleft{width:260px}html.panemode .sfdet{display:none}
+@media(max-width:900px){.spbtn{display:none}body.splitmode .shell{margin-right:0}.sppane{display:none}}
 </style>
 </head>
 <body>
