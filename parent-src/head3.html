@@ -684,6 +684,16 @@ body.mwpip{margin:0;background:#fff}.mw.pip{position:static;width:auto;border:0;
 body.splitmode .shell{margin-right:var(--spw,min(48vw,760px))!important}.sppane{width:var(--spw,min(48vw,760px))!important}
 .spdrag{position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:col-resize;z-index:2}.spdrag::after{content:'';position:absolute;left:3px;top:50%;width:4px;height:44px;margin-top:-22px;border-radius:3px;background:#B8C2D6}
 .spdrag:hover::after,body.spdragging .spdrag::after{background:var(--o)}body.spdragging{cursor:col-resize;user-select:none}
+
+.lc{display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:start}@media(max-width:900px){.lc{grid-template-columns:1fr}}
+.lctree{background:#fff;border:1px solid #E3E7EF;border-radius:12px;padding:6px;position:sticky;top:70px;max-height:calc(100vh - 90px);overflow-y:auto}
+.lctree button{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;background:none;border:0;border-radius:8px;padding:9px 10px;font:inherit;font-size:13.5px;text-align:left;cursor:pointer;color:#222}
+.lctree button:hover{background:#F3F5FA}.lctree button.on{background:var(--oL);color:var(--o)}.lctree b{font-weight:600}
+.lctree em{font-style:normal;font-size:11.5px;background:#EEF1F6;color:#444;border-radius:9px;padding:1px 7px;flex:none}
+.lccp{margin:0 0 6px 10px;border-left:2px solid #E3E7EF;padding-left:4px}.lccp button{font-size:12.5px;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lccrumb{display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#888}.lccrumb button{background:none;border:0;color:var(--o);font:inherit;font-weight:600;cursor:pointer;padding:0}.lccrumb select{width:auto;margin:0;padding:6px 8px;font-size:13px}
+.lcf{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lcact{white-space:nowrap}.lcact a{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;color:#24408E}.lcact a:hover{background:#EEF2FB}.lcact .ico{width:15px;height:15px}
 </style>
 </head>
 <body>

@@ -10,7 +10,7 @@ function campSample(){const C=[['JDAC Logistics','JDAC_Vid_6oct','Neetu Kumari']
   for(let j=0;j<ld;j++)L.push({id:c.id+'-'+d+'-'+j,campaignId:c.id,date:dt,name:'',phone:'98'+String(10000000+((ci+1)*d*97+j*31)%89999999).padStart(8,'0'),stage:ST[(d+j+ci)%ST.length],cseName:c.cse,tags:'[]',city:['Pune','Mumbai','Goa','Delhi'][(j+d)%4]})}});
  return {c:C,s:[],m:M,l:L,sample:1}}
 async function campLoadAll(tbl){let out=[],off=0;for(;;){const r=await lapi('GET','/api/legacy/rows?tbl='+tbl+'&limit=1000&offset='+off);out=out.concat(r.rows||[]);off+=1000;if(!r.rows||r.rows.length<1000||off>=r.total)break}return out}
-async function campLoad(){if(CAMPBUSY)return;CAMPBUSY=true;try{if(typeof LIVE!=='undefined'&&LIVE&&LV.ok){const [c,s,m,l]=await Promise.all(['ad_campaigns','ad_sets','ad_metrics','ad_leads'].map(campLoadAll));CAMP={c,s,m,l,at:new Date()}}else CAMP=campSample()}catch(x){CAMP={err:x.message,c:[],s:[],m:[],l:[]}}CAMPBUSY=false;if(S.v==='camp')render()}
+async function campLoad(){if(CAMPBUSY)return;CAMPBUSY=true;try{if(typeof LIVE!=='undefined'&&LIVE&&LV.ok){const [c,s,m,l]=await Promise.all(['ad_campaigns','ad_sets','ad_metrics','ad_leads'].map(campLoadAll));CAMP={c,s,m,l,at:new Date()}}else CAMP=campSample()}catch(x){CAMP={err:x.message,c:[],s:[],m:[],l:[]}}CAMPBUSY=false;if(S.v==='camp'||S.v==='leads')render()}
 function campRange(){const p=S.cpP||'all';if(p==='all')return ['0000-00-00','9999-12-31'];if(p.length===7)return [p+'-01',p+'-31'];return [addD(TODAY,-(+p-1)),TODAY]}
 function campAgg(){const [f,t]=campRange(),co=S.cpC||'';const C=CAMP.c.filter(c=>!co||c.company===co);const ids=new Set(C.map(c=>String(c.id)));
  const by={};C.forEach(c=>by[c.id]={c,sp:0,im:0,cl:0,ld:0,ldm:0,cv:0,rv:0,irr:0,days:{}});
