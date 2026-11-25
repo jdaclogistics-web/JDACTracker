@@ -1,6 +1,6 @@
 /* ===================== GOOGLE DRIVE EXPLORER inside the tracker (Drive API v3 + Google sign-in) ===================== */
 Object.assign(I,{gfold:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',gcopy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',gcut:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/>',gpaste:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',gtrash:'<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',gedit:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',gmove:'<path d="M5 9 2 12l3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>'});
-const GD_CID='';const FOLD='application/vnd.google-apps.folder';
+const GD_CID='291239982211-boksb8350a6dh4od7hg05bh1k9q7i39t.apps.googleusercontent.com';const FOLD='application/vnd.google-apps.folder';
 const GD={tok:'',exp:0,path:[{id:'root',n:'My Drive'}],items:[],next:'',sel:new Set(),clip:null,busy:'',err:'',grid:false,key:'',loaded:false,q:''};
 try{const t=JSON.parse(sessionStorage.getItem('jdac-gd-tok')||'null');if(t&&t.exp>Date.now()){GD.tok=t.tok;GD.exp=t.exp}}catch(e){}
 const gdCid=()=>GD_CID||((D.gdCfg||{}).cid)||'';
