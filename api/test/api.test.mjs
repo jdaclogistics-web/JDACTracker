@@ -84,9 +84,15 @@ ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234'
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'dev-phone-B' })).status === 403, 'developer blocked on another phone')
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'web' })).status === 200, 'developer web panel still works')
 { const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'JD1003', 'Employee IDs keep counting up') }
+{ const r = await call('POST', '/api/register', { name: 'Neha Patil', phone: '9333333333', password: 'neha1234', designation: 'CSE' }); ok(r.status === 200, 'public register request saved')
+  ok((await call('POST', '/api/register', { name: 'Neha Patil', phone: '9333333333' })).status === 409, 'duplicate pending request blocked')
+  ok((await call('GET', '/api/admin/registrations', null)).status === 401, 'registrations list needs login')
+  const L = await call('GET', '/api/admin/registrations', null, HR); const g = L.data.registrations.find(x => x.phone === '9333333333'); ok(g && g.status === 'pending', 'HR sees pending request')
+  const a = await call('POST', '/api/admin/registrations/' + g.id, { action: 'approve' }, HR); ok(a.status === 200 && a.data.username === 'JD1004', 'approve creates login ' + JSON.stringify(a))
+  ok((await call('POST', '/api/login', { username: 'JD1004', password: 'neha1234' })).status === 200, 'approved employee logs in with own password') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
-ok(sys.status === 200 && sys.data.employees === 6, 'developer system panel works')
+ok(sys.status === 200 && sys.data.employees === 7, 'developer system panel works')
 
 console.log('End day + correction')
 ok((await call('POST', '/api/day/end', { lat: 18.56, lng: 73.86, client_id: 'end0' }, T)).status === 400, 'day cannot be closed without a selfie')

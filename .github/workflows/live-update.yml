@@ -16,7 +16,7 @@ jobs:
       - name: Build
         working-directory: mobile
         run: |
-          npm install --no-audit --no-fund
+          (for i in 1 2 3 4; do npm install --no-audit --no-fund && exit 0; echo retry $i; sleep 20; done; exit 1)
           VITE_BUILD="$(date -u +%Y%m%d%H%M)-${GITHUB_SHA::7}" npm run build
           echo "VER=$(date -u +%Y%m%d%H%M)-${GITHUB_SHA::7}" >> $GITHUB_ENV
       - name: Publish to branch live

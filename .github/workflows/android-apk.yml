@@ -16,7 +16,7 @@ jobs:
         with: { node-version: 20 }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
-      - run: npm install --no-audit --no-fund
+      - run: (for i in 1 2 3 4; do npm install --no-audit --no-fund && exit 0; echo retry $i; sleep 20; done; exit 1)
       - run: VITE_BUILD="apk-$(date -u +%Y%m%d%H%M)" npm run build
       - run: node scripts/android-init.mjs
       # हमेशा एक ही key से sign → नया APK पुराने के ऊपर install हो जाता है (uninstall नहीं करना पड़ता)
@@ -27,9 +27,21 @@ jobs:
             -Pandroid.injected.signing.key.alias=jdac \
             -Pandroid.injected.signing.key.password=jdacapp123
           cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/JDAC-Tracker.apk
+      # Boss special APK: own app id + name, opens straight into the JDAC Tracker panel
+      - run: |
+          rm -rf android dist
+          node -e "const f='capacitor.config.json',c=JSON.parse(require('fs').readFileSync(f));c.appId='com.jdac.boss';c.appName='JDAC Boss';require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
+          VITE_BOSS=1 VITE_BUILD="boss-$(date -u +%Y%m%d%H%M)" npm run build
+          node scripts/android-init.mjs
+          cd android && ./gradlew assembleDebug --no-daemon \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/mobile/keystore/jdac-app.jks \
+            -Pandroid.injected.signing.store.password=jdacapp123 \
+            -Pandroid.injected.signing.key.alias=jdac \
+            -Pandroid.injected.signing.key.password=jdacapp123
+          cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/JDAC-Boss.apk
       - name: Publish release apk-latest
         working-directory: .
         env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
         run: |
           gh release delete apk-latest -y --cleanup-tag || true
-          gh release create apk-latest JDAC-Tracker.apk --title "JDAC Tracker — latest APK" --notes "Built from ${GITHUB_SHA::7} on $(date -u +'%d %b %Y %H:%M') UTC. Phone पर download करके install करें."
+          gh release create apk-latest JDAC-Tracker.apk JDAC-Boss.apk --title "JDAC Tracker — latest APK" --notes "Built from ${GITHUB_SHA::7} on $(date -u +'%d %b %Y %H:%M') UTC. Phone पर download करके install करें."

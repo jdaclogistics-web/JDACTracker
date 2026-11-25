@@ -508,7 +508,9 @@ function roleAllowed(me, role) {
 }
 on('POST', '/api/admin/employees', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
-  const b = await body(req)
+  return json(await createEmployee(env, me, await body(req)))
+})
+async function createEmployee(env, me, b) {
   const phone = b.phone ? phone10(b.phone) : ''
   if (phone && phone.length !== 10) throw bad('Mobile must be 10 digits')
   if (!b.name) throw bad('Enter the name')
@@ -534,7 +536,45 @@ on('POST', '/api/admin/employees', async (env, req) => {
       .bind(username, String(b.name).trim(), phone || null, b.password ? await hashPassword(String(b.password)) : 'phone', role, b.team === 'Warehouse' ? 'Warehouse' : 'Office', b.designation || null, b.department || null, b.work_location || null, b.shift_start || '10:00', b.shift_end || '19:00', b.joining_date || null, empCode, sal, b.offer_letter || null, b.appointment_letter || null, b.documents || null).run()
   } catch (e) { if (/UNIQUE/i.test(String(e))) throw new HttpError(409, 'This username or mobile already exists'); throw e }
   await audit(env, me.id, 'employee_create', 'employees', username, null, { username, name: b.name, role, team: b.team })
-  return json({ ok: true, username, emp_code: empCode })
+  return { ok: true, username, emp_code: empCode }
+}
+// ── Self registration (public link) → HR / Boss approves → login is created ──
+const REG_SQL = "CREATE TABLE IF NOT EXISTS registrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT, designation TEXT, department TEXT, work_location TEXT, joining_date TEXT, pass_hash TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, decided_at TEXT, decided_by INTEGER, username TEXT, note TEXT)"
+on('POST', '/api/register', async (env, req) => {
+  const b = await body(req)
+  const name = String(b.name || '').trim().slice(0, 80), phone = phone10(b.phone || '')
+  if (name.length < 2) throw bad('Enter your full name')
+  if (phone.length !== 10) throw bad('Mobile must be 10 digits')
+  if (b.password && String(b.password).length < 6) throw bad('Password must be at least 6 characters')
+  await env.DB.prepare(REG_SQL).run()
+  if (await env.DB.prepare('SELECT 1 AS x FROM employees WHERE phone = ?').bind(phone).first()) throw new HttpError(409, 'This mobile already has a login. Use Log in, or ask HR to reset your password.')
+  if (await env.DB.prepare("SELECT 1 AS x FROM registrations WHERE phone = ? AND status = 'pending'").bind(phone).first()) throw new HttpError(409, 'Your request is already waiting for HR approval')
+  const t = (x, n = 80) => (x ? String(x).trim().slice(0, n) : null)
+  await env.DB.prepare('INSERT INTO registrations (name, phone, email, designation, department, work_location, joining_date, pass_hash, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+    .bind(name, phone, t(b.email, 120), t(b.designation), t(b.department), t(b.work_location), t(b.joining_date, 10), b.password ? await hashPassword(String(b.password)) : null, nowIso()).run()
+  return json({ ok: true })
+})
+on('GET', '/api/admin/registrations', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  await env.DB.prepare(REG_SQL).run()
+  const r = (await env.DB.prepare("SELECT id, name, phone, email, designation, department, work_location, joining_date, status, created_at, decided_at, username, note FROM registrations ORDER BY status = 'pending' DESC, id DESC LIMIT 200").all()).results
+  return json({ registrations: r })
+})
+on('POST', '/api/admin/registrations/:id', async (env, req, url, p) => {
+  const me = await authUser(env, req); needAdmin(me)
+  await env.DB.prepare(REG_SQL).run()
+  const b = await body(req)
+  const g = await env.DB.prepare('SELECT * FROM registrations WHERE id = ?').bind(Number(p.id)).first()
+  if (!g) throw new HttpError(404, 'Request not found')
+  if (g.status !== 'pending') throw bad('Already ' + g.status)
+  if (b.action === 'reject') {
+    await env.DB.prepare("UPDATE registrations SET status = 'rejected', decided_at = ?, decided_by = ?, note = ? WHERE id = ?").bind(nowIso(), me.id, b.note || null, g.id).run()
+    return json({ ok: true })
+  }
+  const r = await createEmployee(env, me, { name: g.name, phone: g.phone, designation: b.designation ?? g.designation, department: b.department ?? g.department, work_location: b.work_location ?? g.work_location, joining_date: b.joining_date ?? g.joining_date, team: b.team, role: b.role === 'hr' ? 'hr' : 'employee', shift_start: b.shift_start, shift_end: b.shift_end, salary_inhand: b.salary_inhand })
+  if (g.pass_hash) await env.DB.prepare('UPDATE employees SET pass_hash = ? WHERE username = ?').bind(g.pass_hash, r.username).run()
+  await env.DB.prepare("UPDATE registrations SET status = 'approved', decided_at = ?, decided_by = ?, username = ? WHERE id = ?").bind(nowIso(), me.id, r.username, g.id).run()
+  return json({ ...r, own_password: !!g.pass_hash })
 })
 // Team directory: upload an Excel / CSV sheet → update or add people (matched by Employee ID, then name)
 on('POST', '/api/admin/directory-import', async (env, req) => {
