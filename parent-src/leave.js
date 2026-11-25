@@ -1,0 +1,40 @@
+
+/* =================== Employee self-service: my attendance, calendar, leave · HR Desk leave requests =================== */
+D.leave.forEach((l,i)=>{if(!l.id)l.id='LV'+i;if(!l.at)l.at=dAgo(1)});
+const lvPending=()=>D.leave.filter(l=>l.st==='Pending');
+function myCal(e,m){const s=monStart(m),en=monEnd(m),first=(new Date(s+'T12:00:00').getDay()+6)%7,c=attSum(e,s,en<TODAY?en:TODAY);let cells='';for(let i=0;i<first;i++)cells+='<div></div>';
+ for(let d=s;d<=en;d=addD(d,1)){const a=d<=TODAY?attOf(e,d):'',pl=D.leave.find(l=>l.k===e.k&&l.st!=='Rejected'&&d>=l.from&&d<=l.to&&d>TODAY);cells+=`<div class="mc ${a==='WO'||a==='H'?'L':a||''} ${d===TODAY?'td':''}" title="${fmt(d)}${a?' · '+ACODE[a][0]:''}"><b>${+d.slice(8)}</b><span>${(a==='WO'||a==='H'?'L':a)||(pl?(pl.st==='Pending'?'L?':'L'):'')}</span></div>`}
+ return {c,html:`<div class="mycal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<div class="hd">${x}</div>`).join('')}${cells}</div>`}}
+const _me=V.me;
+V.me=()=>{const e=empOf(S.me);if(!e)return _me();S.mym=S.mym||monStart(TODAY);const a=D.att.find(x=>x.k===S.me),code=attOf(e,TODAY),{c,html}=myCal(e,S.mym),mine=D.leave.filter(l=>l.k===S.me).slice().reverse();
+ return `<div class="row nw" style="margin-bottom:14px">${av(e.n,'l')}<div style="flex:1"><h1 style="font-size:22px">${h(e.n)}</h1><div class="mut sm">${e.id} · ${h(e.desig)} · ${h(e.time)}</div></div></div>
+ <div class="grid g2" style="align-items:start"><div>
+ <div class="card"><div class="xs mut" style="font-weight:700">TODAY · ${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'})}</div>
+ <div class="row nw" style="margin-top:8px"><div style="flex:1">${a&&a.in?`<b class="num" style="font-size:22px">In at ${a.in}${a.out?' · out '+a.out:''}</b><div class="xs mut">${h(a.gps||'')}</div>`:`<b style="font-size:18px">You haven't marked attendance yet</b><div class="xs mut">Selfie + location · shift ${h(e.time)}</div>`}</div>${pill(ACODE[code]?ACODE[code][0]:'—',ACODE[code]?ACODE[code][1]:'')}</div>
+ <button class="btn w" style="margin-top:12px" data-a="clock">${ic('cam')}${a&&a.in&&!a.out?'Mark out for today':a&&a.out?'Done for today':'Mark my attendance'}</button><div id="camwrap"></div></div>
+ <div class="card"><div class="row nw"><b style="flex:1">Leave</b><button class="btn sm" data-a="leaveNew">${ic('plus')}Apply for leave</button></div>
+ <div class="list" style="margin:10px 0 0;box-shadow:none">${mine.map(l=>`<div class="li"><div class="tx"><b>${fmt(l.from)}${l.to!==l.from?' – '+fmt(l.to):''}</b><div class="m">${h(l.why)}${l.type?' · '+h(l.type):''}</div></div>${pill(l.st==='Pending'?'With Nameera':l.st,l.st==='Approved'?'g':l.st==='Rejected'?'r':'a')}</div>`).join('')||'<div class="empty xs">No leave applied</div>'}</div></div></div>
+ <div class="card"><div class="row nw" style="margin-bottom:8px"><button class="btn sm sec" data-a="myMon" data-n="-1" aria-label="Previous month">${ic('back')}</button><b style="flex:1;text-align:center">${new Date(S.mym+'T12:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'})}</b><button class="btn sm sec" data-a="myMon" data-n="1" aria-label="Next month">${ic('right')}</button></div>
+ <div class="stats" style="margin-bottom:10px"><div><b style="color:var(--g)">${c.P}</b><span>Present</span></div><div><b style="color:var(--o2)">${c.HD}</b><span>Half days</span></div><div><b style="color:var(--b)">${c.L+c.WO+c.H}</b><span>Paid leave (L)</span></div><div><b style="color:var(--r)">${c.A}</b><span>Absent</span></div></div>
+ ${html}<div class="row" style="margin-top:8px;gap:10px">${['P','HD','L','A'].map(k=>`<span class="xs"><span class="ac ${k} sm">${k}</span> ${ACODE[k][0]}</span>`).join('')}</div></div></div>`};
+A.myMon=e=>{const d=new Date(S.mym+'T12:00:00');d.setMonth(d.getMonth()+(+e.dataset.n));S.mym=iso(d).slice(0,8)+'01';render()};
+/* leave form: type + reason; goes to Nameera */
+A.leaveNew=()=>sheet(`<h2>Apply for leave</h2>${isAdm()?`<label for="lk">For</label><select id="lk">${STAFF.filter(k=>empOf(k)).map(k=>`<option value="${k}" ${k===S.me?'selected':''}>${h(P[k].n)}</option>`).join('')}</select>`:''}
+ <div class="grid g2"><div><label for="lf">From</label><input id="lf" type="date" value="${addD(TODAY,1)}"></div><div><label for="lt">To</label><input id="lt" type="date" value="${addD(TODAY,1)}"></div></div>
+ <label>Type</label>${opts('ltp',['Full day','Half day'],'Full day')}<label for="lw">Reason *</label><input id="lw" placeholder="e.g. Family function">
+ <p class="xs mut">Goes to Nameera. Once approved it shows as L on your calendar.</p><button class="btn w" data-a="lvSave">Send to Nameera</button>`);
+A.lvSave=()=>{const f=val('lf'),t=val('lt')||f;if(!f)return toast('Pick a date');if(t<f)return toast('End date is before start');if(f<TODAY)return toast('Leave can be applied for today or later');if(!val('lw'))return toast('Add a reason');
+ D.leave.push({id:nid('LV'),k:val('lk')||S.me,from:f,to:t,why:val('lw'),type:pick1('ltp')||'Full day',st:'Pending',at:TODAY});save();closeM();render();toast('Sent to Nameera')};
+/* HR Desk · Leave requests tab */
+function pLeave(){const L=D.leave.slice().sort((a,b)=>(a.st==='Pending'?0:1)-(b.st==='Pending'?0:1)||b.from.localeCompare(a.from));const days=l=>Math.round((new Date(l.to)-new Date(l.from))/864e5)+1;
+ return `<div class="mtool"><span class="sm mut">Staff apply from their own app · approved leave is marked <b>L</b> (paid) or <b>A</b> (unpaid) on the attendance sheet automatically</span><span class="sp"></span><button class="btn sm sec" data-a="leaveNew">${ic('plus')}Add leave for someone</button></div>
+ <div class="xsheet"><table><thead><tr><th class="stk">Employee</th><th>From</th><th>To</th><th>Days</th><th>Type</th><th>Reason</th><th>Applied</th><th>Status</th></tr></thead><tbody>${L.map(l=>{const e=empOf(l.k)||{n:nm(l.k),id:''};return `<tr><td class="stk"><div class="row nw" style="gap:8px">${av(e.n)}<div><b>${h(e.n)}</b><span>${e.id}</span></div></div></td><td>${fmtS(l.from)}</td><td>${fmtS(l.to)}</td><td class="n">${l.type==='Half day'?'½':days(l)}</td><td>${h(l.type||'Full day')}</td><td style="white-space:normal;min-width:160px">${h(l.why)}</td><td>${fmtS(l.at)}</td><td>${l.st==='Pending'&&isAdm()?`<div class="row nw" style="gap:6px"><button class="btn sm g" data-a="lvAp" data-id="${l.id}" data-c="L">Approve · paid</button><button class="btn sm sec" data-a="lvAp" data-id="${l.id}" data-c="A">Unpaid</button><button class="btn sm sec" data-a="lvRj" data-id="${l.id}">Reject</button></div>`:pill(l.st+(l.paid===false?' · unpaid':''),l.st==='Approved'?'g':l.st==='Rejected'?'r':'a')}</td></tr>`}).join('')||`<tr><td colspan="8">${empty('No leave requests')}</td></tr>`}</tbody></table></div>`}
+A.lvAp=e=>{const l=D.leave.find(x=>x.id===e.dataset.id),em=empOf(l.k),code=l.type==='Half day'?'HD':e.dataset.c;l.st='Approved';l.paid=e.dataset.c==='L';if(em){D.attx[em.id]=D.attx[em.id]||{};for(let d=l.from;d<=l.to;d=addD(d,1))D.attx[em.id][d]=code}logA('Leave approved · '+nm(l.k)+' '+l.from);save();render();toast('Approved · marked '+code+' on the attendance sheet')};
+A.lvRj=e=>{const l=D.leave.find(x=>x.id===e.dataset.id);l.st='Rejected';save();render();toast('Rejected · '+nm(l.k)+' is notified')};
+A.lvOk=e=>{const l=D.leave[+e.dataset.i];if(l)A.lvAp({dataset:{id:l.id,c:'L'}})};
+/* add the tab to HR Desk, after Attendance sheet */
+const _people3=V.people;
+V.people=()=>{let out=_people3();const n=lvPending().length;out=out.replace(/(<button role="tab"[^>]*data-t="att"[^>]*>[^<]*<\/button>)/,`$1<button role="tab" aria-selected="${S.ptab==='leave'}" class="${S.ptab==='leave'?'on':''}" data-a="ptab" data-t="leave">Leave requests${n?` <span class="n">${n}</span>`:''}</button>`);
+ if(S.ptab==='leave'){const i=out.indexOf('<div style="margin-top:12px"></div>');out=out.slice(0,i)+'<div style="margin-top:12px"></div>'+pLeave()}return out};
+/* HR badge on the nav */
+const _badges=badges;badges=function(){const b=_badges();const n=lvPending().length;if(n&&(K()==='hr'||isBoss()))b.people=(K()==='hr'?(b.people||0):0)+n;return b};
