@@ -730,6 +730,14 @@ body.splitmode .shell{margin-right:var(--spw,min(48vw,760px))!important}.sppane{
 
 .obgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.obl{display:flex;flex-direction:column;gap:6px}.obl code{font-size:11px;background:#F4F6FA;padding:6px 8px;border-radius:6px;word-break:break-all}
 .obpre{white-space:pre-wrap;font:inherit;font-size:13px;background:#F4F6FA;border-radius:8px;padding:10px;margin:0}
+
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:900px){.vgrid{grid-template-columns:1fr}}
+.vtg{display:flex;gap:10px;align-items:flex-start;margin:10px 0;cursor:pointer}.vtg input{margin-top:3px}.vtg span{display:flex;flex-direction:column}.vtg small{color:#666;font-size:12px}
+.vsteps{padding-left:18px;margin:10px 0 0}.vsteps li{margin:4px 0}kbd{background:#F1F3F4;border:1px solid #D0D4DA;border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}
+#tourBox{position:fixed;right:24px;bottom:84px;z-index:9999;width:340px;max-width:calc(100vw - 32px);background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(15,23,42,.28);padding:16px 16px 12px;border:1px solid #E3E7EF}
+#tourBox b{font-size:16px}#tourBox p{margin:6px 0 12px;font-size:13px;color:#444;line-height:1.45}.tourp{font-size:11px;color:#888;margin-bottom:4px}.tourb{display:flex;gap:6px;align-items:center}
+.tourbar{height:3px;background:#EEF0F4;border-radius:2px;margin-top:10px;overflow:hidden}.tourbar i{display:block;height:100%;background:var(--o)}
+.sb-nav .tourhi{outline:3px solid var(--o);outline-offset:-3px;box-shadow:0 0 0 6px rgba(37,99,235,.18);border-radius:10px;animation:tourp 1.2s ease-in-out infinite}@keyframes tourp{50%{box-shadow:0 0 0 10px rgba(37,99,235,.08)}}
 </style>
 </head>
 <body>
