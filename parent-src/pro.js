@@ -387,13 +387,13 @@ function sfView(){const T=myWaTeams();if(S.wat&&!T.includes(S.wat))S.wat='';cons
  const coName=co==='log'?'JDAC SALES PVT LTD':(D.comNums[co]||{}).n||WATEAM[tm];
  const c=S.wac&&D.wa.find(x=>x.id===S.wac&&T.includes(x.team));if(!c)S.wac=null;if(S.waDet===undefined)S.waDet=true;
  return `<div class="sf ${c?'open':''}"><div class="sfleft">
-  <div class="sfsw">${[['wa','WhatsApp','chat'],['email','Email','mail'],['team','Chat','chat'],['call','Calls','phone'],['meet','Meet','video'],['notes','Notes','notes']].map(([k,l,i])=>`<button class="${k==='wa'?'on':''}" data-a="chm" data-t="${k}">${ic(i)}${l}${k==='email'&&typeof mUnread==='function'&&mUnread(S.me)?`<em>${mUnread(S.me)}</em>`:''}</button>`).join('')}</div>
+  
   <div class="sfhd"><div style="min-width:0;flex:1">${T.length>1?`<select class="sfco" data-ch="waTeam" aria-label="WhatsApp number"><option value="">All numbers</option>${T.map(k=>`<option value="${k}" ${S.wat===k?'selected':''}>${h(WATEAM[k])}</option>`).join('')}</select>`:''}<b class="sfcn">${h(S.wat?coName:'JDAC SALES PVT LTD')}</b><div class="sfnum">${h(num?num.replace(/\s/g,''):'Number not set')}</div></div>
    <button class="ib" data-a="waMute" title="${S.waMute?'Notifications off':'Notifications on'}">${sfi(S.waMute?'bellx':'bell',20)}</button>${isAdm()?`<button class="ib" data-a="waSet" title="Settings">${sfi('gear',20)}</button>`:''}</div>
   <div class="sfsr"><div class="sfq">${sfi('search',16)}<label class="sr" for="waq">Search chats</label><input id="waq" value="${h(S.waq||'')}" placeholder="Search chats"></div><button class="sfnew" data-a="waNew">${sfi('pen',15)}New</button><button class="ib sffb ${wfCount()?'on':''}" data-a="waFil" aria-label="Filter">${sfi('filter',19)}</button></div>
   ${sfList(T)}</div>
   <div class="sfright">${c?sfChat(c)+(S.waDet?sfDet(c):''):`<div class="sfempty">${sfi('wa',72)}<h2>JDAC WhatsApp</h2><p>Pick a chat on the left to see the conversation and the customer's details. Start a new one with New.</p></div>`}${c?`<button class="sfdtg ${S.waDet?'in':''}" data-a="waDet" aria-label="Customer details">${sfi(S.waDet?'sideR':'side',18)}</button>`:''}</div></div>`}
-const _vchatSF=V.chat;V.chat=()=>{if(S.chm==='wa'&&myWaTeams().length){const hd=chatHead(),i=hd.indexOf('<div class="ctabs">');return `<div class="sfwrap ${S.ctOpen?'ctopen':''}"><div class="sfct">${i>=0?hd.slice(i):hd}</div>${sfView()}</div>`}return _vchatSF()};
+const _vchatSF=V.chat;V.chat=()=>{if(S.chm==='wa'&&myWaTeams().length){const hd=chatHead(),i=hd.indexOf('<div class="ctabs">');return `<div class="sfwrap2">${hd}${sfView()}</div>`}return _vchatSF()};
 const _rSF=render;render=function(){_rSF.apply(this,arguments);try{document.body.classList.toggle('wamode',S.v==='chat'&&S.chm==='wa'&&myWaTeams().length)}catch(x){}};
 A.sfOpen=e=>{S.wac=e.dataset.id;S.waNote=false;save();render();const t=document.getElementById('thr');if(t)t.scrollTop=1e6};
 A.ctTog=()=>{S.ctOpen=!S.ctOpen;render()};
