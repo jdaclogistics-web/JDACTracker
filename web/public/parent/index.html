@@ -640,6 +640,10 @@ tr.mistot td{background:#EEF2FB;font-weight:700}
 .ntpre{white-space:pre-wrap;font:13px/1.6 inherit;background:#FAFBFD;border-radius:8px;padding:10px;margin:0 0 10px}
 
 .ctabs button{white-space:nowrap}
+
+.nthero{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#FFF5EC,#fff);border:1px solid #F7D3B3;border-radius:12px;padding:14px 16px;margin-bottom:6px}.nthero div{flex:1}.nthero b{display:flex;align-items:center;gap:8px;font-size:17px}.nthero span{display:block;font-size:12.5px;color:#555;margin-top:2px}
+.ntdot{width:10px;height:10px;border-radius:50%;background:#C0392B;box-shadow:0 0 0 4px #FDECEA;flex:none}
+.sfsw button{font-size:12px;padding:7px 2px}
 </style>
 </head>
 <body>
@@ -2928,7 +2932,7 @@ function sfView(){const T=myWaTeams();if(S.wat&&!T.includes(S.wat))S.wat='';cons
  const coName=co==='log'?'JDAC SALES PVT LTD':(D.comNums[co]||{}).n||WATEAM[tm];
  const c=S.wac&&D.wa.find(x=>x.id===S.wac&&T.includes(x.team));if(!c)S.wac=null;if(S.waDet===undefined)S.waDet=true;
  return `<div class="sf ${c?'open':''}"><div class="sfleft">
-  <div class="sfsw">${[['wa','WhatsApp','chat'],['email','Email','mail'],['team','Chat','chat'],['call','Calls','phone'],['meet','Meet','video']].map(([k,l,i])=>`<button class="${k==='wa'?'on':''}" data-a="chm" data-t="${k}">${ic(i)}${l}${k==='email'&&typeof mUnread==='function'&&mUnread(S.me)?`<em>${mUnread(S.me)}</em>`:''}</button>`).join('')}</div>
+  <div class="sfsw">${[['wa','WhatsApp','chat'],['email','Email','mail'],['team','Chat','chat'],['call','Calls','phone'],['meet','Meet','video'],['notes','Notes','notes']].map(([k,l,i])=>`<button class="${k==='wa'?'on':''}" data-a="chm" data-t="${k}">${ic(i)}${l}${k==='email'&&typeof mUnread==='function'&&mUnread(S.me)?`<em>${mUnread(S.me)}</em>`:''}</button>`).join('')}</div>
   <div class="sfhd"><div style="min-width:0;flex:1">${T.length>1?`<select class="sfco" data-ch="waTeam" aria-label="WhatsApp number"><option value="">All numbers</option>${T.map(k=>`<option value="${k}" ${S.wat===k?'selected':''}>${h(WATEAM[k])}</option>`).join('')}</select>`:''}<b class="sfcn">${h(S.wat?coName:'JDAC SALES PVT LTD')}</b><div class="sfnum">${h(num?num.replace(/\s/g,''):'Number not set')}</div></div>
    <button class="ib" data-a="waMute" title="${S.waMute?'Notifications off':'Notifications on'}">${sfi(S.waMute?'bellx':'bell',20)}</button>${isAdm()?`<button class="ib" data-a="waSet" title="Settings">${sfi('gear',20)}</button>`:''}</div>
   <div class="sfsr"><div class="sfq">${sfi('search',16)}<label class="sr" for="waq">Search chats</label><input id="waq" value="${h(S.waq||'')}" placeholder="Search chats"></div><button class="sfnew" data-a="waNew">${sfi('pen',15)}New</button><button class="ib sffb ${wfCount()?'on':''}" data-a="waFil" aria-label="Filter">${sfi('filter',19)}</button></div>
@@ -3289,6 +3293,20 @@ A.gmMic=()=>{if(GMREC){gmStopMic();render();return}const SR=window.SpeechRecogni
  r.onerror=ev=>{if(ev.error==='not-allowed'){toast('Allow the microphone to use the live transcript');gmStopMic();render()}};
  r.onend=()=>{if(GMREC===r&&!r.stopping){try{r.start()}catch(x){}}};
  try{r.start();GMREC=r;render();const b=document.getElementById('gmTr');if(b)b.scrollTop=1e6}catch(x){toast('Could not start the microphone')}};
+/* ---------- JDAC Notetaker: its own tab in Communication ---------- */
+Object.assign(I,{notes:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>'});
+function notesHome(){const M=(D.meet||[]).filter(m=>(m.log&&m.log.length)||m.st||(m.acts&&m.acts.length)).sort((a,b)=>(b.st||0)-(a.st||0)||String(b.dt).localeCompare(String(a.dt))),live=M.filter(m=>m.st&&!m.end),up=(D.meet||[]).filter(m=>!m.st&&(m.rep||m.dt>=TODAY));
+ return `<div class="nthero"><div><b>${ic('notes')}JDAC Notetaker</b><span>Live transcript (English, Hindi, Marathi), notes, decisions and action points for every meeting. Action points become tasks for the owner, and the summary can go to any team group.</span></div><button class="btn" data-a="gmQuick">${ic('plus')}Take notes now</button></div>
+ ${live.length?`<div class="mish">In progress</div><div class="list">${live.map(m=>`<button class="li" data-a="gmOpenN" data-id="${m.id}"><span class="ntdot"></span><div class="tx"><b>${h(m.t)}</b><div class="m">Started ${new Date(m.st).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})} · ${(m.log||[]).length} points</div></div>${ic('right')}</button>`).join('')}</div>`:''}
+ <div class="mish">Start notes for a meeting</div><div class="list">${up.map(m=>`<div class="li"><div class="tx"><b>${h(m.t)}</b><div class="m">${h(m.rep||fmt(m.dt))} · ${h(m.time||m.when||'')}</div></div><button class="btn sm" data-a="gmOpenN" data-id="${m.id}">Take notes</button></div>`).join('')||empty('No upcoming meetings','Schedule one in the Google Meet tab, or press Take notes now')}</div>
+ <div class="mish">Saved notes</div><div class="list">${M.filter(m=>m.end||(!m.st&&m.acts&&m.acts.length)).map(m=>{const L=m.log||[];return `<button class="li" data-a="gmOpenN" data-id="${m.id}"><div class="tx"><b>${h(m.t)}</b><div class="m">${fmt(m.dt||TODAY)}${m.dur?' · '+m.dur+' min':''} · ${L.filter(x=>x.k==='dec').length} decisions · ${(m.acts||[]).length} action points${(m.tr||[]).length?' · transcript':''}</div></div>${ic('right')}</button>`}).join('')||empty('No saved notes yet')}</div>`}
+const _chHeadNT=chatHead;chatHead=function(){const o=_chHeadNT();return o.replace(/(<div class="ctabs">[\s\S]*?)(<\/div>)/,(m,a,b)=>a+`<button class="${S.chm==='notes'?'on':''}" data-a="chm" data-t="notes">${ic('notes')}JDAC Notetaker</button>`+b)};
+const _vChatNT=V.chat;V.chat=()=>S.chm==='notes'?chatHead()+(S.gmN?noteView():notesHome()):_vChatNT();
+/* Meet tab: drop the note-taker card and send "Take notes" to the Notetaker tab */
+const _meetViewNT3=meetView;meetView=function(){if(S.chm==='meet'&&S.gmN){S.chm='notes';return noteView()}return _meetViewNT3().replace(/<div class="card gmq">[\s\S]*?<\/button><\/div>/,'')};
+const _gmOpenN=A.gmOpenN;A.gmOpenN=e=>{S.chm='notes';_gmOpenN(e)};
+const _gmQuickGo=A.gmQuickGo;A.gmQuickGo=()=>{S.chm='notes';_gmQuickGo()};
+const _gmNotes=A.gmNotes;A.gmNotes=()=>{S.chm='notes';S.gmN=null;render()};
 /* ===================== LIVE MODE · real login + real staff & attendance from the tracker database =====================
    Runs only on the real website (github.io). The claude.ai preview keeps sample data. */
 const LIVE=/github\.io$|^localhost$|^127\./.test(location.hostname);

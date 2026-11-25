@@ -88,3 +88,17 @@ A.gmMic=()=>{if(GMREC){gmStopMic();render();return}const SR=window.SpeechRecogni
  r.onerror=ev=>{if(ev.error==='not-allowed'){toast('Allow the microphone to use the live transcript');gmStopMic();render()}};
  r.onend=()=>{if(GMREC===r&&!r.stopping){try{r.start()}catch(x){}}};
  try{r.start();GMREC=r;render();const b=document.getElementById('gmTr');if(b)b.scrollTop=1e6}catch(x){toast('Could not start the microphone')}};
+/* ---------- JDAC Notetaker: its own tab in Communication ---------- */
+Object.assign(I,{notes:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>'});
+function notesHome(){const M=(D.meet||[]).filter(m=>(m.log&&m.log.length)||m.st||(m.acts&&m.acts.length)).sort((a,b)=>(b.st||0)-(a.st||0)||String(b.dt).localeCompare(String(a.dt))),live=M.filter(m=>m.st&&!m.end),up=(D.meet||[]).filter(m=>!m.st&&(m.rep||m.dt>=TODAY));
+ return `<div class="nthero"><div><b>${ic('notes')}JDAC Notetaker</b><span>Live transcript (English, Hindi, Marathi), notes, decisions and action points for every meeting. Action points become tasks for the owner, and the summary can go to any team group.</span></div><button class="btn" data-a="gmQuick">${ic('plus')}Take notes now</button></div>
+ ${live.length?`<div class="mish">In progress</div><div class="list">${live.map(m=>`<button class="li" data-a="gmOpenN" data-id="${m.id}"><span class="ntdot"></span><div class="tx"><b>${h(m.t)}</b><div class="m">Started ${new Date(m.st).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})} · ${(m.log||[]).length} points</div></div>${ic('right')}</button>`).join('')}</div>`:''}
+ <div class="mish">Start notes for a meeting</div><div class="list">${up.map(m=>`<div class="li"><div class="tx"><b>${h(m.t)}</b><div class="m">${h(m.rep||fmt(m.dt))} · ${h(m.time||m.when||'')}</div></div><button class="btn sm" data-a="gmOpenN" data-id="${m.id}">Take notes</button></div>`).join('')||empty('No upcoming meetings','Schedule one in the Google Meet tab, or press Take notes now')}</div>
+ <div class="mish">Saved notes</div><div class="list">${M.filter(m=>m.end||(!m.st&&m.acts&&m.acts.length)).map(m=>{const L=m.log||[];return `<button class="li" data-a="gmOpenN" data-id="${m.id}"><div class="tx"><b>${h(m.t)}</b><div class="m">${fmt(m.dt||TODAY)}${m.dur?' · '+m.dur+' min':''} · ${L.filter(x=>x.k==='dec').length} decisions · ${(m.acts||[]).length} action points${(m.tr||[]).length?' · transcript':''}</div></div>${ic('right')}</button>`}).join('')||empty('No saved notes yet')}</div>`}
+const _chHeadNT=chatHead;chatHead=function(){const o=_chHeadNT();return o.replace(/(<div class="ctabs">[\s\S]*?)(<\/div>)/,(m,a,b)=>a+`<button class="${S.chm==='notes'?'on':''}" data-a="chm" data-t="notes">${ic('notes')}JDAC Notetaker</button>`+b)};
+const _vChatNT=V.chat;V.chat=()=>S.chm==='notes'?chatHead()+(S.gmN?noteView():notesHome()):_vChatNT();
+/* Meet tab: drop the note-taker card and send "Take notes" to the Notetaker tab */
+const _meetViewNT3=meetView;meetView=function(){if(S.chm==='meet'&&S.gmN){S.chm='notes';return noteView()}return _meetViewNT3().replace(/<div class="card gmq">[\s\S]*?<\/button><\/div>/,'')};
+const _gmOpenN=A.gmOpenN;A.gmOpenN=e=>{S.chm='notes';_gmOpenN(e)};
+const _gmQuickGo=A.gmQuickGo;A.gmQuickGo=()=>{S.chm='notes';_gmQuickGo()};
+const _gmNotes=A.gmNotes;A.gmNotes=()=>{S.chm='notes';S.gmN=null;render()};
