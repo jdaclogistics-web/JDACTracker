@@ -75,6 +75,17 @@ A.trDel=e=>{const f=(TRD.files||[]).find(x=>x.id===e.dataset.id);if(!f)return;sh
 A.trDelGo=async e=>{const id=e.dataset.id;closeM();try{if(trLive())await lapi('POST','/api/admin/training/files/'+id+'/delete',{});else{D.trFiles=(D.trFiles||[]).filter(x=>x.id!==id);save()}toast('Deleted')}catch(x){toast(x.message)}TRD.files=null;trLoad();render()};
 
 /* ---- Darshan (Boss): no clock in / clock out ---- */
+const isWarehouse=k=>{const e=(D.emp||[]).find(x=>x.k===k)||{},p=P[k]||{};return /warehouse|goa team|godown/i.test([e.unit,e.team,e.dept,p.team,p.r,e.desig].join(' '))};
+const _meStaffX=V.me;V.me=()=>{let out=_meStaffX();if(isBoss())return out;
+ /* header: only name, ID, designation + today's date on the right */
+ out=out.replace(/(<div class="mut sm">[^<]*?)( · \d{1,2}(?::\d\d)?\s?(?:am|pm)\s?[–-]\s?\d{1,2}(?::\d\d)?\s?(?:am|pm))(<\/div>)/i,'$1$3');
+ out=out.replace(/<div class="xs" style="margin-top:4px"><b>Weekly off:<\/b>[^<]*<\/div>/,'');
+ out=out.replace(/(<main class="wrap[^"]*" id="main"><div class="row nw" style="margin-bottom:14px">[\s\S]*?<\/div><\/div>)(\s*<\/div>)?/,(m)=>m);
+ const dt=new Date(TODAY+'T12:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ out=out.replace(/(<h1 style="font-size:22px">[^<]*<\/h1><div class="mut sm">[^<]*<\/div><\/div>)/,`$1<div class="medate"><b>${dt.split(',')[0]}</b><span>${dt.split(',').slice(1).join(',').trim()}</span></div>`);
+ /* weekly off swap: warehouse team only */
+ if(!isWarehouse(S.me))out=out.replace(/<div class="card"><div class="row nw"><b style="flex:1">Weekly off swap<\/b>[\s\S]*?<\/div><\/div><\/div>/,'');
+ return out};
 const _meX9=V.me;V.me=()=>{let out=_meX9();if(!isBoss())return out;
  out=out.replace(/<div class="card"><div class="row nw"><div style="flex:1"><div class="mut sm">Today<\/div>[\s\S]*?<div id="camwrap"><\/div><\/div>/,'');
  out=out.replace(/<div class="st"><h2>This month<\/h2><span class="sp"><\/span><\/div><div class="stats">(?:<div>[\s\S]*?<\/div>){3}<\/div>/,'');return out};
