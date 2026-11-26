@@ -128,4 +128,6 @@ V.settings=()=>{const u=UIP.get(),opt=(k,v,l,d)=>`<button class="uio ${u[k]===v?
  <details class="bpd"><summary>Who sees what</summary><div class="list">${who.map(r=>`<div class="li"><div class="tx"><b>${r[0]}</b><div class="m">${r[1]}</div></div></div>`).join('')}</div></details>
  <details class="bpd"><summary>Connections · ${CONN.filter(c=>c[1]==='Live').length} live</summary><div class="list">${CONN.map(c=>{const ext=/^https?:/.test(c[2]);return `<${ext?'a':'button'} class="li conn" ${ext?`href="${c[2]}" target="_blank" rel="noopener"`:`data-a="connGo" data-to="${c[2].slice(1)}"`}><div class="tx"><b>${c[0]}</b><div class="m">${c[3]}</div></div>${pill(c[1],c[1]==='Live'?'g':'')}<span class="xs" style="color:var(--o);font-weight:700">Open ${ext?'↗':'→'}</span></${ext?'a':'button'}>`}).join('')}</div></details>`};
 A.connGo=e=>{const [v,a,b]=e.dataset.to.split(':');if(v==='co'){S.v='co';S.co=a;if(b)S.tab=b}else if(v==='chat'){S.v='chat';S.chm=a}else S.v=v;render()};
+/* ---- Communication: no page header, just the tabs; WhatsApp fills the screen ---- */
+const _chHeadX9=chatHead;chatHead=function(){const o=_chHeadX9(),i=o.indexOf('<div class="ctabs">');return i>0?o.slice(i):o};
 render();
