@@ -130,4 +130,20 @@ V.settings=()=>{const u=UIP.get(),opt=(k,v,l,d)=>`<button class="uio ${u[k]===v?
 A.connGo=e=>{const [v,a,b]=e.dataset.to.split(':');if(v==='co'){S.v='co';S.co=a;if(b)S.tab=b}else if(v==='chat'){S.v='chat';S.chm=a}else S.v=v;render()};
 /* ---- Communication: no page header, just the tabs; WhatsApp fills the screen ---- */
 const _chHeadX9=chatHead;chatHead=function(){const o=_chHeadX9(),i=o.indexOf('<div class="ctabs">');return i>0?o.slice(i):o};
+/* ---- JDAC Notetaker: no tab in the header; "Generate notes" inside Google Meet + in the meeting ---- */
+const _chHeadX10=chatHead;chatHead=function(){return _chHeadX10().replace(/<button class="[^"]*" data-a="chm" data-t="notes">[\s\S]*?<\/button>/,'')};
+function gmAuto(m){m.log=m.log||[];m.tr=m.tr||[];const have=new Set(m.log.map(x=>x.t));let d=0,a=0;
+ m.tr.forEach(x=>{const t=String(x.t||'').trim();if(t.length<8||have.has(t))return;
+  if(/\b(decide|decided|final|finalise|agreed|approve|approved|confirm|pakka|tay|fix kar)/i.test(t)){m.log.push({k:'dec',t,at:x.at,auto:1});have.add(t);d++}
+  else if(/\b(will|kar(na|ni|o|enge|dena|denge)|send|call|follow ?up|by (today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|kal tak|aaj tak|deadline|assign|bhej)/i.test(t)){const who=Object.keys(P).find(k=>P[k].n&&new RegExp('\\b'+P[k].n.split(' ')[0].replace(/[^a-z]/gi,'')+'\\b','i').test(t))||S.me;m.log.push({k:'act',t,at:x.at,o:who,due:addD(TODAY,1),auto:1});have.add(t);a++}});
+ m.gen=Date.now();return {d,a,n:m.tr.length}}
+A.gmGen=()=>{const M=D.meet||[],m=gmActive()||(S.gmN&&M.find(x=>x.id===S.gmN))||M.filter(x=>x.st).sort((a,b)=>(b.st||0)-(a.st||0))[0];
+ if(!m)return toast('Start or join a meeting first — the notetaker listens and writes notes');const r=gmAuto(m);save();S.v='chat';S.chm='notes';S.gmN=m.id;render();scrollTo(0,0);
+ toast(r.n?`Notes ready · ${r.d} decisions, ${r.a} action points from ${r.n} lines`:'Notes ready · turn on the mic in the meeting to capture what is said')};
+const _meetViewX=meetView;meetView=function(){const m=gmActive();return `<div class="card gmgen"><div style="flex:1"><b>📝 JDAC Notetaker</b><div class="xs mut">${m?`Meeting on: <b>${h(m.t)}</b> · ${(m.tr||[]).length} lines heard`:'Start or join a meeting below — the notetaker writes what is said.'}</div></div><button class="btn" data-a="gmGen">Generate notes</button><button class="btn sec" data-a="gmNotesAll">All notes</button></div>`+_meetViewX()};
+A.gmNotesAll=()=>{S.chm='notes';S.gmN=null;render()};
+const _noteViewX=noteView;noteView=function(){const m=gmM(),o=_noteViewX();if(!m)return o;const bar=`<div class="card gmgen"><div style="flex:1"><b>📝 Notes for ${h(m.t)}</b><div class="xs mut">${m.gen?'Generated '+new Date(m.gen).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · ':''}${(m.tr||[]).length} lines heard · ${(m.log||[]).length} notes</div></div><button class="btn" data-a="gmGen">${m.gen?'Update notes':'Generate notes'}</button><button class="btn sec" data-a="chm" data-t="meet">← Google Meet</button></div>${m.gen&&!m.end?`<div class="card"><b class="mh">Summary so far</b><pre class="ntpre">${h(gmSummary(m))}</pre><button class="btn sm sec" data-a="gmCopySum">Copy</button></div>`:''}`;return bar+o};
+
+/* ---- Staff (e.g. Neetu): clean top bar — no Split view, Contacts or Live/Prototype label ---- */
+const _rStaffX=render;render=function(){_rStaffX.apply(this,arguments);try{document.documentElement.classList.toggle('staffmode',!isAdm())}catch(e){}};
 render();
