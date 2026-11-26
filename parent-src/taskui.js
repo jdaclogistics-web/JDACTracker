@@ -16,7 +16,7 @@ const TPAL=['#2F6BE0','#E8772E','#7A2E8E','#1F9D55','#0B6E8A','#C0392B','#B8860B
 const projCol=id=>{if(id==='all')return '#24408E';const i=(D.projects||[]).findIndex(p=>p.id===id);return TPAL[(i<0?0:i)%TPAL.length]};
 
 taskHead=function(me){const T=[['proj','Projects','t_proj'],['forms','Forms','t_form'],['cal','Calendar','t_cal'],['time','Timeline','t_time'],...(isAdm()||['mohin','omadsul','himanshu'].includes(S.me)?[['meet','Meetings','t_meet']]:[])];
- return `<div class="thd"><h1 class="ttl">Tasks<span class="tsub"> / ${{proj:'Projects',forms:'Forms',cal:'Calendar',time:'Timeline',meet:'Meetings'}[S.ttab]}</span></h1><span class="sp"></span><span class="tpill hide-m">${new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span><button class="tpill tme hide-m" data-a="whoSheet" aria-label="Account">${av(me.n)}<span><b>${h(nmF(S.me))}</b><small>${h(me.r||'')}</small></span></button></div>
+ return `<div class="thd"><h1 class="ttl">Tasks</h1><span class="sp"></span><span class="tpill hide-m">${new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span><button class="tpill tme hide-m" data-a="whoSheet" aria-label="Account">${av(me.n)}<span><b>${h(nmF(S.me))}</b><small>${h(me.r||'')}</small></span></button></div>
  <nav class="tsec" aria-label="Task sections">${T.map(([k,n,i])=>`<button class="${S.ttab===k?'on':''}" data-a="ttab" data-t="${k}" ${S.ttab===k?'aria-current="page"':''}>${ic(i)}<span>${n}</span></button>`).join('')}</nav>`};
 
 projBar=function(){const PR=myProjects(),T=myTasks();S.kp=S.kp||'all';
