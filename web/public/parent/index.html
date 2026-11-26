@@ -4300,4 +4300,10 @@ setTimeout(devApply,50);
 const _stDev=V.settings;V.settings=()=>{let o=_stDev();const d=UIP.get().dev||'auto',b=(k,t,s,i)=>`<button class="uio ${d===k?'on':''}" data-a="devSet" data-t="${k}" aria-pressed="${d===k}"><span class="uii">${i}</span><b>${t}</b><span>${s}</span></button>`;
  const grp=`<div class="stgrp"><div class="stlab">Screen</div><div class="uiopts">${b('auto','Automatic','Fits this device','✦')}${b('mobile','Mobile view','Phone-size screen','📱')}${b('desktop','Desktop view','Full computer layout','🖥')}</div></div>`;
  return o.replace('<div class="stgrp"><div class="stlab">View</div>',grp+'<div class="stgrp"><div class="stlab">View</div>')};
+// Settings: every group as a dropdown
+const _stDD=V.settings;V.settings=()=>{let o=_stDD();const IC={Screen:'📱',Light:'💡',View:'🪟','Text size':'🔠'};
+ o=o.replace(/<section class="stpanel"><div class="stph">[\s\S]*?<\/div>/,'').replace('</section>','');
+ o=o.replace(/<div class="stgrp"><div class="stlab">([^<]+)<\/div><div class="uiopts">([\s\S]*?)<\/div><\/div>(?=\s*(<div class="stgrp">|<details|$))/g,(m,lab,body)=>{const k='u'+lab.replace(/\W/g,''),cur=(body.match(/class="uio on"[^>]*>[\s\S]*?<b>([^<]*)<\/b>/)||[])[1]||'';
+  return `<details class="bpsec bpdd" ${(S.stO||{})[k]?'open':''}><summary class="bph" data-a="stO" data-k="${k}"><span class="bpsi">${IC[lab]||'⚙'}</span>${lab}${cur?` <span class="bpcount">${h(cur)}</span>`:''}</summary><div class="uiopts" style="padding:12px 14px">${body}</div></details>`});
+ return o};
 </script></body></html>
