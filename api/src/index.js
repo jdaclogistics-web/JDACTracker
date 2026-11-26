@@ -507,7 +507,7 @@ const trSave = (env, L) => env.DB.prepare('INSERT INTO app_settings (key, value)
 on('GET', '/api/training/files', async (env, req) => { await authUser(env, req); return json({ files: await trList(env) }) })
 on('POST', '/api/admin/training/files', async (env, req, url) => {
   const me = await authUser(env, req); needAdmin(me)
-  const day = Math.max(1, Math.min(6, Number(url.searchParams.get('day')) || 1))
+  const dq = Number(url.searchParams.get('day')), day = Number.isFinite(dq) ? Math.max(0, Math.min(6, Math.round(dq))) : 1 // 0 = Library
   const name = String(url.searchParams.get('name') || 'file').replace(/[^\w .()\-]/g, '_').slice(0, 120)
   const mime = (req.headers.get('content-type') || 'application/octet-stream').slice(0, 100)
   const bytes = new Uint8Array(await req.arrayBuffer())
