@@ -4,7 +4,7 @@ import { istDate, istMinutes, nowIso, hashPassword, verifyPassword, signToken, v
 import { loadAll, dropCache, homeSummary, companyPage, myHome, cargoDesk, COMPANIES, journeyOf } from './cc.js'
 import { DESK_TABLES, migrateDesks, registerDesks } from './desks.js'
 import { registerIt } from './it.js'
-import { registerTeamTasks } from './teamtasks.js'
+import { registerTeamTasks, seedGoaRecon } from './teamtasks.js'
 import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64, saveFile, readFile, deleteFile } from './photos.js'
 
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
@@ -838,10 +838,14 @@ on('GET', '/api/my/cargo', async (env, req, url) => {
   const [D, emps] = await Promise.all([loadAll(env), activeEmps(env)])
   return json({ for: who.name, ...cargoDesk(D, who, emps, istDate(), await cargoCses(env), ADMIN_ROLES.includes(me.role)) })
 })
+let legacySeq = 0
 const legacyPut = async (env, tbl, d) => {
-  const id = 'n' + Date.now() + Math.floor(Math.random() * 1000)
-  await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind(tbl, id, JSON.stringify({ id, ...d })).run()
-  dropCache(); return id
+  // unique even when many rows are added in the same millisecond (retry if a clash still happens)
+  for (let i = 0; ; i++) {
+    const id = 'n' + Date.now() + String(legacySeq++ % 1000).padStart(3, '0') + Math.floor(Math.random() * 10)
+    try { await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind(tbl, id, JSON.stringify({ id, ...d })).run(); dropCache(); return id }
+    catch (e) { if (i >= 4 || !/UNIQUE/i.test(String(e && e.message))) throw e }
+  }
 }
 const legacyGet = async (env, tbl, id) => {
   const r = await env.DB.prepare('SELECT data FROM legacy_records WHERE tbl = ? AND legacy_id = ?').bind(tbl, String(id)).first()
@@ -933,7 +937,7 @@ on('POST', '/api/my/task-done', async (env, req) => {
 
 registerDesks(on, { authUser, needAdmin, json, body, bad, HttpError, istDate, audit, ADMIN_ROLES, loadAll, dropCache, legacyGet, legacySet, legacyPut, nowLocal })
 registerIt(on, { json, body, bad, HttpError, audit, ADMIN_ROLES, hashPassword, verifyPassword, signToken, verifyToken, nowIso, istDate, TOKEN_DAYS })
-registerTeamTasks(on, { json, body, bad, HttpError, ADMIN_ROLES, verifyToken, nowIso })
+registerTeamTasks(on, { json, body, bad, HttpError, ADMIN_ROLES, verifyToken, nowIso, legacyPut, dropCache, audit })
 
 // Import page (सिर्फ import window खुली हो तब) — JSON file चुनो, chunks में भेजता है
 on('GET', '/api/setup/import-page', async (env) => {
@@ -1210,6 +1214,7 @@ async function runMigrations(env) {
     }
     await mark('mig_org_v3')
   }
+  if (!(await done('mig_goa_recon_v1'))) { try { if (await seedGoaRecon(env, legacyPut, nowIso)) { await mark('mig_goa_recon_v1'); dropCache() } } catch (e) { console.error('goa recon tasks', e?.message) } }
   if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS legacy_records (tbl TEXT NOT NULL, legacy_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tbl, legacy_id))').run()

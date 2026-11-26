@@ -3783,26 +3783,49 @@ A.zenPw=async e=>{const p=val('zpw'+e.dataset.id);if(p.length<6)return toast('Pa
 A.zenBlk=async e=>{try{await zenSave({id:+e.dataset.id,active:e.dataset.on==='1'});toast('Saved');A.zenLogins()}catch(x){toast(x.message)}};
 const _kbZ=kanban;kanban=function(){const o=_kbZ();return isAdm()&&S.kp===ZEN.proj?o.replace('<button class="btn sm sec" data-a="projNew">',`<button class="btn sm sec" data-a="zenLogins">${ic('user')}Zenmeg logins</button><button class="btn sm sec" data-a="projNew">`):o};
 
-/* ---------- shared Tasks on the server (live site) ---------- */
-const TS={snap:{},since:'',busy:false,ready:false,t:null,proj:''};
-const tsSeed=id=>/^k\d{1,2}$/.test(id);           /* built-in sample tasks stay on this device only */
+/* ---------- ONE task list: JDAC Parent and the phone app share the same tasks (live site) ---------- */
+const TS={snap:{},busy:false,ready:false,t:null,emp:{},key:{},pid:{},pkey:{}};
+const tsSeed=id=>/^k\d{1,2}$/.test(id);           /* built-in sample tasks: preview only */
 const tsOn=()=>LIVE&&!!LV.tok;
 const _saveRaw=save;
 save=function(){_saveRaw();if(tsOn()&&TS.ready){clearTimeout(TS.t);TS.t=setTimeout(tsPush,500)}};
+const PKEY={'ops logistics':'ops','xenmag':'xenmag','cse jdac':'cse','hr':'hr','warehouse team':'wh','accounts':'acc','account':'acc','smm':'smm','govaabazaar':'gb','govaa bazaar':'gb','bahiram':'bahiram'};
+const L2ST=(d)=>{const s=String(d.status||''),j=(d.jp||{}).st;const col=/done|closed|complete/i.test(s)?'Completed':/stuck|block/i.test(s)?'Stuck':/plan|progress|working|doing/i.test(s)?'Planning':'To do';
+ if(j&&KCOL.find(c=>c[0]===colOf({st:j}))[1]===col)return j;return {Completed:'Done',Stuck:'Stuck',Planning:'Working','To do':'To do'}[col]};
+const ST2L=t=>KCOL.find(c=>c[0]===colOf(t))[1];
+function fromL(d){const jp=d.jp||{},o=d.assignee_emp!=null&&TS.key[d.assignee_emp]?TS.key[d.assignee_emp]:(jp.o||(d.assigneeId!=null&&TS.keyL[d.assigneeId])||'darshan');
+ const t={...jp,id:d.cid||'L'+d._rid,rid:d._rid,t:d.title||'',desc:d.notes||'',o,proj:TS.pkey[String(d.projectId)]||'',due:String(d.due||TODAY).slice(0,10),pri:d.priority||'Normal',type:d.type||'One-time',
+  tags:Array.isArray(jp.tags)?jp.tags:(Array.isArray(d.tags)?d.tags.map(x=>x&&x.n||x).filter(Boolean):[]),check:(d.checklist||[]).map(c=>({t:c.title,d:!!c.done})),st:L2ST(d),co:jp.co||'studios',by:jp.by||'darshan'};
+ if(d.start)t.start=String(d.start).slice(0,10);else delete t.start;delete t.o2;return t}
+function toL(t){const e=TS.emp[t.o];const {id,rid,t:ti,desc,o,proj,due,start,pri,type,tags,check,st,...rest}=t;
+ return {cid:t.id,title:ti,notes:desc||'',status:ST2L(t),priority:pri||'Normal',due,start:start||null,type:type||'One-time',projectId:TS.pid[proj]||null,assignee_emp:e?e.id:null,assigneeId:e&&e.legacy_id!=null?e.legacy_id:null,
+  tags:(tags||[]).map(n=>({n,c:'#64748B'})),jp:{...rest,o,st,tags}}}
+const coreJ=t=>JSON.stringify(toL(t)),chkJ=t=>JSON.stringify((t.check||[]).map(c=>[c.t,!!c.d]));
 async function tsPull(){if(!tsOn()||TS.busy)return;TS.busy=true;let ch=false;
- try{const r=await lapi('GET','/api/team/tasks'+(TS.since?'?since='+encodeURIComponent(TS.since):''));
-  r.tasks.forEach(t=>{delete t._u;const js=JSON.stringify(t),i=D.tasks.findIndex(x=>x.id===t.id);
-   if(i>=0&&TS.snap[t.id]!==undefined&&JSON.stringify(D.tasks[i])!==TS.snap[t.id])return; /* my unsent edit wins */
-   if(i<0){D.tasks.push(t);ch=true}else if(JSON.stringify(D.tasks[i])!==js){D.tasks[i]=t;ch=true}TS.snap[t.id]=js});
-  (r.deleted||[]).forEach(id=>{const i=D.tasks.findIndex(x=>x.id===id);if(i>=0){D.tasks.splice(i,1);ch=true}delete TS.snap[id]});
-  if(r.projects){const js=JSON.stringify(r.projects);if(isZen()){if(JSON.stringify(D.projects.filter(p=>p.id===ZEN.proj))!==js){D.projects=D.projects.filter(p=>p.id!==ZEN.proj).concat(r.projects);ch=true}}else{if(js!==JSON.stringify(D.projects)){D.projects=r.projects;ch=true}TS.proj=js}}
-  TS.since=new Date(Date.parse(r.now)-5000).toISOString();TS.err='';
+ try{const r=await lapi('GET','/api/team/tasks');
+  TS.emp={};TS.key={};TS.keyL={};(r.emps||[]).forEach(e=>{const k=lvKey(e);if(e.active||!TS.emp[k])TS.emp[k]=e;TS.key[e.id]=k;if(e.legacy_id!=null)TS.keyL[e.legacy_id]=k});
+  TS.pid={};TS.pkey={};const PR=r.projects.map(p=>{const nk=lvNorm(p.name),k=PKEY[nk]||'P'+p.id;TS.pid[k]=p.id;TS.pkey[p.id]=k;const old=D.projects.find(x=>x.id===k)||{};
+   const m=[...new Set(p.members.map(x=>x.emp_id!=null?TS.key[x.emp_id]:x.person_id!=null?TS.keyL[x.person_id]:null).filter(Boolean))];return {...old,id:k,n:p.name,lid:p.id,m:m.length?m:(old.m||[])}});
+  if(isZen()){D.projects=D.projects.filter(p=>p.id!==ZEN.proj).concat(PR)}else{const keep=D.projects.filter(p=>!p.lid&&!PR.some(x=>x.id===p.id));if(JSON.stringify(PR.concat(keep))!==JSON.stringify(D.projects)){D.projects=PR.concat(keep);ch=true}}
+  const seen=new Set();
+  r.tasks.forEach(d=>{const t=fromL(d);seen.add(t.id);const i=D.tasks.findIndex(x=>x.id===t.id),sn=TS.snap[t.id];
+   if(i>=0&&sn&&(coreJ(D.tasks[i])!==sn.c||chkJ(D.tasks[i])!==sn.k))return; /* my unsent edit wins */
+   if(i<0){D.tasks.push(t);ch=true}else if(JSON.stringify(D.tasks[i])!==JSON.stringify(t)){D.tasks[i]=t;ch=true}TS.snap[t.id]={c:coreJ(t),k:chkJ(t),rid:d._rid}});
+  /* removed on the server (deleted / closed long ago / moved out of view) */
+  Object.keys(TS.snap).forEach(id=>{if(!seen.has(id)){const i=D.tasks.findIndex(x=>x.id===id);const lc=i>=0?coreJ(D.tasks[i]):null;if(i>=0&&lc===TS.snap[id].c){D.tasks.splice(i,1);ch=true}delete TS.snap[id]}});
+  TS.err='';
  }catch(x){TS.err=x.message}TS.busy=false;if(ch){_saveRaw();if(!document.querySelector('.gx-b.drag,.kc.drag'))render()}}
-async function tsPush(){if(!tsOn()||!TS.ready)return;const ids=new Set(),ch=[];
- D.tasks.forEach(t=>{ids.add(t.id);if(tsSeed(t.id))return;if(isZen()&&t.proj!==ZEN.proj)return;const js=JSON.stringify(t);if(TS.snap[t.id]!==js)ch.push(t)});
- if(!isZen())Object.keys(TS.snap).forEach(id=>{if(!ids.has(id))ch.push({id,deleted:true})});
- for(let i=0;i<ch.length;i+=150){const part=ch.slice(i,i+150);try{await lapi('POST','/api/team/tasks',{tasks:part});part.forEach(t=>{if(t.deleted)delete TS.snap[t.id];else TS.snap[t.id]=JSON.stringify(t)})}catch(x){toast('Not saved to server: '+x.message);return}}
- if(isAdm()&&!isZen()){const js=JSON.stringify(D.projects);if(js!==TS.proj){try{await lapi('POST','/api/team/projects',{projects:D.projects});TS.proj=js}catch(x){}}}}
+async function tsPush(){if(!tsOn()||!TS.ready)return;
+ /* new teams made here → real projects */
+ if(isAdm()&&!isZen())for(const p of D.projects.filter(p=>!p.lid&&!TS.pid[p.id])){try{const r=await lapi('POST','/api/team/projects',{name:p.n,emp_ids:(p.m||[]).map(k=>TS.emp[k]&&TS.emp[k].id).filter(Boolean)});p.lid=r.id;TS.pid[p.id]=r.id;TS.pkey[r.id]=p.id}catch(x){}}
+ const ids=new Set(),items=[];
+ D.tasks.forEach(t=>{ids.add(t.id);if(tsSeed(t.id))return;if(isZen()&&t.proj!==ZEN.proj)return;if(t.proj&&!TS.pid[t.proj])return;const sn=TS.snap[t.id],c=coreJ(t),k=chkJ(t);
+  if(!sn||sn.c!==c||sn.k!==k)items.push({t,it:{rid:sn&&sn.rid||t.rid||undefined,data:toL(t),...(!sn||sn.k!==k?{checklist:(t.check||[]).map(x=>({title:x.t,done:!!x.d}))}:{})}})});
+ if(!isZen())Object.keys(TS.snap).forEach(id=>{if(!ids.has(id))items.push({del:id,it:{rid:TS.snap[id].rid,data:{cid:id},deleted:true}})});
+ for(let i=0;i<items.length;i+=100){const part=items.slice(i,i+100);try{const r=await lapi('POST','/api/team/tasks',{tasks:part.map(x=>x.it)});
+  part.forEach(x=>{if(x.del){delete TS.snap[x.del];return}const rid=r.rids[x.t.id]||x.it.rid;TS.snap[x.t.id]={c:coreJ(x.t),k:chkJ(x.t),rid}})}catch(x){toast('Not saved to server: '+x.message);return}}}
+/* one-time: tasks saved on 25 Nov in the separate store move into the shared task list */
+async function tsMoveV1(){if(!isAdm()||isZen())return;try{const r=await lapi('GET','/api/team/v1');if(!r.tasks.length)return;r.tasks.forEach(t=>{delete t._u;if(!D.tasks.some(x=>x.id===t.id))D.tasks.push(t)});_saveRaw();await tsPush();await lapi('POST','/api/team/v1/done',{})}catch(x){}}
 /* one-time: tasks given earlier on the old IT & Web page move into XENMAG (Zenmeg) or SMM (own team) */
 async function zenImport(){if(!isAdm()||isZen()||D.itImported)return;try{const r=await lapi('GET','/api/it/tasks');const stMap={'To do':'To do',Working:'Working',Check:'Review',Done:'Done',Stuck:'Stuck'};
  r.tasks.forEach(x=>{const id='it'+x.id;if(D.tasks.some(t=>t.id===id))return;const o=x.doer==='partner'?(/krishna/i.test(x.owner_name)?'krishna':'nayan'):(Object.keys(P).find(k=>lvNorm(P[k].n)===lvNorm(x.owner_name||''))||'himanshu');
@@ -3818,8 +3841,8 @@ if(LIVE){
    S.me=k;S.v='tasks';S.ttab=S.ttab&&S.ttab!=='meet'&&S.ttab!=='forms'?S.ttab:'proj';S.kp=ZEN.proj;S.kw='all';D.emp=[];D.att=[];D.leave=[];
    if(!TS.ready){D.tasks=D.tasks.filter(t=>t.proj===ZEN.proj&&!tsSeed(t.id))}
    await tsPull();TS.ready=true;LV.ok=true;LV.at=new Date();LV.busy=false;_saveRaw();render();return}
-  await _lvLoad();if(!LV.tok)return;await tsPull();TS.ready=true;await zenImport();tsPush()};
- const _out=lvOut;lvOut=function(q){TS.ready=false;TS.snap={};TS.since='';TS.proj='';return _out(q)};
+  await _lvLoad();if(!LV.tok)return;D.tasks=D.tasks.filter(t=>!tsSeed(t.id));await tsPull();TS.ready=true;await tsMoveV1();await zenImport();tsPush()};
+ const _out=lvOut;lvOut=function(q){TS.ready=false;TS.snap={};return _out(q)};
  setInterval(()=>{if(TS.ready&&document.visibilityState==='visible')tsPull()},45000);
  document.addEventListener('visibilitychange',()=>{if(TS.ready&&document.visibilityState==='visible')tsPull()});
  const _whoZ=A.whoSheet;A.whoSheet=()=>{if(LV.me&&LV.me.role==='partner')return sheet(`<h2>${h(LV.me.name)}</h2><p class="mut sm">${ZEN.name} · ${h(LV.me.username)}</p><button class="btn w" style="background:var(--r)" data-a="lvOut">Log out</button>`);return _whoZ()};
