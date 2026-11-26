@@ -16,7 +16,7 @@ chatHead=function(){if(S.chm==='wa'){S.chm='crm';S.cmv='inbox'}if(S.chm==='call'
  const dd=cos.length>1?`<div class="ccdd ${S.cmdd?'open':''}"><button class="ccbtn" data-a="cmDD" aria-haspopup="listbox" aria-expanded="${!!S.cmdd}" style="--cc:${inf[4]}"><span class="ccav">${h(inf[3].slice(0,2).toUpperCase())}</span><span class="cctx"><b>${h(inf[1])}</b><small>${h(numOf(co))}</small></span><span class="ccchev">▾</span></button>
    ${S.cmdd?`<div class="ccmenu" role="listbox">${cos.map(k=>{const x=cmInfo(k);return `<button role="option" aria-selected="${k===co}" class="${k===co?'on':''}" data-a="cmCo" data-k="${k}" style="--cc:${x[4]}"><span class="ccav">${h(x[3].slice(0,2).toUpperCase())}</span><span class="cctx"><b>${h(x[1])}</b><small>${h(numOf(k))}</small></span><span class="ccn">${cnt(k)}</span></button>`}).join('')}${isAdm()?`<button class="ccedit" data-a="cmNums">Edit company numbers</button>`:''}</div>`:''}</div>`
   :`<div class="ccdd"><div class="ccbtn static" style="--cc:${inf[4]}"><span class="ccav">${h(inf[3].slice(0,2).toUpperCase())}</span><span class="cctx"><b>${h(inf[1])}</b><small>${h(numOf(co))}</small></span></div></div>`;
- const groups=m==='team'?`<div class="c5g">${G.map(g=>`<button class="${S.chat===g.id?'on':''}" data-a="chatGo" data-id="${g.id}">${h(g.n)}${unreadG(g)?`<em>${unreadG(g)}</em>`:''}</button>`).join('')}${isAdm()?`<button class="c5add" data-a="grpNew">${ic('plus')}New group</button>`:''}</div>`:'';
+ const groups=m==='team'?chatTeamsRow():'';
  return `<div class="c5h"><div class="c5l">${m==='crm'?dd:`<div class="c5t"><b>${m==='email'?'Email':'Team chat'}</b><small>${m==='email'?'Your own mailbox':'Company groups · everyone in the team'}</small></div>`}
   ${m==='crm'?`<div class="usq ${S.cmq?'on':''}">${sfi('search',17)}<label class="sr" for="cmq">Search customers</label><input id="cmq" value="${h(S.cmq||'')}" placeholder="Search customers — name, number or anything said in chat" autocomplete="off">${S.cmq?`<button class="ib" data-a="cmQx" aria-label="Clear search">✕</button>`:''}</div>`:''}</div>
   <nav class="c5nav" aria-label="Communication">${nav('crm','CRM','users',T.length?unC:0)}${nav('email','Email','mail',0)}${nav('team','Team chat','chat',unT)}</nav></div>${groups}`};
@@ -60,4 +60,32 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .cmh2,.cnum{display:none!important}
 @media(max-width:760px){.c5h{flex-direction:column;align-items:stretch;gap:10px;border-radius:14px}.c5l{flex-direction:column;align-items:stretch}.ccbtn{min-width:0;width:100%}.ccmenu{width:100%}.c5nav{justify-content:space-between}.c5n{flex:1;justify-content:center;padding:8px 6px}.c5n span{font-size:12.5px;white-space:nowrap}.c5h .usq{flex:none;height:44px}}
 </style>`);
+
+/* ===== Team chat = the same teams as Tasks (one chat group per team) + Announcement + "All teams" overview ===== */
+const PJ2G={smm:'smm',acc:'acc',wh:'wh',hr:'hrt',cse:'cse',ops:'ops',gb:'goa'};
+function syncTeamGroups(){let ch=false;(D.projects||[]).forEach(p=>{const gid=PJ2G[p.id]||'pj_'+p.id;let g=D.groups.find(x=>x.id===gid);
+  if(!g){g={id:gid,n:p.n,m:[...new Set(['darshan','nameera',...(p.m||[])])]};D.groups.push(g);ch=true}
+  else{if(g.n!==p.n){g.n=p.n;ch=true}(p.m||[]).forEach(k=>{if(!g.m.includes(k)){g.m.push(k);ch=true}})}});if(ch)save()}
+const teamGroups=()=>{syncTeamGroups();const mine=myGroups(),ids=new Set(mine.map(g=>g.id));
+ const ann=mine.filter(g=>g.id==='ann'),teams=(D.projects||[]).map(p=>({p,g:D.groups.find(x=>x.id===(PJ2G[p.id]||'pj_'+p.id))})).filter(x=>x.g&&ids.has(x.g.id));
+ const other=mine.filter(g=>g.id!=='ann'&&!teams.some(t=>t.g.id===g.id));return {ann,teams,other}};
+function chatTeamsRow(){const {ann,teams,other}=teamGroups(),all=[...ann,...teams.map(t=>t.g),...other],tot=all.reduce((a,g)=>a+unreadG(g),0);
+ if(!S.chat||(S.chat!=='__all'&&!all.some(g=>g.id===S.chat)))S.chat='__all';
+ const chip=(id,n,col,u)=>`<button class="kchip ${S.chat===id?'on':''}" style="--pc:${col}" data-a="chatGo" data-id="${id}"><i></i>${h(n)}${u?` <span>${u}</span>`:''}</button>`;
+ return `<div class="tteam ctteam"><div class="tlbl">${ic('users')}Teams</div><div class="kchips">${chip('__all','All teams','#24408E',tot)}${ann.map(g=>chip(g.id,'📣 '+g.n,'#F28C28',unreadG(g))).join('')}${teams.map(t=>chip(t.g.id,t.p.n,projCol(t.p.id),unreadG(t.g))).join('')}${other.map(g=>chip(g.id,g.n,'#8A93A3',unreadG(g))).join('')}${isAdm()?`<button class="kchip c5addc" data-a="grpNew">${ic('plus')}New group</button>`:''}</div></div>`}
+function chatOverview(){const {ann,teams,other}=teamGroups(),rows=[...ann.map(g=>({g,n:'📣 '+g.n,col:'#F28C28'})),...teams.map(t=>({g:t.g,n:t.p.n,col:projCol(t.p.id)})),...other.map(g=>({g,n:g.n,col:'#8A93A3'}))];
+ return `<div class="chov">${rows.map(({g,n,col})=>{const M=D.msgs.filter(m=>m.g===g.id),l=M[M.length-1],u=unreadG(g);
+  return `<button class="chor" data-a="chatGo" data-id="${g.id}" style="--pc:${col}"><span class="chav">${h(n.replace('📣 ','').slice(0,2).toUpperCase())}</span><span class="chb"><span class="cht"><b>${h(n)}</b><small>${l?h(l.at||''):''}</small></span><span class="chm">${l?`<em>${h(nmF(l.f).split(' ')[0])}:</em> ${h((l.t||(l.kind==='voice'?'🎤 Voice note':'📎 File')).slice(0,90))}`:'<span class="mut">No messages yet</span>'}</span><span class="chs">${(g.m||[]).length} members</span></span>${u?`<span class="chu">${u}</span>`:''}</button>`}).join('')}</div>`}
+const _vChat5=V.chat;V.chat=()=>{if(S.chm==='team'){teamGroups();if(!S.chat||S.chat==='__all'){S.chat='__all';return chatHead()+chatOverview()}}return _vChat5()};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.ctteam{margin:-2px 0 12px}.ctteam .kchips{flex-wrap:wrap;overflow:visible}.c5g{display:none}
+.kchip.c5addc{border:1px dashed #B9C3D6;background:#fff;color:#24408E;display:inline-flex;align-items:center;gap:5px}.kchip.c5addc .ico{width:14px;height:14px}
+.chov{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.chor{display:flex;align-items:center;gap:12px;width:100%;border:0;border-bottom:1px solid #F0F2F5;background:#fff;padding:12px 14px;text-align:left;cursor:pointer;font:inherit;color:var(--ink)}.chor:hover{background:#F7F8FB}
+.chav{width:42px;height:42px;border-radius:12px;background:var(--pc);color:#fff;display:inline-flex;align-items:center;justify-content:center;font:800 13px Inter,sans-serif;flex:none}
+.chb{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.cht{display:flex;gap:8px}.cht b{flex:1;font-size:14.5px}.cht small{font-size:11.5px;color:var(--mut)}
+.chm{font-size:13px;color:#4A5468;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chm em{font-style:normal;font-weight:700}.chs{font-size:11.5px;color:var(--mut)}
+.chu{background:#1F9D55;color:#fff;border-radius:999px;font-size:11.5px;font-weight:800;padding:2px 8px}
+</style>`);
 render();
+
