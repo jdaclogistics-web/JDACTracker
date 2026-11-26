@@ -13,12 +13,16 @@ const CM_FUN={
  'hr:cl':{n:'Client CRM',cols:cmMk([['new','New lead','#2F6BE0'],['con','Contacted','#0B6E8A'],['meet','Meeting','#B8860B'],['prop','Proposal sent','#7A2E8E'],['sign','Agreement signed','#0796A6'],['done','Active client','#1F9D55'],['lost','Lost','#C0392B']])},
  'hr:js':{n:'Job seekers CRM',cols:cmMk([['new','New','#2F6BE0'],['con','Called','#0B6E8A'],['reg','Registered','#B8860B'],['int','Interview','#7A2E8E'],['sel','Selected','#0796A6'],['done','Joined','#1F9D55'],['lost','Not suitable','#C0392B']])},
  studios:{n:'Clients',cols:cmMk([['new','New lead','#2F6BE0'],['con','Contacted','#0B6E8A'],['prop','Proposal sent','#B8860B'],['onb','Onboarded','#7A2E8E'],['done','Active client','#1F9D55'],['lost','Lost','#C0392B']])}};
-const cmSeg=()=>S.cmseg||'cl';
-const cmFk=()=>{const co=cmCo();return co==='hr'?'hr:'+cmSeg():co};
-const cmFunApply=k=>{const F=CM_FUN[k]||CM_FUN.log;CM_COL.splice(0,CM_COL.length,...F.cols.map(x=>[x[0],x[1],x[2].slice(),x[3]]));WASTG.splice(0,WASTG.length,...F.cols.flatMap(x=>x[2]))};
-const cmSegOf=c=>c.seg||((c.tags||[]).some(t=>/job ?seeker|candidate/i.test(t))?'js':'cl');
+const CM_SEGS={log:[['cu','Customers CRM'],['tr','Transport partners CRM']],hr:[['cl','Clients CRM'],['js','Job seekers CRM']]};
+CM_FUN['log:cu']=CM_FUN.log;CM_FUN['log:tr']={n:'Transport partners',cols:cmMk([['new','New transporter','#2F6BE0'],['con','Contacted','#0B6E8A'],['rate','Rates received','#B8860B'],['ver','Documents · verification','#7A2E8E'],['done','Active partner','#1F9D55'],['lost','Not suitable','#C0392B']])};
+const cmSegs=co=>CM_SEGS[co]||null;
+const cmSeg=()=>{const L=cmSegs(cmCo());if(!L)return '';return L.some(x=>x[0]===S.cmseg)?S.cmseg:L[0][0]};
+const cmFk=()=>{const co=cmCo();return cmSegs(co)?co+':'+cmSeg():co};
+const CM_GEN=cmMk([['new','New lead','#2F6BE0'],['con','Contacted','#0B6E8A'],['prog','In progress','#B8860B'],['done','Won','#1F9D55'],['lost','Lost','#C0392B']]);
+const cmFunApply=k=>{const F=CM_FUN[k]||CM_FUN[String(k).split(':')[0]]||{cols:CM_GEN};CM_COL.splice(0,CM_COL.length,...F.cols.map(x=>[x[0],x[1],x[2].slice(),x[3]]));WASTG.splice(0,WASTG.length,...F.cols.flatMap(x=>x[2]))};
+const cmSegOf=c=>{const co=(CM_CO.find(x=>x[2].includes(c.team))||[])[0],L=cmSegs(co);if(!L)return '';if(c.seg&&L.some(x=>x[0]===c.seg))return c.seg;return co==='hr'&&(c.tags||[]).some(t=>/job ?seeker|candidate/i.test(t))?'js':L[0][0]};
 const cmJunior=()=>!isAdm()&&!/lead|manager|head/i.test((P[S.me]||{}).r||'');
-function cmList(){const co=cmCo();return D.wa.filter(c=>myWaTeams().includes(c.team)&&(co!=='hr'||cmSegOf(c)===cmSeg())&&(!cmJunior()||c.to===S.me))}
+function cmList(){const co=cmCo();return D.wa.filter(c=>myWaTeams().includes(c.team)&&(!cmSegs(co)||cmSegOf(c)===cmSeg())&&(!cmJunior()||c.to===S.me))}
 
 /* company picker: never "All companies" */
 const _chatHeadV3=chatHead;chatHead=function(){if(!S.cmco||S.cmco==='all')S.cmco=cmCos().find(k=>k!=='all')||'log';
@@ -26,10 +30,10 @@ const _chatHeadV3=chatHead;chatHead=function(){if(!S.cmco||S.cmco==='all')S.cmco
 
 /* toolbar */
 cmTools=function(all,extra){const who=S.cmw||'all',own=[...new Set(all.map(c=>c.to).filter(Boolean))],v=S.cmv||'board';
- const seg=cmCo()==='hr'?`<div class="cseg cmseg" role="tablist">${[['cl','Clients CRM'],['js','Job seekers CRM']].map(([k,l])=>`<button class="${cmSeg()===k?'on':''}" data-a="cmSegT" data-t="${k}">${l}</button>`).join('')}</div>`:'';
+ const seg=cmSegs(cmCo())?`<div class="cseg cmseg" role="tablist">${cmSegs(cmCo()).map(([k,l])=>`<button class="${cmSeg()===k?'on':''}" data-a="cmSegT" data-t="${k}" title="${h(l)}">${h(l.replace(/ CRM$/,''))}</button>`).join('')}</div>`:'';
  return `<div class="cmbar">${seg}<div class="cseg" role="tablist">${[['board','Board','t_kan'],['wa','WhatsApp','chat'],['calls','Calls','phone']].map(([k,l,i])=>`<button class="${v===k?'on':''}" data-a="cmV" data-t="${k}" role="tab" aria-selected="${v===k}">${ic(i)}<span>${l}</span></button>`).join('')}</div>
   ${v==='board'&&!cmJunior()?`<select class="t4sel" data-ch="cmw" aria-label="Lead owner"><option value="all">Everyone's customers</option><option value="un" ${who==='un'?'selected':''}>Not assigned</option>${own.map(x=>`<option value="${x}" ${who===x?'selected':''}>${h(nmF(x))}</option>`).join('')}</select>`:''}
-  ${S.cmf&&v==='board'?`<button class="tclr" data-a="cmF" data-f="${S.cmf}">✕ Clear filter</button>`:''}<span class="sp"></span>${extra||''}<button class="btn sm sec" data-a="cmPad">${ic('phone')}Dialer</button><button class="btn sm" data-a="waNew">${ic('plus')}New ${cmCo()==='hr'&&cmSeg()==='js'?'job seeker':'customer'}</button></div>`};
+  ${S.cmf&&v==='board'?`<button class="tclr" data-a="cmF" data-f="${S.cmf}">✕ Clear filter</button>`:''}<span class="sp"></span>${extra||''}<button class="btn sm sec" data-a="cmPad">${ic('phone')}Dialer</button><button class="btn sm" data-a="waNew">${ic('plus')}New ${cmCo()==='hr'&&cmSeg()==='js'?'job seeker':cmCo()==='log'&&cmSeg()==='tr'?'transporter':'customer'}</button></div>`};
 A.cmSegT=e=>{S.cmseg=e.dataset.t;S.cmd=null;render()};
 
 /* board: tags on every card */
@@ -75,7 +79,7 @@ cmDrawer=function(c){const ci=coOfTeam(c.team),tab=S.cmtab||'sum',n=cmNum(WACO[c
  if(tab==='chat')body=`<div class="cmdm big" id="cmthr">${cmMsgs(c)}</div>${cmComposer(c)}`;
  if(tab==='calls')body=cmCallsTab(c);
  if(tab==='time')body=cmTimeline(c);
- if(tab==='info')body=`<div class="cmsum">${[['Name',h(c.n)],['Mobile','+91 '+h(c.ph)],['Company',h(ci[1])+(cmCo()==='hr'?' · '+(cmSegOf(c)==='js'?'Job seeker':'Client'):'')],['Number used',h(n.wa||n.vn||'to be added')],['Source',h(c.src||'WhatsApp')],['Customer since',fmt(c.created||c.at)],['Info',h(c.info||'—')]].map(x=>`<div><span>${x[0]}</span><div>${x[1]}</div></div>`).join('')}</div><div class="cmdl">Tags</div><div class="sftg">${(c.tags||[]).map(waTag).join('')}<button class="sfmt" data-a="waTags" data-id="${c.id}">${sfi('tag',13)}Manage tags</button></div>`;
+ if(tab==='info')body=`<div class="cmsum">${[['Name',h(c.n)],['Mobile','+91 '+h(c.ph)],['Company',h(ci[1])+(cmSegOf(c)?' · '+h(((cmSegs(cmCo())||[]).find(x=>x[0]===cmSegOf(c))||['',''])[1]):'')],['Number used',h(n.wa||n.vn||'to be added')],['Source',h(c.src||'WhatsApp')],['Customer since',fmt(c.created||c.at)],['Info',h(c.info||'—')]].map(x=>`<div><span>${x[0]}</span><div>${x[1]}</div></div>`).join('')}</div><div class="cmdl">Tags</div><div class="sftg">${(c.tags||[]).map(waTag).join('')}<button class="sfmt" data-a="waTags" data-id="${c.id}">${sfi('tag',13)}Manage tags</button></div>`;
  return `<aside class="cmd" aria-label="Customer"><div class="cmdh"><span class="sfav big">${sfIni(c.n)}</span><div style="flex:1;min-width:0"><b>${h(c.n)}</b><div class="xs mut">+91 ${h(c.ph)} · <span style="color:${ci[4]};font-weight:700">${h(ci[1])}</span></div></div><button class="ib" data-a="cmX" aria-label="Close">✕</button></div>
   <div class="cmda"><button class="btn sm" style="background:#1F9D55;border-color:#1F9D55" data-a="cmCall" data-id="${c.id}">${ic('phone')}Call</button><button class="btn sm sec" data-a="cmTab" data-t="chat">${ic('chat')}WhatsApp</button></div>
   <div class="cmdg">${cmStgSel(c)}${cmOwnSel(c)}</div>
@@ -123,7 +127,7 @@ crmView=function(){const T=myWaTeams();let v=S.cmv||'board';if(v==='inbox')v=S.c
 /* funnel follows the selected company; new HR contacts land in the CRM you are on */
 const _vChatV3=V.chat;V.chat=()=>{if(!S.cmco||S.cmco==='all')S.cmco=cmCos().find(k=>k!=='all')||'log';cmFunApply(cmFk());return _vChatV3()};
 const _rV3=render;render=function(){if(S.v!=='chat')cmFunApply('log');return _rV3.apply(this,arguments)};
-const _waNewV3=A.waNewGo;A.waNewGo=()=>{const n=D.wa.length;_waNewV3();if(S.v==='chat'&&D.wa.length>n&&cmCo()==='hr'){D.wa[D.wa.length-1].seg=cmSeg();save()}};
+const _waNewV3=A.waNewGo;A.waNewGo=()=>{const n=D.wa.length;_waNewV3();if(S.v==='chat'&&D.wa.length>n&&cmSegs(cmCo())){D.wa[D.wa.length-1].seg=cmSeg();save()}};
 const _cmCoV3=A.cmCo;A.cmCo=e=>{_cmCoV3(e);if(S.cmv==='inbox')S.cmv='wa'};
 
 document.head.insertAdjacentHTML('beforeend',`<style>
