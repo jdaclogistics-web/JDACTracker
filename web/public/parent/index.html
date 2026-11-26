@@ -4719,7 +4719,9 @@ if(!D.invCfg)D.invCfg={gstin:'',pan:'',bank:'',acc:'',ifsc:'',upi:'',addr:'KPCT 
 HR.void=HR.void||{};HR.minv=HR.minv||[];
 const HRLOGO=(()=>{try{return new URL('hr-logo.png',location.href).href}catch(x){return 'hr-logo.png'}})();
 /* JDAC HR Consultancy logo at the top of its company page */
-const _coHeadL=coHead;coHead=function(k){const o=_coHeadL(k);return k==='hr'?o.replace(/<i>[\s\S]*?<\/i>/,`<span class="colog"><img src="${HRLOGO}" alt="JDAC HR Consultancy logo"></span>`):o};
+const LOGLOGO=(()=>{try{return new URL('log-logo.png',location.href).href}catch(x){return 'log-logo.png'}})();
+const CO_LOGO={hr:[HRLOGO,'JDAC HR Consultancy logo'],log:[LOGLOGO,'JDAC Logistics logo']};
+const _coHeadL=coHead;coHead=function(k){const o=_coHeadL(k),L=CO_LOGO[k];return L?o.replace(/<i>[\s\S]*?<\/i>/,`<span class="colog"><img src="${L[0]}" alt="${L[1]}"></span>`):o};
 
 /* ---------- wallet maths ---------- */
 const wKind=w=>w.kind||(w.amt<0?'fee':/cashback/i.test(w.t||'')?'rc+cb':'recharge');
