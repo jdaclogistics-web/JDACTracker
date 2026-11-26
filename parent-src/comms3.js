@@ -10,6 +10,19 @@ function cmLinesLoad(){(D.cmLines||[]).forEach(l=>{if(CM_CO.some(x=>x[0]===l.k))
  CM_CO.push([l.k,l.n,[l.k],l.short||l.n.slice(0,12),l.color||'#24408E']);WATEAM[l.k]=l.n;WACO[l.k]=l.k;D.comNums[l.k]=D.comNums[l.k]||{wa:l.num,vn:l.num};
  if(l.crms.length>1){CM_SEGS[l.k]=l.crms.map(c=>[c.k,c.n]);l.crms.forEach(c=>{CM_FUN[l.k+':'+c.k]={n:c.n,cols:cmStagesCols(c.stages)}})}else if(l.crms[0])CM_FUN[l.k]={n:l.crms[0].n,cols:cmStagesCols(l.crms[0].stages)}})}
 cmLinesLoad();
+function cmExtraCos(){return (D.cmLines||[]).filter(l=>(l.staff||[]).includes(S.me)).map(l=>l.k)}
+/* staff on an added company get its chats */
+const _myWaV4=myWaTeams;myWaTeams=function(){const T=_myWaV4(),M=cmExtraCos();if(!M.length)return T;if(S.v==='chat'){const co=cmCo();return M.includes(co)?[...new Set([...T,co])]:T}return [...new Set([...T,...M])]};
+/* saved on the server so every login and device sees the same list */
+const cmLive=()=>typeof LV!=='undefined'&&LV.ok&&LV.tok;
+async function cmLinesPull(){if(!cmLive())return;try{const r=await lapi('GET','/api/cm/lines');const loc=(D.cmLines||[]).filter(l=>!l.srv&&!r.lines.some(x=>x.k===l.k));
+ for(const l of loc)if(isAdm())await cmLinePush(l);
+ const keep=new Set(r.lines.map(l=>l.k));for(let i=CM_CO.length-1;i>=0;i--)if(/^x/.test(CM_CO[i][0])&&!keep.has(CM_CO[i][0])&&!loc.some(l=>l.k===CM_CO[i][0]))CM_CO.splice(i,1);
+ D.cmLines=[...r.lines.map(l=>({...l,srv:1})),...loc];r.lines.forEach(l=>{const i=CM_CO.findIndex(x=>x[0]===l.k);if(i>=0)CM_CO.splice(i,1)});cmLinesLoad();save();if(S.v==='chat')render()}catch(x){}}
+async function cmLinePush(l){if(!cmLive())return;const {srv,updatedBy,updatedAt,...d}=l;try{await lapi('POST','/api/cm/lines',{line:d});l.srv=1;save()}catch(e){toast('Not saved on server: '+e.message)}}
+setTimeout(cmLinesPull,2500);setInterval(()=>{if(document.visibilityState==='visible')cmLinesPull()},300000);
+const _vChatV4=V.chat;V.chat=()=>{if(!S.cmPulled){S.cmPulled=1;setTimeout(cmLinesPull,0)}return _vChatV4()};
+const cmStaffOpts=()=>STAFF.filter(k=>!isZen(k)&&!['darshan'].includes(k)).map(k=>[k,nmF(k)]);
 
 /* picker: "Add company / CRM" next to "Edit company numbers" */
 const _chHeadV4=chatHead;chatHead=function(){return _chHeadV4.apply(this,arguments).replace('<button class="ccedit" data-a="cmNums">Edit company numbers</button>','<div class="ccacts"><button class="ccedit" data-a="cmAddCo">+ Add company / CRM</button><button class="ccedit" data-a="cmNums">Edit numbers</button></div>')};
@@ -18,17 +31,20 @@ A.cmAddCo=()=>{S.cmdd=false;const L=D.cmLines||[];sheet(`<h2>Add company / CRM</
  <label for="acn">Name shown in Communication</label><input id="acn" placeholder="e.g. HR Consultancy · Recruiter, JDAC Logistics · Transport">
  <label for="acp">WhatsApp / calling number</label><input id="acp" inputmode="tel" placeholder="+91 9xxxx xxxxx">
  <label>Colour</label>${opts('acc',[['#02496A','Navy'],['#0B4F6C','Teal'],['#7A2E8E','Purple'],['#7a4a26','Brown'],['#137a50','Green'],['#0796A6','Cyan'],['#C2410C','Orange']],'#0B4F6C')}
+ <label>Who can see it <span class="xs mut">(you and Nameera always can)</span></label>${opts('acst',cmStaffOpts(),[],1)}
  ${[1,2,3].map(i=>`<div class="accrm"><b>CRM ${i}${i>1?' <span class="xs mut">(optional · same number)</span>':''}</b><label for="acr${i}">CRM name</label><input id="acr${i}" placeholder="${i===1?'e.g. Clients CRM':i===2?'e.g. Job seekers CRM':''}"><label for="acs${i}">Stages, in order (comma separated)</label><input id="acs${i}" value="${i===1?CM_DEF_ST:''}" placeholder="${CM_DEF_ST}"></div>`).join('')}
  <button class="btn w" style="margin-top:14px" data-a="cmAddCoGo">Add to Communication</button>
- ${L.length?`<div class="cmdl" style="margin-top:16px">Added by you</div><div class="list">${L.map(l=>`<div class="li"><div class="tx"><b>${h(l.n)}</b><div class="m">${h(l.num||'')} · ${l.crms.map(c=>h(c.n)).join(' + ')}</div></div><button class="btn sm sec" data-a="cmLineDel" data-k="${l.k}">Remove</button></div>`).join('')}</div>`:''}`)};
+ ${L.length?`<div class="cmdl" style="margin-top:16px">Added by you</div><div class="list">${L.map(l=>`<div class="li"><div class="tx"><b>${h(l.n)}</b><div class="m">${h(l.num||'')} · ${l.crms.map(c=>h(c.n)).join(' + ')}</div><div class="m">Staff: ${(l.staff||[]).length?(l.staff||[]).map(k=>h(nmF(k).split(' ')[0])).join(', '):'only admins'}</div></div><button class="btn sm sec" data-a="cmLineStaff" data-k="${l.k}">Who can see</button><button class="btn sm sec" data-a="cmLineDel" data-k="${l.k}">Remove</button></div>`).join('')}</div>`:''}`)};
 A.cmAddCoGo=()=>{const n=val('acn').trim(),num=val('acp').trim();if(!n)return toast('Enter a name');
  const crms=[1,2,3].map(i=>({k:'c'+i,n:val('acr'+i).trim(),stages:val('acs'+i).split(',').map(x=>x.trim()).filter(Boolean)})).filter((c,i)=>i===0||c.n);
  if(!crms[0].n)crms[0].n='Customers';if(crms.some(c=>c.stages.length<3))return toast('Give at least 3 stages for each CRM');
- const l={k:'x'+Date.now().toString(36),n,num,color:pick1('acc')||'#0B4F6C',short:n.split(/[·\-]/).pop().trim().slice(0,12),crms};
- D.cmLines=D.cmLines||[];D.cmLines.push(l);cmLinesLoad();save();closeM();S.cmco=l.k;S.cmseg=null;S.cmv='board';render();toast(n+' added')};
+ const l={k:'x'+Date.now().toString(36),n,num,color:pick1('acc')||'#0B4F6C',short:n.split(/[·\-]/).pop().trim().slice(0,12),crms,staff:pickN('acst')};
+ D.cmLines=D.cmLines||[];D.cmLines.push(l);cmLinesLoad();save();cmLinePush(l);closeM();S.cmco=l.k;S.cmseg=null;S.cmv='board';render();toast(n+' added')};
 A.cmLineDel=e=>{const k=e.dataset.k;if(D.wa.some(c=>c.team===k)&&!confirm('Customers exist on this line. Remove the line anyway? (customers are kept)'))return;
- D.cmLines=(D.cmLines||[]).filter(l=>l.k!==k);const i=CM_CO.findIndex(x=>x[0]===k);if(i>=0)CM_CO.splice(i,1);delete WATEAM[k];if(S.cmco===k)S.cmco='log';save();A.cmAddCo()};
+ const dl=(D.cmLines||[]).find(l=>l.k===k);if(dl)cmLinePush({...dl,deleted:1});D.cmLines=(D.cmLines||[]).filter(l=>l.k!==k);const i=CM_CO.findIndex(x=>x[0]===k);if(i>=0)CM_CO.splice(i,1);delete WATEAM[k];if(S.cmco===k)S.cmco='log';save();A.cmAddCo()};
 
+A.cmLineStaff=e=>{const l=(D.cmLines||[]).find(x=>x.k===e.dataset.k);if(!l)return;sheet(`<h2>Who can see · ${h(l.n)}</h2><p class="xs mut">These staff get this company in Communication. Executives see only the customers assigned to them.</p>${opts('acst2',cmStaffOpts(),l.staff||[],1)}<button class="btn w" style="margin-top:14px" data-a="cmLineStaffGo" data-k="${l.k}">Save</button>`)};
+A.cmLineStaffGo=e=>{const l=(D.cmLines||[]).find(x=>x.k===e.dataset.k);if(!l)return;l.staff=pickN('acst2');save();cmLinePush(l);A.cmAddCo();toast('Saved')};
 /* test leads: a few in every company and CRM, so each screen can be tried out */
 if(!D.cmDemo4){D.cmDemo4=1;const T=(a,b)=>`${String(a).padStart(2,'0')}:${String(b).padStart(2,'0')}`;let i=0;
  const add=(team,seg,n,ph,stg,to,tags,ms,o={})=>{D.wa.push({id:'wd'+(++i)+Date.now().toString(36).slice(-3),n,ph,team,seg,stg,to,tags:['Test lead',...tags],unread:o.un||0,at:o.at||TODAY,src:o.src||'WhatsApp',created:o.cr||dAgo(5),info:o.info||'',ms:ms.map(([f,t,at])=>({f,t,at})),log:[{at:o.at||TODAY,tm:'10:00',t:'Stage → '+stg,by:to||'darshan'}]})};

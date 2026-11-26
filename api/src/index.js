@@ -740,6 +740,24 @@ on('PATCH', '/api/legacy/rows', async (env, req) => {
 })
 
 
+// ── Communication: companies / CRMs added from the panel (everyone reads, admins write) ──
+on('GET', '/api/cm/lines', async (env, req) => {
+  await authUser(env, req)
+  const { results } = await env.DB.prepare("SELECT data FROM legacy_records WHERE tbl = 'cm_lines'").all()
+  return json({ lines: results.map((r) => JSON.parse(r.data)).filter((l) => !l.deleted) })
+})
+on('POST', '/api/cm/lines', async (env, req) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const b = await body(req), l = b.line || {}
+  if (!/^x[a-z0-9]{3,20}$/.test(l.k || '') || !l.n) throw bad('line?')
+  const t = JSON.stringify({ ...l, updatedBy: me.name, updatedAt: nowIso() }); if (t.length > 20000) throw bad('Too large')
+  const old = await env.DB.prepare("SELECT data FROM legacy_records WHERE tbl = 'cm_lines' AND legacy_id = ?").bind(l.k).first()
+  if (old) await env.DB.prepare("UPDATE legacy_records SET data = ? WHERE tbl = 'cm_lines' AND legacy_id = ?").bind(t, l.k).run()
+  else await env.DB.prepare("INSERT INTO legacy_records (tbl, legacy_id, data) VALUES ('cm_lines', ?, ?)").bind(l.k, t).run()
+  await audit(env, me.id, l.deleted ? 'cm_line_remove' : 'cm_line_save', 'cm_lines', l.k, old ? JSON.parse(old.data) : null, JSON.parse(t)); dropCache()
+  return json({ ok: true })
+})
+
 // ── Command Centre (Boss / Developer) + company pages ─────────────────────────
 const cargoCses = async (env) => (await env.DB.prepare("SELECT e.id, e.name, e.legacy_id, e.team FROM desk_access a JOIN desks d ON d.id = a.desk_id JOIN employees e ON e.id = a.emp_id WHERE d.module = 'cargo' AND a.enabled = 1 AND e.active = 1 ORDER BY e.name").all()).results
 const myDesks = async (env, id) => (await env.DB.prepare('SELECT d.* FROM desk_access a JOIN desks d ON d.id = a.desk_id WHERE a.emp_id = ? AND a.enabled = 1 AND d.active = 1 ORDER BY d.company, d.id').bind(id).all()).results

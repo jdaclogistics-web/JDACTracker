@@ -5,7 +5,7 @@
    • Staff land on their own company (Neetu → Logistics). Google Meet / notetaker tab removed from here. */
 const CM_CO=[['log','JDAC Logistics',['cse','ops'],'Logistics','#02496A'],['gb','GovaaBazaar',['gb'],'GovaaBazaar','#7a4a26'],['jup','Jupiter Pune',['jup'],'Jupiter','#139B5F'],['hr','HR Consultancy',['hr'],'HR','#7A2E8E'],['studios','JDAC Studios',[],'Studios','#0796A6']];
 const cmInfo=k=>k==='all'?['all','All companies',CM_CO.flatMap(x=>x[2]),'All','#24408E']:(CM_CO.find(x=>x[0]===k)||CM_CO[0]);
-const cmCos=()=>isAdm()?['all',...CM_CO.map(x=>x[0])]:[TEAMCO[(P[S.me]||{}).team]||'log'].filter(k=>CM_CO.some(x=>x[0]===k));
+const cmCos=()=>isAdm()?['all',...CM_CO.map(x=>x[0])]:[TEAMCO[(P[S.me]||{}).team]||'log',...cmExtraCos()].filter((k,i,A)=>CM_CO.some(x=>x[0]===k)&&A.indexOf(k)===i);
 const cmCo=()=>{const L=cmCos();if(!L.includes(S.cmco))S.cmco=L[0]||'log';return S.cmco};
 const cmTeams=co=>cmInfo(co)[2];
 const cmNum=co=>D.comNums[co]||{};
