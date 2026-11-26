@@ -4129,5 +4129,8 @@ document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.ch=
 A.slipSend=()=>{const to=val('sr-to'),sub=val('sr-s'),body=val('sr-b');try{D.msgs=D.msgs||[];const g=(D.groups||[]).find(x=>x.m&&x.m.includes('nameera')&&x.m.includes(S.me)&&x.m.length===2);if(g)D.msgs.push({id:nid('m'),g:g.id,f:S.me,t:'🧾 '+sub,at:nowT()});save()}catch(x){}
  const a=document.createElement('a');a.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);document.body.appendChild(a);a.click();a.remove();closeM();toast('Opening your email · send it to HR Manager Nameera')};
 A.slipCopy=()=>{try{navigator.clipboard.writeText('To: '+val('sr-to')+'\nSubject: '+val('sr-s')+'\n\n'+val('sr-b'));toast('Copied')}catch(x){toast('Copy not available here')}};
+/* ---- Contacts: team members' details only for Darshan sir & Nameera; staff see their customers, carriers, partners ---- */
+const seesTeam=()=>isBoss()||S.me==='nameera'||(typeof LV!=='undefined'&&LV.me&&['boss','developer'].includes(LV.me.role))||(typeof LV!=='undefined'&&LV.me&&/nameera/i.test(LV.me.name||''));
+const _myCX=myContacts;myContacts=function(){const L=_myCX();return seesTeam()?L:L.filter(c=>c.type!=='Team')};
 render();
 </script></body></html>
