@@ -116,7 +116,7 @@ if(!D.wa){const t=(h0,m0)=>`${String(h0).padStart(2,'0')}:${String(m0).padStart(
 if(!D.waTpl)D.waTpl=[['Greeting','Hello 🙏 Thank you for contacting JDAC Logistics. How can we help you today?'],['Rate quote','For {weight} kg from {from} to {to}, the rate is ₹{amount} incl. GST. Pickup can be arranged tomorrow.'],['Payment link','Your pickup is done ✅ Please pay ₹{amount} here: {link}'],['Pickup scheduled','Your pickup is scheduled for {date} between {time}. Our partner will call before arriving.'],['Office hours','We are available 10 am – 7 pm, Monday to Saturday.'],['Follow-up','Hi, just following up on the quotation we shared. Shall we book the pickup?']];
 const WALAB=['New lead','Quote sent','Payment pending','Order','Pickup','Complaint','Closed'];
 const WATEAM={cse:'Logistics · CSE',ops:'Logistics · Ops',gb:'GovaaBazaar',jup:'Jupiter Pune',hr:'HR Consultancy'};
-const myWaTeams=()=>isAdm()?Object.keys(WATEAM):((P[S.me]||{}).team==='CSE'?['cse']:[]); // only CSEs reply to customers
+let myWaTeams=()=>isAdm()?Object.keys(WATEAM):((P[S.me]||{}).team==='CSE'?['cse']:[]); // only CSEs reply to customers
 const nowT=()=>new Date().toTimeString().slice(0,5);
 const mentionize=s=>h(s).replace(/@([A-Za-z]+)/g,(m,n)=>STAFF.some(k=>nmF(k).split(' ')[0].toLowerCase()===n.toLowerCase())?`<b class="ment">@${n}</b>`:m);
 let REPLY=null,REC2=null,RECT=0,RECI=null,VOICE={};
