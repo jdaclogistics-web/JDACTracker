@@ -303,3 +303,5 @@ function devStaff(){return Object.keys(P).filter(k=>!['darshan','nameera','devel
 function devAs(){const a=UIP.get().devAs,L=devStaff();return L.includes(a)?a:(L.includes('neetu')?'neetu':L[0])}
 document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.ch==='devAs'){UIP.set({devAs:t.value});devApply()}});
 if(IN_FRAME){try{saveS=function(){};const as=(location.search.match(/[?&]as=([^&]+)/)||[])[1];const k=as&&decodeURIComponent(as);if(k&&P[k]){setTimeout(()=>{S.viewer=null;S.split=false;A.whoSet({dataset:{k}})},80)}document.documentElement.classList.add('in-frame')}catch(e){}}
+// Navigation: red attention dot instead of numbers; clears once the section is opened
+const _badgesX=badges;badges=function(){const b=_badgesX()||{},SN=S.navSeen=S.navSeen||{},o={};Object.keys(b).forEach(k=>{const n=+b[k]||0;if(S.v===k)SN[k]=Math.max(SN[k]||0,n);if(n>(SN[k]||0))o[k]=1});Object.keys(SN).forEach(k=>{if((+b[k]||0)<SN[k])SN[k]=+b[k]||0});return o};
