@@ -120,7 +120,7 @@ function crmView(){const T=myWaTeams(),v=S.cmv||'board';
  if(v==='calls')return cmTools(cmWA())+callsView2()+(()=>{const d=S.cmd&&D.wa.find(x=>x.id===S.cmd);return d?`<div class="cmover">${cmDrawer(d)}</div>`:''})();
  if(!T.length)return cmTools([])+`<div class="list">${empty('No customer inbox for this company yet','Customers show here once this company has its WhatsApp number')}</div>`;
  const all=cmWA(),L=cmFilt(all);const d=S.cmd&&D.wa.find(x=>x.id===S.cmd&&T.includes(x.team));if(!d)S.cmd=null;
- return cmKpi(all)+cmTools(all,v==='board'?'<span class="xs mut hide-m">Drag a card to change its stage</span>':'')+`<div class="cmlay ${d?'open':''} ${v}">${v==='board'?boardView(L):inboxView(L)}${d?cmDrawer(d):''}</div>`}
+ return cmTools(all,v==='board'?'<span class="xs mut hide-m">Drag a card to change its stage</span>':'')+`<div class="cmlay ${d?'open':''} ${v}">${v==='board'?boardView(L):inboxView(L)}${d?cmDrawer(d):''}</div>`}
 
 A.cmV=e=>{S.cmv=e.dataset.t;render()};
 A.cmCr=e=>{S.cmcr=e.dataset.t;render()};
