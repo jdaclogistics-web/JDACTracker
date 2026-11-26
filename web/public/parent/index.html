@@ -867,7 +867,8 @@ html.in-frame #vbar{display:none!important}
 .t4today{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;font:600 13px Inter;cursor:pointer}.t4today.on{border-color:#0B1F3A;color:#0B1F3A}
 .t4pick{width:auto!important;margin:0!important;padding:6px 8px!important;border-radius:8px!important}.t4sel{width:auto!important;margin:0!important;min-width:150px;padding:7px 10px!important;border-radius:8px!important;font:600 13px Inter}
 .t4kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}.t4kpi div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;border-left:4px solid var(--c)}.t4kpi b{display:block;font-size:22px}.t4kpi span{font-size:12.5px;color:#5B6478}.t4kpi .r{--c:#DC2626}.t4kpi .o{--c:#D97706}.t4kpi .b{--c:#2F6BE0}.t4kpi .g{--c:#1F9D55}
-.t4g-wrap{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:auto;max-height:calc(100vh - 330px)}
+.t4g-wrap{background:#fff;border:1px solid var(--line);border-radius:14px;overflow-x:auto;overflow-y:visible}
+.t4mrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.t4more{border:1px dashed #B9C3D6;background:#F7F8FB;color:#24408E;font:700 13px Inter,sans-serif;border-radius:10px;padding:9px 14px;cursor:pointer}.t4more:hover{background:#EEF2FB}
 .t4row{display:grid;grid-template-columns:330px 1fr;min-width:calc(330px + var(--n)*34px);border-bottom:1px solid #EEF0F4}.t4row:hover{background:#FAFBFD}
 .t4l{display:flex;align-items:center;gap:8px;padding:8px 12px;border-right:1px solid #E6E8EE;position:sticky;left:0;background:inherit;background-color:#fff;z-index:2;min-width:0}
 .t4nm{flex:1;min-width:0;border:0;background:none;text-align:left;padding:0;cursor:pointer}.t4nm b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.t4nm span{font-size:11.5px;color:#6B7385}
@@ -4383,15 +4384,15 @@ if(IN_FRAME){try{saveS=function(){};const as=(location.search.match(/[?&]as=([^&
 // Navigation: red attention dot instead of numbers; clears once the section is opened
 const _badgesX=badges;badges=function(){const b=_badgesX()||{},SN=S.navSeen=S.navSeen||{},o={};Object.keys(b).forEach(k=>{const n=+b[k]||0;if(S.v===k)SN[k]=Math.max(SN[k]||0,n);if(n>(SN[k]||0))o[k]=1});Object.keys(SN).forEach(k=>{if((+b[k]||0)<SN[k])SN[k]=+b[k]||0});return o};
 /* ---- Tasks → Timeline v4: clean, professional, one screen ---- */
-const TL4={d:['Day',1],w:['Week',7],'2w':['2 weeks',14],m:['Month',0]};
-function tl4Range(){const v=S.tl4||'w',a=S.tl4d||TODAY;if(v==='d')return [a,a];if(v==='m'){const s=a.slice(0,8)+'01';return [s,monEnd(s)]}const s=wkStart(a);return [s,addD(s,TL4[v][1]-1)]}
+const TL4={d:['Day',1],w:['Week',7],'2w':['2 weeks',14],m:['Month',35]};
+function tl4Range(){const v=S.tl4||'w',a=S.tl4d||TODAY;if(v==='d')return [a,a];if(v==='m'){const s=wkStart(a);return [s,addD(s,34)]}const s=wkStart(a);return [s,addD(s,TL4[v][1]-1)]}
 function tl4(){const v=S.tl4||'w',pj=S.tlp||'all',pe=S.tlo||'all',[s,e]=tl4Range(),N=dDiff(s,e)+1,days=Array.from({length:N},(_,i)=>addD(s,i));
  const all=myTasks(),T=all.filter(t=>(pj==='all'||t.proj===pj)&&(pe==='all'||t.o===pe));
  const inR=t=>t.due>=s&&tStart(t)<=e,R=T.filter(inR);
  const people=[...new Set(all.filter(t=>pj==='all'||t.proj===pj).map(t=>t.o))].filter(Boolean).sort((a,b)=>nmF(a).localeCompare(nmF(b)));
  const projs=D.projects.filter(p=>all.some(t=>t.proj===p.id));
  const late=T.filter(tLate),dueT=T.filter(t=>t.st!=='Done'&&t.due===TODAY),prog=R.filter(t=>t.st!=='Done'&&!tLate(t)&&t.due!==TODAY),dn=R.filter(t=>t.st==='Done');
- const lab=v==='d'?(s===TODAY?'Today, ':s===addD(TODAY,1)?'Tomorrow, ':s===addD(TODAY,-1)?'Yesterday, ':'')+new Date(s+'T12:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):v==='m'?new Date(s+'T12:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'}):`${fmt(s)} – ${fmtY(e)}`;
+ const lab=v==='d'?(s===TODAY?'Today, ':s===addD(TODAY,1)?'Tomorrow, ':s===addD(TODAY,-1)?'Yesterday, ':'')+new Date(s+'T12:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):`${fmt(s)} – ${fmtY(e)}`;
  const bar=`<div class="t4bar"><div class="t4seg">${Object.entries(TL4).map(([k,x])=>`<button class="${v===k?'on':''}" data-a="t4V" data-t="${k}">${x[0]}</button>`).join('')}</div>
   <div class="t4nav"><button data-a="t4N" data-n="-1" aria-label="Previous">‹</button><b>${lab}</b><button data-a="t4N" data-n="1" aria-label="Next">›</button></div>
   <button class="t4today ${s<=TODAY&&e>=TODAY?'on':''}" data-a="t4T">Today</button><button class="t4today" data-a="t4Tm">Tomorrow</button><input type="date" class="t4pick" data-ch="t4Pick" value="${s}" aria-label="Go to date">
@@ -4415,10 +4416,12 @@ function tl4(){const v=S.tl4||'w',pj=S.tlp||'all',pe=S.tlo||'all',[s,e]=tl4Range
   GT.forEach(t=>{const a=Math.max(0,dDiff(s,tStart(t))),b=Math.min(N-1,dDiff(s,t.due)),c=stc(t),cut0=dDiff(s,tStart(t))<0,cut1=dDiff(s,t.due)>N-1;
    body+=`<div class="t4row t4t" style="--pc:${projCol(t.proj)}"><div class="t4l"><span class="t4pt">•</span>${av(nm(t.o),'s')}<button class="t4nm" data-a="tOpen" data-id="${t.id}" title="${h(t.t)}"><b>${h(t.t)}</b><span>${h(nmF(t.o))} · ${tStart(t)===t.due?fmt(t.due):fmt(tStart(t))+' – '+fmt(t.due)}</span></button>${chip(t)}</div>
    <div class="t4tr">${bg}${now}<button class="t4b ${cut0?'c0':''} ${cut1?'c1':''}" style="left:${a/N*100}%;width:${(b-a+1)/N*100}%;--c:${c[1]}" ${canMove(t)?`data-a="tlEd" data-id="${t.id}"`:`data-a="tOpen" data-id="${t.id}"`} title="${h(t.t)} · ${c[0]} · ${fmt(tStart(t))} → ${fmt(t.due)}${canMove(t)?' · click to change dates':''}"><span>${(b-a+1)/N>.12?h(t.t):''}</span></button></div></div>`})});
- return bar+kpi+`<div class="t4g-wrap" style="--n:${N};--cw:${N>14?22:34}px">${head}${body||`<div class="t4empty">${empty('No tasks in these dates','Try another date, project or person')}</div>`}</div>
+ const aft=T.filter(t=>t.st!=='Done'&&tStart(t)>e),bef=T.filter(t=>t.st!=='Done'&&t.due<s&&!tLate(t));
+ const more=(bef.length?`<button class="t4more" data-a="t4Go" data-d="${bef.map(t=>tStart(t)).sort()[0]}">‹ ${bef.length} earlier task${bef.length>1?'s':''}</button>`:'')+(aft.length?`<button class="t4more" data-a="t4Go" data-d="${aft.map(t=>tStart(t)).sort()[0]}">${aft.length} more task${aft.length>1?'s':''} after ${fmt(e)} · next from ${fmt(aft.map(t=>tStart(t)).sort()[0])} ›</button>`:'');
+ return bar+kpi+`<div class="t4g-wrap" style="--n:${N};--cw:${N>14?22:34}px">${head}${body||`<div class="t4empty">${empty('No tasks in these dates','Try another date, project or person')}</div>`}</div>${more?`<div class="t4mrow">${more}</div>`:''}
  <div class="t4leg">${KCOL.map(c=>`<span><i style="background:${c[2]}"></i>${c[1]}</span>`).join('')}<span><i style="background:#DC2626"></i>Overdue</span><span><i class="nw"></i>Today</span><span class="mut">· Click a bar to change its dates</span></div>`}
-A.t4V=e=>{S.tl4=e.dataset.t;render()};A.t4T=()=>{S.tl4d=TODAY;render()};A.t4Tm=()=>{S.tl4='d';S.tl4d=addD(TODAY,1);render()};
-A.t4N=e=>{const n=+e.dataset.n,v=S.tl4||'w',d=S.tl4d||TODAY;S.tl4d=v==='d'?addD(d,n):v==='m'?mAdd(d.slice(0,8)+'01',n):addD(d,n*TL4[v][1]);render()};
+A.t4V=e=>{S.tl4=e.dataset.t;render()};A.t4Go=e=>{S.tl4d=e.dataset.d;render()};A.t4T=()=>{S.tl4d=TODAY;render()};A.t4Tm=()=>{S.tl4='d';S.tl4d=addD(TODAY,1);render()};
+A.t4N=e=>{const n=+e.dataset.n,v=S.tl4||'w',d=S.tl4d||TODAY;S.tl4d=v==='d'?addD(d,n):v==='m'?addD(d,n*35):addD(d,n*TL4[v][1]);render()};
 document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.ch==='t4Pick'&&t.value){S.tl4d=t.value;render()}});
 const _vtT4=V.tasks;V.tasks=()=>{if(S.ttab==='time')return taskHead(ME()||{n:''})+tl4();return _vtT4()};
 
