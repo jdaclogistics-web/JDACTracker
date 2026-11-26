@@ -14,7 +14,7 @@ async function supabasePut(env, key, bytes, mime) {
     headers: { ...sbHeaders(env), 'Content-Type': mime, 'x-upsert': 'true' },
     body: bytes,
   })
-  if (!r.ok) throw new Error(`supabase ${r.status}`)
+  if (!r.ok) throw new Error(`supabase ${r.status} ${(await r.text().catch(() => "")).slice(0, 160)}`)
 }
 
 /** base64 JPEG save करो, key लौटाओ ("sb:" = Supabase पर, "db:" = D1 fallback में) */
