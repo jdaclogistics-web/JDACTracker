@@ -258,3 +258,13 @@ A.tlSave=e=>{const t=D.tasks.find(x=>x.id===e.dataset.id);if(!t)return;let s1=va
 render();
 
 A.tdO=e=>{const k=e.dataset.k;S.tdO=S.tdO||{};S.tdO[k]=!S.tdO[k];render()};
+// HR Desk: 3 grouped tabs, Rules removed
+const HRG=[['ga','Attendance & Leave',['today','att','leave','hol']],['ge','Employee Master',['master','org']],['gp','Payroll & Rewards',['pay','inc','appr']]];
+const _peopleHG=V.people;V.people=()=>{if(S.ptab==='rules')S.ptab='today';let out=_peopleHG();if(['onb','exit'].includes(S.ptab))return out;
+ const m=out.match(/<div class="chips" role="tablist">((?:(?!<\/div>)[\s\S])*?data-a="ptab"[\s\S]*?)<\/div>/);if(!m)return out;
+ const B={};(m[1].match(/<button role="tab"[\s\S]*?<\/button>/g)||[]).forEach(b=>{const k=(b.match(/data-t="([^"]+)"/)||[])[1];if(k)B[k]=b});
+ const g=HRG.find(x=>x[2].includes(S.ptab))||HRG[0],cnt=G=>G[2].reduce((a,k)=>a+(+((B[k]||'').match(/<span class="n">(\d+)/)||[0,0])[1]),0);
+ const top=`<div class="hrg" role="tablist">${HRG.map(G=>{const n=cnt(G);return `<button role="tab" aria-selected="${G===g}" class="${G===g?'on':''}" data-a="hrG" data-t="${G[0]}">${G[1]}${n?` <span class="n">${n}</span>`:''}</button>`}).join('')}</div>`;
+ const sub=`<div class="chips hrsub" role="tablist">${g[2].filter(k=>B[k]).map(k=>B[k].replace(/class="[^"]*"/,`class="${S.ptab===k?'on':''}"`).replace(/aria-selected="[^"]*"/,`aria-selected="${S.ptab===k}"`)).join('')}</div>`;
+ return out.replace(m[0],top+sub)};
+A.hrG=e=>{const G=HRG.find(x=>x[0]===e.dataset.t);S.ptab=G[2][0];render()};
