@@ -22,7 +22,7 @@ A.myMon=e=>{const d=new Date(S.mym+'T12:00:00');d.setMonth(d.getMonth()+(+e.data
 A.leaveNew=()=>sheet(`<h2>Apply for leave</h2>${isAdm()?`<label for="lk">For</label><select id="lk">${STAFF.filter(k=>empOf(k)).map(k=>`<option value="${k}" ${k===S.me?'selected':''}>${h(P[k].n)}</option>`).join('')}</select>`:''}
  <div class="grid g2"><div><label for="lf">From</label><input id="lf" type="date" value="${addD(TODAY,1)}"></div><div><label for="lt">To</label><input id="lt" type="date" value="${addD(TODAY,1)}"></div></div>
  <label>Type</label>${opts('ltp',['Full day','Half day'],'Full day')}<label for="lw">Reason *</label><input id="lw" placeholder="e.g. Family function">
- <p class="xs mut">Goes to Nameera. Once approved it shows as L on your calendar.</p><button class="btn w" data-a="lvSave">Send to Nameera</button>`);
+ <p class="xs mut">Goes to Nameera. Once approved it shows as L on your calendar.</p><button class="btn w" data-a="lvSave">Send to HR Manager Nameera</button>`);
 A.lvSave=()=>{const f=val('lf'),t=val('lt')||f;if(!f)return toast('Pick a date');if(t<f)return toast('End date is before start');if(f<TODAY)return toast('Leave can be applied for today or later');if(!val('lw'))return toast('Add a reason');
  D.leave.push({id:nid('LV'),k:val('lk')||S.me,from:f,to:t,why:val('lw'),type:pick1('ltp')||'Full day',st:'Pending',at:TODAY});save();closeM();render();toast('Sent to Nameera')};
 /* HR Desk · Leave requests tab */

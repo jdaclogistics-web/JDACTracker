@@ -1615,7 +1615,7 @@ A.grpSave=()=>{if(!val('gn'))return toast('Name the group');D.groups.push({id:ni
 /* people */
 A.lvOk=e=>{D.leave[+e.dataset.i].st='Approved';save();render();toast('Approved · team lead notified')};
 A.lvNo=e=>{D.leave[+e.dataset.i].st='Rejected';save();render()};
-A.leaveNew=()=>sheet(`<h2>Apply leave</h2>${isAdm()?`<label for="lk">For</label><select id="lk">${STAFF.map(k=>`<option value="${k}" ${k===S.me?'selected':''}>${h(P[k].n)}</option>`).join('')}</select>`:''}<div class="grid g2"><div><label for="lf">From</label><input id="lf" type="date" value="${addD(TODAY,3)}"></div><div><label for="lt">To</label><input id="lt" type="date" value="${addD(TODAY,3)}"></div></div><label for="lw">Reason</label><input id="lw"><p class="xs mut">At least 3 days ahead · no Saturday/Monday sandwich leave</p><button class="btn w" data-a="lvSave">Send to Nameera</button>`);
+A.leaveNew=()=>sheet(`<h2>Apply leave</h2>${isAdm()?`<label for="lk">For</label><select id="lk">${STAFF.map(k=>`<option value="${k}" ${k===S.me?'selected':''}>${h(P[k].n)}</option>`).join('')}</select>`:''}<div class="grid g2"><div><label for="lf">From</label><input id="lf" type="date" value="${addD(TODAY,3)}"></div><div><label for="lt">To</label><input id="lt" type="date" value="${addD(TODAY,3)}"></div></div><label for="lw">Reason</label><input id="lw"><p class="xs mut">At least 3 days ahead · no Saturday/Monday sandwich leave</p><button class="btn w" data-a="lvSave">Send to HR Manager Nameera</button>`);
 A.lvSave=()=>{const f=val('lf'),t=val('lt');if(t<f)return toast('End date is before start');if(daysTo(f)<3)return toast('Apply at least 3 days ahead');for(let d=f;d<=t;d=addD(d,1)){const w=new Date(d+'T12:00:00').getDay();if(w===6||w===1)return toast('Saturday/Monday leave is blocked')}D.leave.push({k:val('lk')||S.me,from:f,to:t,why:val('lw')||'—',st:'Pending'});save();closeM();render();toast('Sent to Nameera')};
 A.onbNew=()=>sheet(`<h2>Add joiner</h2><div class="grid g2"><div><label for="on">Full name *</label><input id="on"></div><div><label for="op">Mobile *</label><input id="op" inputmode="tel"></div></div>
  <label>Company *</label>${opts('oco',[...Object.keys(BOOKS).map(k=>[k,coShort(k)]),['parent','JDAC Sales (parent)']],'log')}
@@ -2407,7 +2407,7 @@ A.myMon=e=>{const d=new Date(S.mym+'T12:00:00');d.setMonth(d.getMonth()+(+e.data
 A.leaveNew=()=>sheet(`<h2>Apply for leave</h2>${isAdm()?`<label for="lk">For</label><select id="lk">${STAFF.filter(k=>empOf(k)).map(k=>`<option value="${k}" ${k===S.me?'selected':''}>${h(P[k].n)}</option>`).join('')}</select>`:''}
  <div class="grid g2"><div><label for="lf">From</label><input id="lf" type="date" value="${addD(TODAY,1)}"></div><div><label for="lt">To</label><input id="lt" type="date" value="${addD(TODAY,1)}"></div></div>
  <label>Type</label>${opts('ltp',['Full day','Half day'],'Full day')}<label for="lw">Reason *</label><input id="lw" placeholder="e.g. Family function">
- <p class="xs mut">Goes to Nameera. Once approved it shows as L on your calendar.</p><button class="btn w" data-a="lvSave">Send to Nameera</button>`);
+ <p class="xs mut">Goes to Nameera. Once approved it shows as L on your calendar.</p><button class="btn w" data-a="lvSave">Send to HR Manager Nameera</button>`);
 A.lvSave=()=>{const f=val('lf'),t=val('lt')||f;if(!f)return toast('Pick a date');if(t<f)return toast('End date is before start');if(f<TODAY)return toast('Leave can be applied for today or later');if(!val('lw'))return toast('Add a reason');
  D.leave.push({id:nid('LV'),k:val('lk')||S.me,from:f,to:t,why:val('lw'),type:pick1('ltp')||'Full day',st:'Pending',at:TODAY});save();closeM();render();toast('Sent to Nameera')};
 /* HR Desk · Leave requests tab */
@@ -2540,7 +2540,7 @@ const offIn=(e,d)=>{const w=wkStart(d);for(let i=0;i<7;i++){const x=addD(w,i);if
 A.swapNew=()=>{const e=empOf(S.me);if(!e)return;const C=D.emp.filter(x=>x.st==='Active'&&x.k!==e.k).sort((a,b)=>(b.city===e.city)-(a.city===e.city));
  sheet(`<h2>Swap my weekly off</h2><p class="mut sm">Your weekly off is ${DAYN[woDay(e)]}. Pick the day you want off instead, and the colleague who will cover it. You work your usual ${DAYN[woDay(e)]} that week, and your colleague takes it off instead. Nameera approves.</p>
  <label for="sw-d">Day I want off</label><input id="sw-d" type="date" min="${addD(TODAY,1)}"><label for="sw-c">Colleague who will cover</label><select id="sw-c">${C.map(x=>`<option value="${x.k}">${h(x.n)} · off ${DAYN[woDay(x)]}</option>`).join('')}</select><label for="sw-r">Reason (optional)</label><input id="sw-r" placeholder="e.g. family function">
- <button class="btn w" style="margin-top:14px" data-a="swapSave">Send to Nameera</button>`)};
+ <button class="btn w" style="margin-top:14px" data-a="swapSave">Send to HR Manager Nameera</button>`)};
 A.swapSave=()=>{const e=empOf(S.me),d=val('sw-d'),c=val('sw-c');if(!d)return toast('Pick the day');if(d<=TODAY)return toast('Pick a future date');if(new Date(d+'T12:00:00').getDay()===woDay(e))return toast('That is already your weekly off');const o=offIn(e,d);
  D.wos.unshift({id:nid('sw'),k:e.k,day:d,orig:o,cov:c,why:val('sw-r'),st:'Pending',at:TODAY});save();closeM();render();toast('Swap request sent to Nameera')};
 A.swapSt=e=>{if(!isAdm())return;const s=D.wos.find(x=>x.id===e.dataset.id);s.st=e.dataset.s;s.by=S.me;save();render();toast('Swap '+s.st.toLowerCase())};
@@ -2643,7 +2643,7 @@ V.hrrules=()=>page('Company rules','JDAC Sales Pvt Ltd · for all staff')+rulesH
 const _allowed3=allowed;allowed=function(v){if(v==='hrrules')return isAdm();if(v==='kpi')return !isExt();return _allowed3(v)};
 /* ===== Phone reset (new phone) — Nameera approves ===== */
 if(!D.devReq)D.devReq=[];
-A.devReq=()=>sheet(`<h2>Move my login to a new phone</h2><p class="mut sm">Use this if your phone was lost or changed. Nameera will approve it, then you can log in on the new phone with your mobile number + OTP. You can still mark attendance from any phone meanwhile.</p><label for="dv-w">Reason</label>${opts('dv-w',['Phone lost','New phone','Phone not working'],'New phone')}<button class="btn w" style="margin-top:14px" data-a="devSave">Send to Nameera</button>`);
+A.devReq=()=>sheet(`<h2>Move my login to a new phone</h2><p class="mut sm">Use this if your phone was lost or changed. Nameera will approve it, then you can log in on the new phone with your mobile number + OTP. You can still mark attendance from any phone meanwhile.</p><label for="dv-w">Reason</label>${opts('dv-w',['Phone lost','New phone','Phone not working'],'New phone')}<button class="btn w" style="margin-top:14px" data-a="devSave">Send to HR Manager Nameera</button>`);
 A.devSave=()=>{D.devReq.unshift({id:nid('dv'),k:S.me,why:pick1('dv-w')||'New phone',at:TODAY,st:'Pending'});save();closeM();render();toast('Request sent to Nameera')};
 A.devSt=e=>{if(!isAdm())return;const r=D.devReq.find(x=>x.id===e.dataset.id);r.st=e.dataset.s;r.by=S.me;save();render();toast(r.st==='Approved'?'Approved — they can log in on the new phone':'Rejected')};
 const _me9=V.me;V.me=()=>{const out=_me9();if(!empOf(S.me))return out;const r=D.devReq.find(x=>x.k===S.me&&x.at>=addD(TODAY,-30));
@@ -2696,7 +2696,7 @@ pRules=(f=>function(){return f().replace('Every employee sees this same list und
 const _dlC=download;download=async function(n,t){if(!isAdm())return toast('Only Darshan and Nameera can download files');return _dlC(n,t)};
 /* ===== Forgot to mark attendance → request to Nameera ===== */
 if(!D.attReq)D.attReq=[];
-A.attReqNew=()=>sheet(`<h2>Forgot to mark attendance?</h2><p class="mut sm">Send a request to Nameera (HR). She will check and correct your attendance.</p><label for="ar-d">Date</label><input id="ar-d" type="date" max="${TODAY}" value="${TODAY}"><label>What happened?</label>${opts('ar-w',['Forgot my phone at home','Phone not working','Forgot to mark in','Forgot to mark out','Other'],'Forgot my phone at home')}<label for="ar-n">Note (optional)</label><input id="ar-n" placeholder="e.g. came at 10:05, was at the office all day"><button class="btn w" style="margin-top:14px" data-a="attReqSave">Send to Nameera</button>`);
+A.attReqNew=()=>sheet(`<h2>Forgot to mark attendance?</h2><p class="mut sm">Send a request to Nameera (HR). She will check and correct your attendance.</p><label for="ar-d">Date</label><input id="ar-d" type="date" max="${TODAY}" value="${TODAY}"><label>What happened?</label>${opts('ar-w',['Forgot my phone at home','Phone not working','Forgot to mark in','Forgot to mark out','Other'],'Forgot my phone at home')}<label for="ar-n">Note (optional)</label><input id="ar-n" placeholder="e.g. came at 10:05, was at the office all day"><button class="btn w" style="margin-top:14px" data-a="attReqSave">Send to HR Manager Nameera</button>`);
 A.attReqSave=()=>{const d=val('ar-d');if(!d)return toast('Pick the date');D.attReq.unshift({id:nid('ar'),k:S.me,d,why:pick1('ar-w')||'Other',note:val('ar-n'),at:TODAY,st:'Pending'});save();closeM();render();toast('Request sent to Nameera')};
 A.attReqSt=e=>{if(!isAdm())return;const r=D.attReq.find(x=>x.id===e.dataset.id),x=empOf(r.k);r.st=e.dataset.s;r.by=S.me;if(r.st==='Approved'&&x){D.attx[x.id]=D.attx[x.id]||{};D.attx[x.id][r.d]='P';D.attn=D.attn||{};D.attn[x.id]=D.attn[x.id]||{};D.attn[x.id][r.d]={by:S.me,why:'Request: '+r.why+(r.note?' — '+r.note:''),at:TODAY}}save();render();toast(r.st==='Approved'?'Marked Present for '+fmt(r.d):'Request rejected')};
 const _me10=V.me;V.me=()=>{const out=_me10();if(!empOf(S.me))return out;const M=D.attReq.filter(r=>r.k===S.me&&r.at>=addD(TODAY,-30));
@@ -4041,7 +4041,9 @@ const _meStaffX=V.me;V.me=()=>{let out=_meStaffX();if(isBoss())return out;
  out=out.replace(/(<main class="wrap[^"]*" id="main"><div class="row nw" style="margin-bottom:14px">[\s\S]*?<\/div><\/div>)(\s*<\/div>)?/,(m)=>m);
  const dt=new Date(TODAY+'T12:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
  out=out.replace(/(<h1 style="font-size:22px">[^<]*<\/h1><div class="mut sm">[^<]*<\/div><\/div>)/,`$1<div class="medate"><b>${dt.split(',')[0]}</b><span>${dt.split(',').slice(1).join(',').trim()}</span></div>`);
- /* weekly off swap: warehouse team only */
+ /* salary slips → request from HR (email template) */
+ out=out.replace(/<div class="card"><b>My salary slips<\/b>[\s\S]*?<\/div><\/div>(?=\s*(<div class="card">|<\/div>|$))/,`<div class="card slipreq"><div class="row nw" style="gap:12px"><span style="font-size:26px">🧾</span><div style="flex:1"><b>Need your salary slip?</b><div class="xs mut">Ask HR Manager Nameera. She sends it to your email.</div></div><button class="btn" data-a="slipReq">Email HR</button></div></div>`);
+
  if(!isWarehouse(S.me))out=out.replace(/<div class="card"><div class="row nw"><b style="flex:1">Weekly off swap<\/b>[\s\S]*?<\/div><\/div><\/div>/,'');
  return out};
 const _meX9=V.me;V.me=()=>{let out=_meX9();if(!isBoss())return out;
@@ -4117,5 +4119,15 @@ const _noteViewX=noteView;noteView=function(){const m=gmM(),o=_noteViewX();if(!m
 
 /* ---- Staff (e.g. Neetu): clean top bar — no Split view, Contacts or Live/Prototype label ---- */
 const _rStaffX=render;render=function(){_rStaffX.apply(this,arguments);try{document.documentElement.classList.toggle('staffmode',!isAdm())}catch(e){}};
+/* ---- Salary slip request: ready email template to HR Manager Nameera ---- */
+const HRMAIL=()=>{const e=(D.emp||[]).find(x=>x.k==='nameera')||{};return e.email||e.mail||''};
+function slipMail(mon){const e=(D.emp||[]).find(x=>x.k===S.me)||{},me=ME(),id=e.id||me.id||'',nm2=me.n||e.n||'';
+ return {sub:`Salary slip request – ${nm2} (${id}) – ${mon}`,body:`Dear Nameera Ma'am,\n\nI request you to please share my salary slip for ${mon}.\n\nName: ${nm2}\nEmployee ID: ${id}\nDesignation: ${e.desig||me.r||''}\nDepartment: ${e.unit||''}\nPurpose: ${'{bank loan / personal record / visa / other}'}\n\nPlease send it to my email address.\n\nThank you,\n${nm2}`}}
+A.slipReq=()=>{const ms=[0,1,2,3,4,5].map(i=>{const d=new Date(TODAY+'T12:00:00');d.setDate(1);d.setMonth(d.getMonth()-1-i);return d.toLocaleDateString('en-IN',{month:'long',year:'numeric'})});const t=slipMail(ms[0]);
+ sheet(`<h2>Request salary slip</h2><label for="sr-m">Month</label><select id="sr-m" data-ch="slipM">${ms.map(m=>`<option>${m}</option>`).concat([`<option>Last 3 months</option>`,`<option>Last 6 months</option>`]).join('')}</select><label for="sr-to">To</label><input id="sr-to" value="${h(HRMAIL())}" placeholder="Nameera's email"><label for="sr-s">Subject</label><input id="sr-s" value="${h(t.sub)}"><label for="sr-b">Email</label><textarea id="sr-b" rows="12">${h(t.body)}</textarea><p class="xs mut">Change the purpose line, then send.</p><div class="row" style="gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="slipSend">Email HR Manager Nameera</button><button class="btn sec" data-a="slipCopy">Copy</button></div>`)};
+document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.ch==='slipM'){const t=slipMail(e.target.value);const s1=document.getElementById('sr-s'),b1=document.getElementById('sr-b');if(s1)s1.value=t.sub;if(b1)b1.value=t.body}});
+A.slipSend=()=>{const to=val('sr-to'),sub=val('sr-s'),body=val('sr-b');try{D.msgs=D.msgs||[];const g=(D.groups||[]).find(x=>x.m&&x.m.includes('nameera')&&x.m.includes(S.me)&&x.m.length===2);if(g)D.msgs.push({id:nid('m'),g:g.id,f:S.me,t:'🧾 '+sub,at:nowT()});save()}catch(x){}
+ const a=document.createElement('a');a.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);document.body.appendChild(a);a.click();a.remove();closeM();toast('Opening your email · send it to HR Manager Nameera')};
+A.slipCopy=()=>{try{navigator.clipboard.writeText('To: '+val('sr-to')+'\nSubject: '+val('sr-s')+'\n\n'+val('sr-b'));toast('Copied')}catch(x){toast('Copy not available here')}};
 render();
 </script></body></html>

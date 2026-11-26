@@ -83,7 +83,9 @@ const _meStaffX=V.me;V.me=()=>{let out=_meStaffX();if(isBoss())return out;
  out=out.replace(/(<main class="wrap[^"]*" id="main"><div class="row nw" style="margin-bottom:14px">[\s\S]*?<\/div><\/div>)(\s*<\/div>)?/,(m)=>m);
  const dt=new Date(TODAY+'T12:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
  out=out.replace(/(<h1 style="font-size:22px">[^<]*<\/h1><div class="mut sm">[^<]*<\/div><\/div>)/,`$1<div class="medate"><b>${dt.split(',')[0]}</b><span>${dt.split(',').slice(1).join(',').trim()}</span></div>`);
- /* weekly off swap: warehouse team only */
+ /* salary slips → request from HR (email template) */
+ out=out.replace(/<div class="card"><b>My salary slips<\/b>[\s\S]*?<\/div><\/div>(?=\s*(<div class="card">|<\/div>|$))/,`<div class="card slipreq"><div class="row nw" style="gap:12px"><span style="font-size:26px">🧾</span><div style="flex:1"><b>Need your salary slip?</b><div class="xs mut">Ask HR Manager Nameera. She sends it to your email.</div></div><button class="btn" data-a="slipReq">Email HR</button></div></div>`);
+
  if(!isWarehouse(S.me))out=out.replace(/<div class="card"><div class="row nw"><b style="flex:1">Weekly off swap<\/b>[\s\S]*?<\/div><\/div><\/div>/,'');
  return out};
 const _meX9=V.me;V.me=()=>{let out=_meX9();if(!isBoss())return out;
@@ -159,4 +161,14 @@ const _noteViewX=noteView;noteView=function(){const m=gmM(),o=_noteViewX();if(!m
 
 /* ---- Staff (e.g. Neetu): clean top bar — no Split view, Contacts or Live/Prototype label ---- */
 const _rStaffX=render;render=function(){_rStaffX.apply(this,arguments);try{document.documentElement.classList.toggle('staffmode',!isAdm())}catch(e){}};
+/* ---- Salary slip request: ready email template to HR Manager Nameera ---- */
+const HRMAIL=()=>{const e=(D.emp||[]).find(x=>x.k==='nameera')||{};return e.email||e.mail||''};
+function slipMail(mon){const e=(D.emp||[]).find(x=>x.k===S.me)||{},me=ME(),id=e.id||me.id||'',nm2=me.n||e.n||'';
+ return {sub:`Salary slip request – ${nm2} (${id}) – ${mon}`,body:`Dear Nameera Ma'am,\n\nI request you to please share my salary slip for ${mon}.\n\nName: ${nm2}\nEmployee ID: ${id}\nDesignation: ${e.desig||me.r||''}\nDepartment: ${e.unit||''}\nPurpose: ${'{bank loan / personal record / visa / other}'}\n\nPlease send it to my email address.\n\nThank you,\n${nm2}`}}
+A.slipReq=()=>{const ms=[0,1,2,3,4,5].map(i=>{const d=new Date(TODAY+'T12:00:00');d.setDate(1);d.setMonth(d.getMonth()-1-i);return d.toLocaleDateString('en-IN',{month:'long',year:'numeric'})});const t=slipMail(ms[0]);
+ sheet(`<h2>Request salary slip</h2><label for="sr-m">Month</label><select id="sr-m" data-ch="slipM">${ms.map(m=>`<option>${m}</option>`).concat([`<option>Last 3 months</option>`,`<option>Last 6 months</option>`]).join('')}</select><label for="sr-to">To</label><input id="sr-to" value="${h(HRMAIL())}" placeholder="Nameera's email"><label for="sr-s">Subject</label><input id="sr-s" value="${h(t.sub)}"><label for="sr-b">Email</label><textarea id="sr-b" rows="12">${h(t.body)}</textarea><p class="xs mut">Change the purpose line, then send.</p><div class="row" style="gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="slipSend">Email HR Manager Nameera</button><button class="btn sec" data-a="slipCopy">Copy</button></div>`)};
+document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.ch==='slipM'){const t=slipMail(e.target.value);const s1=document.getElementById('sr-s'),b1=document.getElementById('sr-b');if(s1)s1.value=t.sub;if(b1)b1.value=t.body}});
+A.slipSend=()=>{const to=val('sr-to'),sub=val('sr-s'),body=val('sr-b');try{D.msgs=D.msgs||[];const g=(D.groups||[]).find(x=>x.m&&x.m.includes('nameera')&&x.m.includes(S.me)&&x.m.length===2);if(g)D.msgs.push({id:nid('m'),g:g.id,f:S.me,t:'🧾 '+sub,at:nowT()});save()}catch(x){}
+ const a=document.createElement('a');a.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);document.body.appendChild(a);a.click();a.remove();closeM();toast('Opening your email · send it to HR Manager Nameera')};
+A.slipCopy=()=>{try{navigator.clipboard.writeText('To: '+val('sr-to')+'\nSubject: '+val('sr-s')+'\n\n'+val('sr-b'));toast('Copied')}catch(x){toast('Copy not available here')}};
 render();
