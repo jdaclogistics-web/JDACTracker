@@ -332,9 +332,11 @@ function tl4(){const v=S.tl4||'w',pj=S.tlp||'all',pe=S.tlo||'all',[s,e]=tl4Range
  const bg=`<div class="t4bg">${days.map(d=>{const w=new Date(d+'T12:00:00').getDay();return `<i class="${w===0?'sun':''} ${d===TODAY?'td':''}"></i>`}).join('')}</div>`;
  const head=`<div class="t4row t4hd"><div class="t4l">Task</div><div class="t4tr"><div class="t4days" style="--n:${N}">${days.map(d=>{const x=new Date(d+'T12:00:00');return `<div class="${d===TODAY?'td':''} ${x.getDay()===0?'sun':''}">${N<=14?`<small>${x.toLocaleDateString('en-IN',{weekday:'short'})}</small>`:''}<b>${x.getDate()}</b></div>`}).join('')}</div></div></div>`;
  let body='';groups.forEach(g=>{const GT=R.filter(t=>inG(t,g)).sort((a,b)=>tStart(a).localeCompare(tStart(b))||a.due.localeCompare(b.due));if(!GT.length)return;
-  body+=`<div class="t4row t4g"><div class="t4l"><i style="background:${projCol(g.id)}"></i><b>${h(g.n)}</b><span>${GT.length}</span></div><div class="t4tr">${bg}</div></div>`;
+  const shut=!!(S.tl4c||{})[g.id];
+  body+=`<div class="t4row t4g" style="--pc:${projCol(g.id)}"><button class="t4l t4gh" data-a="t4C" data-k="${g.id}" aria-expanded="${!shut}"><span class="t4cv">${shut?'▸':'▾'}</span><b>${h(g.n)}</b><span>${GT.length} task${GT.length>1?'s':''}</span></button><div class="t4tr">${bg}</div></div>`;
+  if(shut)return;
   GT.forEach(t=>{const a=Math.max(0,dDiff(s,tStart(t))),b=Math.min(N-1,dDiff(s,t.due)),c=stc(t),cut0=dDiff(s,tStart(t))<0,cut1=dDiff(s,t.due)>N-1;
-   body+=`<div class="t4row"><div class="t4l">${av(nm(t.o),'s')}<button class="t4nm" data-a="tOpen" data-id="${t.id}" title="${h(t.t)}"><b>${h(t.t)}</b><span>${h(nmF(t.o))} · ${tStart(t)===t.due?fmt(t.due):fmt(tStart(t))+' – '+fmt(t.due)}</span></button>${chip(t)}</div>
+   body+=`<div class="t4row t4t" style="--pc:${projCol(t.proj)}"><div class="t4l"><span class="t4pt">•</span>${av(nm(t.o),'s')}<button class="t4nm" data-a="tOpen" data-id="${t.id}" title="${h(t.t)}"><b>${h(t.t)}</b><span>${h(nmF(t.o))} · ${tStart(t)===t.due?fmt(t.due):fmt(tStart(t))+' – '+fmt(t.due)}</span></button>${chip(t)}</div>
    <div class="t4tr">${bg}${now}<button class="t4b ${cut0?'c0':''} ${cut1?'c1':''}" style="left:${a/N*100}%;width:${(b-a+1)/N*100}%;--c:${c[1]}" ${canMove(t)?`data-a="tlEd" data-id="${t.id}"`:`data-a="tOpen" data-id="${t.id}"`} title="${h(t.t)} · ${c[0]} · ${fmt(tStart(t))} → ${fmt(t.due)}${canMove(t)?' · click to change dates':''}"><span>${(b-a+1)/N>.12?h(t.t):''}</span></button></div></div>`})});
  return bar+kpi+`<div class="t4g-wrap" style="--n:${N};--cw:${N>14?22:34}px">${head}${body||`<div class="t4empty">${empty('No tasks in these dates','Try another date, project or person')}</div>`}</div>
  <div class="t4leg">${KCOL.map(c=>`<span><i style="background:${c[2]}"></i>${c[1]}</span>`).join('')}<span><i style="background:#DC2626"></i>Overdue</span><span><i class="nw"></i>Today</span><span class="mut">· Click a bar to change its dates</span></div>`}
@@ -342,3 +344,5 @@ A.t4V=e=>{S.tl4=e.dataset.t;render()};A.t4T=()=>{S.tl4d=TODAY;render()};A.t4Tm=(
 A.t4N=e=>{const n=+e.dataset.n,v=S.tl4||'w',d=S.tl4d||TODAY;S.tl4d=v==='d'?addD(d,n):v==='m'?mAdd(d.slice(0,8)+'01',n):addD(d,n*TL4[v][1]);render()};
 document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.ch==='t4Pick'&&t.value){S.tl4d=t.value;render()}});
 const _vtT4=V.tasks;V.tasks=()=>{if(S.ttab==='time')return taskHead(ME()||{n:''})+tl4();return _vtT4()};
+
+A.t4C=e=>{const k=e.dataset.k;S.tl4c=S.tl4c||{};S.tl4c[k]=!S.tl4c[k];render()};
