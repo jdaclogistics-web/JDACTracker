@@ -689,7 +689,7 @@ on('POST', '/api/setup/import-modules', async (env, req) => {
 
 // ── Old data (पुराने system के modules) ─────────────────────────────────────────
 // Boss/Developer: सब modules. HR: HR वाले modules (finance/P&L नहीं). दोनों नया record जोड़ और बदल सकते हैं (audit के साथ).
-const HR_TABLES = new Set(['hr_companies', 'hr_employees', 'hr_invoices', 'hr_invoice_lines', 'hr_activity_log', 'salary_records', 'notices', 'notice_reads', 'daily_reports', 'day_entries', 'tasks', 'task_checklist', 'task_events', 'task_comments', 'projects', 'project_members', 'expense_claims', 'employee_desks', 'desks', 'quiz_attempts'])
+const HR_TABLES = new Set(['jdw_acc', 'jdw_tx', 'hr_companies', 'hr_employees', 'hr_invoices', 'hr_invoice_lines', 'hr_activity_log', 'salary_records', 'notices', 'notice_reads', 'daily_reports', 'day_entries', 'tasks', 'task_checklist', 'task_events', 'task_comments', 'projects', 'project_members', 'expense_claims', 'employee_desks', 'desks', 'quiz_attempts'])
 const canTable = (me, tbl) => ['boss', 'developer'].includes(me.role) || (me.role === 'hr' && HR_TABLES.has(tbl))
 on('GET', '/api/legacy/tables', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
