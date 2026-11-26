@@ -3952,7 +3952,8 @@ const trSize=b=>b>1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1
 const trIcon=n=>/^(Day \d|Boss Exam)/.test(n)?'🎓':/\.pdf$/i.test(n)?'📕':/\.(xlsx?|csv)$/i.test(n)?'📗':/\.(docx?)$/i.test(n)?'📘':/\.(pptx?)$/i.test(n)?'📙':/\.(png|jpe?g|webp)$/i.test(n)?'🖼':/\.(mp4|mov|webm)$/i.test(n)?'🎬':'📄';
 const TRDAY=['JDAC ko jaano','WhatsApp aur quotation','Stages aur rounds','Convince karo, booking pakki','Apni leads','Final day'];
 /* Built-in CSE induction (from cse_training_jdac): one interactive page per day + Boss exam on Day 6 */
-const TRB=[1,2,3,4,5,6].map(d=>({id:'b'+d,day:d,name:'Day '+d+' · '+TRDAY[d-1],url:'./training/day'+d+'.html',mime:'text/html',built:1,by:'JDAC CSE induction'})).concat([{id:'b7',day:6,name:'Boss Exam · CSE Day 6',url:'./training/boss-exam.html',mime:'text/html',built:1,by:'JDAC CSE induction'}]);
+const TRBASE=/github\.io$/.test(location.hostname)?'./training/':'https://jdaclogistics-web.github.io/JDACTracker/training/';
+const TRB=[1,2,3,4,5,6].map(d=>({id:'b'+d,day:d,name:'Day '+d+' · '+TRDAY[d-1],url:TRBASE+'day'+d+'.html',mime:'text/html',built:1,by:'JDAC CSE induction'})).concat([{id:'b7',day:6,name:'Boss Exam · CSE Day 6',url:TRBASE+'boss-exam.html',mime:'text/html',built:1,by:'JDAC CSE induction'}]);
 function trBlock(){if(TRD.files===null&&!TRD.busy)setTimeout(trLoad,0);const d=+(S.trDay||1),ALL=[...TRB,...(TRD.files||[])],F=ALL.filter(f=>+f.day===d),can=isAdm();
  const cnt=k=>ALL.filter(f=>+f.day===k).length;
  return `${st('6-day CSE induction · click a day')}<div class="trdays" role="tablist">${[1,2,3,4,5,6].map(k=>`<button role="tab" aria-selected="${d===k}" class="${d===k?'on':''}" data-a="trDay" data-d="${k}"><b>Day ${k}</b><span>${TRDAY[k-1]}</span>${cnt(k)?`<em>${cnt(k)}</em>`:''}</button>`).join('')}</div>
