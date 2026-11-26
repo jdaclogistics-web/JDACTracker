@@ -305,3 +305,40 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dat
 if(IN_FRAME){try{saveS=function(){};const as=(location.search.match(/[?&]as=([^&]+)/)||[])[1];const k=as&&decodeURIComponent(as);if(k&&P[k]){setTimeout(()=>{S.viewer=null;S.split=false;A.whoSet({dataset:{k}})},80)}document.documentElement.classList.add('in-frame')}catch(e){}}
 // Navigation: red attention dot instead of numbers; clears once the section is opened
 const _badgesX=badges;badges=function(){const b=_badgesX()||{},SN=S.navSeen=S.navSeen||{},o={};Object.keys(b).forEach(k=>{const n=+b[k]||0;if(S.v===k)SN[k]=Math.max(SN[k]||0,n);if(n>(SN[k]||0))o[k]=1});Object.keys(SN).forEach(k=>{if((+b[k]||0)<SN[k])SN[k]=+b[k]||0});return o};
+/* ---- Tasks → Timeline v4: clean, professional, one screen ---- */
+const TL4={d:['Day',1],w:['Week',7],'2w':['2 weeks',14],m:['Month',0]};
+function tl4Range(){const v=S.tl4||'w',a=S.tl4d||TODAY;if(v==='d')return [a,a];if(v==='m'){const s=a.slice(0,8)+'01';return [s,monEnd(s)]}const s=wkStart(a);return [s,addD(s,TL4[v][1]-1)]}
+function tl4(){const v=S.tl4||'w',pj=S.tlp||'all',pe=S.tlo||'all',[s,e]=tl4Range(),N=dDiff(s,e)+1,days=Array.from({length:N},(_,i)=>addD(s,i));
+ const all=myTasks(),T=all.filter(t=>(pj==='all'||t.proj===pj)&&(pe==='all'||t.o===pe));
+ const inR=t=>t.due>=s&&tStart(t)<=e,R=T.filter(inR);
+ const people=[...new Set(all.filter(t=>pj==='all'||t.proj===pj).map(t=>t.o))].filter(Boolean).sort((a,b)=>nmF(a).localeCompare(nmF(b)));
+ const projs=D.projects.filter(p=>all.some(t=>t.proj===p.id));
+ const late=T.filter(tLate),dueT=T.filter(t=>t.st!=='Done'&&t.due===TODAY),prog=R.filter(t=>t.st!=='Done'&&!tLate(t)&&t.due!==TODAY),dn=R.filter(t=>t.st==='Done');
+ const lab=v==='d'?(s===TODAY?'Today, ':s===addD(TODAY,1)?'Tomorrow, ':s===addD(TODAY,-1)?'Yesterday, ':'')+new Date(s+'T12:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):v==='m'?new Date(s+'T12:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'}):`${fmt(s)} – ${fmtY(e)}`;
+ const bar=`<div class="t4bar"><div class="t4seg">${Object.entries(TL4).map(([k,x])=>`<button class="${v===k?'on':''}" data-a="t4V" data-t="${k}">${x[0]}</button>`).join('')}</div>
+  <div class="t4nav"><button data-a="t4N" data-n="-1" aria-label="Previous">‹</button><b>${lab}</b><button data-a="t4N" data-n="1" aria-label="Next">›</button></div>
+  <button class="t4today ${s<=TODAY&&e>=TODAY?'on':''}" data-a="t4T">Today</button><button class="t4today" data-a="t4Tm">Tomorrow</button><input type="date" class="t4pick" data-ch="t4Pick" value="${s}" aria-label="Go to date">
+  <span class="tsp"></span><select class="t4sel" data-ch="tlP" aria-label="Project"><option value="all">All projects</option>${projs.map(p=>`<option value="${p.id}" ${pj===p.id?'selected':''}>${h(p.n)}</option>`).join('')}</select>
+  <select class="t4sel" data-ch="tlO" aria-label="Person"><option value="all">Everyone</option>${people.map(k=>`<option value="${k}" ${pe===k?'selected':''}>${h(nmF(k))}</option>`).join('')}</select></div>`;
+ const kpi=`<div class="t4kpi"><div class="r"><b>${late.length}</b><span>Overdue</span></div><div class="o"><b>${dueT.length}</b><span>Due today</span></div><div class="b"><b>${prog.length}</b><span>Ongoing</span></div><div class="g"><b>${dn.length}</b><span>Done in this period</span></div></div>`;
+ const stc=t=>tLate(t)?['Overdue','#DC2626']:(()=>{const c=KCOL.find(x=>x[0]===colOf(t));return [c[1],c[2]]})();
+ const chip=t=>{const c=stc(t);return `<span class="t4st" style="--c:${c[1]}">${c[0]}</span>`};
+ if(v==='d'){const col=(t,L,cls)=>`<div class="t4col ${cls}"><div class="t4ch"><b>${t}</b><span>${L.length}</span></div>${L.map(x=>`<div class="t4card" style="--pc:${projCol(x.proj)}"><button class="t4ct" data-a="tOpen" data-id="${x.id}">${h(x.t)}</button><div class="t4cm">${av(nm(x.o),'s')}<span>${h(nmF(x.o))}</span><span class="tsp"></span><span class="xs mut">${h(projN(x.proj)||'')}</span></div><div class="t4cm"><span class="xs mut">${tStart(x)===x.due?'Due '+fmt(x.due):fmt(tStart(x))+' → '+fmt(x.due)}</span><span class="tsp"></span>${canMove(x)?`<button class="lnk xs" data-a="tlEd" data-id="${x.id}">Change date</button>`:''}</div></div>`).join('')||'<div class="t4none">Nothing here</div>'}</div>`;
+  const open=T.filter(t=>t.st!=='Done'&&tStart(t)<=s&&t.due>=s&&!tLate(t));
+  return bar+kpi+`<div class="t4board">${s===TODAY?col('Overdue',late,'r'):''}${col(s===TODAY?'Due today':'Due this day',open.filter(t=>t.due===s),'o')}${col('Ongoing',open.filter(t=>t.due>s),'b')}${col('Completed',T.filter(t=>t.st==='Done'&&t.due===s),'g')}</div>`}
+ const groups=(pj==='all'?D.projects.filter(p=>R.some(t=>t.proj===p.id)):D.projects.filter(p=>p.id===pj)).concat(R.some(t=>!D.projects.find(p=>p.id===t.proj))?[{id:'_none',n:'No project'}]:[]);
+ const inG=(t,g)=>g.id==='_none'?!D.projects.find(p=>p.id===t.proj):t.proj===g.id;
+ const ti=dDiff(s,TODAY),now=ti>=0&&ti<N?`<i class="t4now" style="left:${(ti+.5)/N*100}%"></i>`:'';
+ const bg=`<div class="t4bg">${days.map(d=>{const w=new Date(d+'T12:00:00').getDay();return `<i class="${w===0?'sun':''} ${d===TODAY?'td':''}"></i>`}).join('')}</div>`;
+ const head=`<div class="t4row t4hd"><div class="t4l">Task</div><div class="t4tr"><div class="t4days" style="--n:${N}">${days.map(d=>{const x=new Date(d+'T12:00:00');return `<div class="${d===TODAY?'td':''} ${x.getDay()===0?'sun':''}">${N<=14?`<small>${x.toLocaleDateString('en-IN',{weekday:'short'})}</small>`:''}<b>${x.getDate()}</b></div>`}).join('')}</div></div></div>`;
+ let body='';groups.forEach(g=>{const GT=R.filter(t=>inG(t,g)).sort((a,b)=>tStart(a).localeCompare(tStart(b))||a.due.localeCompare(b.due));if(!GT.length)return;
+  body+=`<div class="t4row t4g"><div class="t4l"><i style="background:${projCol(g.id)}"></i><b>${h(g.n)}</b><span>${GT.length}</span></div><div class="t4tr">${bg}</div></div>`;
+  GT.forEach(t=>{const a=Math.max(0,dDiff(s,tStart(t))),b=Math.min(N-1,dDiff(s,t.due)),c=stc(t),cut0=dDiff(s,tStart(t))<0,cut1=dDiff(s,t.due)>N-1;
+   body+=`<div class="t4row"><div class="t4l">${av(nm(t.o),'s')}<button class="t4nm" data-a="tOpen" data-id="${t.id}" title="${h(t.t)}"><b>${h(t.t)}</b><span>${h(nmF(t.o))} · ${tStart(t)===t.due?fmt(t.due):fmt(tStart(t))+' – '+fmt(t.due)}</span></button>${chip(t)}</div>
+   <div class="t4tr">${bg}${now}<button class="t4b ${cut0?'c0':''} ${cut1?'c1':''}" style="left:${a/N*100}%;width:${(b-a+1)/N*100}%;--c:${c[1]}" ${canMove(t)?`data-a="tlEd" data-id="${t.id}"`:`data-a="tOpen" data-id="${t.id}"`} title="${h(t.t)} · ${c[0]} · ${fmt(tStart(t))} → ${fmt(t.due)}${canMove(t)?' · click to change dates':''}"><span>${(b-a+1)/N>.12?h(t.t):''}</span></button></div></div>`})});
+ return bar+kpi+`<div class="t4g-wrap" style="--n:${N};--cw:${N>14?22:34}px">${head}${body||`<div class="t4empty">${empty('No tasks in these dates','Try another date, project or person')}</div>`}</div>
+ <div class="t4leg">${KCOL.map(c=>`<span><i style="background:${c[2]}"></i>${c[1]}</span>`).join('')}<span><i style="background:#DC2626"></i>Overdue</span><span><i class="nw"></i>Today</span><span class="mut">· Click a bar to change its dates</span></div>`}
+A.t4V=e=>{S.tl4=e.dataset.t;render()};A.t4T=()=>{S.tl4d=TODAY;render()};A.t4Tm=()=>{S.tl4='d';S.tl4d=addD(TODAY,1);render()};
+A.t4N=e=>{const n=+e.dataset.n,v=S.tl4||'w',d=S.tl4d||TODAY;S.tl4d=v==='d'?addD(d,n):v==='m'?mAdd(d.slice(0,8)+'01',n):addD(d,n*TL4[v][1]);render()};
+document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.ch==='t4Pick'&&t.value){S.tl4d=t.value;render()}});
+const _vtT4=V.tasks;V.tasks=()=>{if(S.ttab==='time')return taskHead(ME()||{n:''})+tl4();return _vtT4()};

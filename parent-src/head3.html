@@ -860,6 +860,33 @@ html.in-frame #vbar{display:none!important}
 #devfr select{background:#fff!important;color:#0B1F3A!important;border:1px solid #C9A24B!important;border-radius:8px;padding:6px 10px;font:600 13px Inter;min-width:220px}#devfr select option{background:#fff;color:#0B1F3A}#devfr .devbar label{color:#fff!important;font-size:13px;font-weight:600}
 
 .bdg{font-size:0!important;width:9px!important;height:9px!important;min-width:0!important;padding:0!important;border-radius:50%!important;background:#E11D2E!important;box-shadow:0 0 0 2px rgba(225,29,46,.2);line-height:0!important}
+
+.t4bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:4px 0 12px}
+.t4seg{display:flex;background:#F1F3F8;border-radius:10px;padding:3px}.t4seg button{border:0;background:none;padding:7px 14px;border-radius:8px;font:600 13px Inter;color:#5B6478;cursor:pointer}.t4seg button.on{background:#0B1F3A;color:#fff}
+.t4nav{display:flex;align-items:center;gap:6px}.t4nav button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:18px;cursor:pointer}.t4nav b{min-width:190px;text-align:center;font-size:14.5px}
+.t4today{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;font:600 13px Inter;cursor:pointer}.t4today.on{border-color:#0B1F3A;color:#0B1F3A}
+.t4pick{width:auto!important;margin:0!important;padding:6px 8px!important;border-radius:8px!important}.t4sel{width:auto!important;margin:0!important;min-width:150px;padding:7px 10px!important;border-radius:8px!important;font:600 13px Inter}
+.t4kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}.t4kpi div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;border-left:4px solid var(--c)}.t4kpi b{display:block;font-size:22px}.t4kpi span{font-size:12.5px;color:#5B6478}.t4kpi .r{--c:#DC2626}.t4kpi .o{--c:#D97706}.t4kpi .b{--c:#2F6BE0}.t4kpi .g{--c:#1F9D55}
+.t4g-wrap{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:auto;max-height:calc(100vh - 330px)}
+.t4row{display:grid;grid-template-columns:330px 1fr;min-width:calc(330px + var(--n)*34px);border-bottom:1px solid #EEF0F4}.t4row:hover{background:#FAFBFD}
+.t4l{display:flex;align-items:center;gap:8px;padding:8px 12px;border-right:1px solid #E6E8EE;position:sticky;left:0;background:inherit;background-color:#fff;z-index:2;min-width:0}
+.t4nm{flex:1;min-width:0;border:0;background:none;text-align:left;padding:0;cursor:pointer}.t4nm b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.t4nm span{font-size:11.5px;color:#6B7385}
+.t4st{font-size:10.5px;font-weight:700;color:var(--c);background:color-mix(in srgb,var(--c) 12%,#fff);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.t4tr{position:relative;min-height:46px}.t4bg{position:absolute;inset:0;display:grid;grid-template-columns:repeat(var(--n),1fr)}.t4bg i{border-right:1px solid #F1F2F5}.t4bg i.sun{background:#FAF5F5}.t4bg i.td{background:#EEF4FF}
+.t4now{position:absolute;top:0;bottom:0;width:2px;background:#2F6BE0;z-index:1}
+.t4b{position:absolute;top:10px;height:26px;border:0;border-radius:7px;background:var(--c);color:#fff;font:600 11.5px Inter;padding:0 8px;cursor:pointer;z-index:1;box-shadow:0 1px 3px rgba(0,0,0,.15);overflow:hidden;text-align:left}.t4b span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}.t4b.c0{border-top-left-radius:0;border-bottom-left-radius:0}.t4b.c1{border-top-right-radius:0;border-bottom-right-radius:0}.t4b:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.t4hd{position:sticky;top:0;z-index:3;background:#F7F8FB}.t4hd .t4l{background-color:#F7F8FB;font:700 12px Inter;color:#5B6478;text-transform:uppercase;letter-spacing:.04em}.t4days{display:grid;grid-template-columns:repeat(var(--n),1fr);height:100%}.t4days div{text-align:center;padding:6px 0;border-right:1px solid #ECEEF2;font-size:12px}.t4days small{display:block;color:#8A93A3;font-size:10.5px}.t4days .td{background:#2F6BE0;color:#fff}.t4days .td small{color:#DCE7FF}.t4days .sun{color:#B4232A}
+.t4g{background:#F9FAFC}.t4g .t4l{background-color:#F9FAFC}.t4g .t4l i{width:10px;height:10px;border-radius:3px}.t4g .t4l b{font-size:13px;text-transform:uppercase;letter-spacing:.03em}.t4g .t4l span{margin-left:auto;font-size:11.5px;background:#E9ECF2;border-radius:999px;padding:1px 8px}.t4g .t4tr{min-height:34px}
+.t4leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#5B6478}.t4leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}.t4leg i.nw{width:2px;height:12px;background:#2F6BE0}
+.t4board{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.t4col{background:#F7F8FB;border-radius:14px;padding:10px;border-top:4px solid var(--c)}.t4col.r{--c:#DC2626}.t4col.o{--c:#D97706}.t4col.b{--c:#2F6BE0}.t4col.g{--c:#1F9D55}
+.t4ch{display:flex;align-items:center;margin-bottom:8px}.t4ch b{flex:1;font-size:14px}.t4ch span{background:#fff;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700}
+.t4card{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:4px solid var(--pc);box-shadow:0 1px 2px rgba(16,24,40,.06)}.t4ct{border:0;background:none;padding:0;text-align:left;font:700 13.5px Inter;cursor:pointer;margin-bottom:6px;display:block}.t4cm{display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:4px}.t4none{color:#98A2B3;font-size:13px;text-align:center;padding:18px 0}.t4empty{padding:20px}
+@media(max-width:760px){.t4kpi{grid-template-columns:repeat(2,1fr)}.t4row{grid-template-columns:200px 1fr}.t4st{display:none}.t4nav b{min-width:0}}
+
+.t4bar{gap:8px}.t4pick{max-width:150px;font-size:13px!important;height:34px}.t4sel{min-width:0!important;max-width:170px;height:34px}.t4nav b{min-width:170px;font-size:14px}.t4today{padding:7px 10px}.t4cm .lnk{font-size:12px!important;font-weight:600}
+@media(min-width:1200px){.t4bar{flex-wrap:nowrap}}
+
+.t4row{min-width:calc(330px + var(--n)*var(--cw,34px))}.t4days div{font-size:11.5px;padding:6px 0}
 </style>
 </head>
 <body>
