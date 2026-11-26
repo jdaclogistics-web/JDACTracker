@@ -256,3 +256,5 @@ A.tlQ=e=>{const a=document.getElementById('tl-s'),b=document.getElementById('tl-
 A.tlSave=e=>{const t=D.tasks.find(x=>x.id===e.dataset.id);if(!t)return;let s1=val('tl-s'),u1=val('tl-u');if(!s1||!u1)return toast('Pick both dates');if(u1<s1)[s1,u1]=[u1,s1];const s0=tStart(t),u0=t.due;t.start=s1;t.due=u1;(t.log=t.log||[]).push({by:S.me,at:TODAY,x:`Dates changed ${fmt(s0)}–${fmt(u0)} → ${fmt(s1)}–${fmt(u1)}`});save();closeM();render();toast('Dates saved · '+(s1===u1?fmt(u1):fmt(s1)+' → '+fmt(u1)))};
 
 render();
+
+A.tdO=e=>{const k=e.dataset.k;S.tdO=S.tdO||{};S.tdO[k]=!S.tdO[k];render()};
