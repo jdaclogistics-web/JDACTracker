@@ -128,7 +128,7 @@ A.bpResetGo=async e=>{closeM();try{await lapi('PATCH','/api/admin/employees/'+e.
 
 /* ---- Screen modes: Day / Night / Eye protection · fit · text size ---- */
 const UIP={get:()=>{try{return Object.assign({theme:'day',fit:'full',size:'m'},JSON.parse(localStorage.getItem('jdac-ui')||'{}'))}catch(e){return {theme:'day',fit:'full',size:'m'}}},set:o=>{try{localStorage.setItem('jdac-ui',JSON.stringify(Object.assign(UIP.get(),o)))}catch(e){}uiApply()}};
-function uiApply(){try{const u=UIP.get(),c=document.documentElement.classList;['th-day','th-night','th-eye','fit-centre','fs-s','fs-l'].forEach(x=>c.remove(x));c.add('th-'+u.theme);if(u.fit==='centre')c.add('fit-centre');if(u.size!=='m')c.add('fs-'+u.size)}catch(e){}}
+function uiApply(){try{const u=UIP.get(),c=document.documentElement.classList;['th-day','th-night','th-eye','fit-centre','fs-s','fs-l'].forEach(x=>c.remove(x));c.add('th-'+u.theme);if(u.fit==='centre')c.add('fit-centre');}catch(e){}}
 uiApply();
 A.uiSet=e=>{const o={};o[e.dataset.k]=e.dataset.v;UIP.set(o);render()};
 
@@ -140,8 +140,7 @@ V.settings=()=>{const u=UIP.get(),opt=(k,v,l,d,ico)=>`<button class="uio ${u[k]=
  return `<div class="sthead"><h1>Settings</h1></div>
  <section class="stpanel"><div class="stph"><span class="bpsi">🖥</span><b>Screen</b></div>
  <div class="stgrp"><div class="stlab">Light</div><div class="uiopts">${opt('theme','day','Day','Bright, normal','☀️')}${opt('theme','night','Night','Dark screen','🌙')}${opt('theme','eye','Eye protection','Warm, softer light','🟠')}</div></div>
- <div class="stgrp"><div class="stlab">View</div><div class="uiopts">${opt('fit','full','Fit to screen','Uses the full width','⤢')}${opt('fit','centre','Centred','Narrow column in the middle','▥')}<button class="uio ${S.split?'on':''}" data-a="splitT" aria-pressed="${!!S.split}"><span class="uii">◫</span><b>Split screen</b><span>Two sections side by side</span></button><button class="uio ${S.sbc?'on':''}" data-a="sbT" aria-pressed="${!!S.sbc}"><span class="uii">☰</span><b>Small menu</b><span>Icons only on the left</span></button></div></div>
- <div class="stgrp"><div class="stlab">Text size</div><div class="uiopts">${opt('size','s','A−','Small','a')}${opt('size','m','A','Normal','A')}${opt('size','l','A+','Large','A')}</div></div></section>
+ <div class="stgrp"><div class="stlab">View</div><div class="uiopts">${opt('fit','full','Fit to screen','Uses the full width','⤢')}${opt('fit','centre','Centred','Narrow column in the middle','▥')}<button class="uio ${S.split?'on':''}" data-a="splitT" aria-pressed="${!!S.split}"><span class="uii">◫</span><b>Split screen</b><span>Two sections side by side</span></button></div></div></section>
  <details class="bpsec bpdd" ${op('w')}><summary class="bph" data-a="stO" data-k="w"><span class="bpsi">👥</span>Who sees what <span class="bpcount">${who.length}</span></summary><div class="stwho">${who.map(r=>`<div class="stw" style="--c1:${r[2]}"><b>${r[0]}</b><span>${r[1]}</span></div>`).join('')}</div></details>
  <details class="bpsec bpdd" ${op('c')}><summary class="bph" data-a="stO" data-k="c"><span class="bpsi">🔗</span>Connections <span class="bpcount">${CONN.filter(c=>c[1]==='Live').length} live</span></summary><div class="stconn">${CONN.map(c=>{const ext=/^https?:/.test(c[2]);return `<${ext?'a':'button'} class="stc" ${ext?`href="${c[2]}" target="_blank" rel="noopener"`:`data-a="connGo" data-to="${c[2].slice(1)}"`}><span class="stdot ${c[1]==='Live'?'on':''}"></span><span class="sttx"><b>${c[0]}</b><span>${c[3]}</span></span><span class="stst">${c[1]==='Live'?'Live':'Next'}</span><span class="stgo">Open ${ext?'↗':'→'}</span></${ext?'a':'button'}>`}).join('')}</div></details>`};
 A.stO=e=>{const k=e.dataset.k,was=!!(S.stO||{})[k];S.stO={};S.stO[k]=!was;render()};
