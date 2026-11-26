@@ -86,6 +86,11 @@ ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234'
 { const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'JD1003', 'Employee IDs keep counting up') }
 { const L = await call('GET', '/api/training/files', null, HR); ok(L.status === 200 && Array.isArray(L.data.files), 'training file list opens')
   ok((await call('GET', '/api/training/files', null)).status === 401, 'training files need login') }
+{ const up = await worker.fetch(new Request('https://api.test/api/admin/training/files?day=2&name=Day2 notes.pdf', { method: 'POST', headers: { Authorization: 'Bearer ' + HR, 'Content-Type': 'application/pdf' }, body: new Uint8Array(3_200_000).fill(7) }), env)
+  const j = await up.json(); ok(up.status === 200 && j.file.store === 'db', 'training PDF saved (database fallback) ' + up.status)
+  const g = await worker.fetch(new Request('https://api.test/api/training/files/' + j.file.id, { headers: { Authorization: 'Bearer ' + HR } }), env); const b = new Uint8Array(await g.arrayBuffer())
+  ok(g.status === 200 && b.length === 3_200_000 && b[3_199_999] === 7, 'training PDF opens back whole (3 pieces)')
+  ok((await call('POST', '/api/admin/training/files/' + j.file.id + '/delete', {}, HR)).status === 200 && (await call('GET', '/api/training/files', null, HR)).data.files.length === 0, 'training file deleted') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
 ok(sys.status === 200 && sys.data.employees === 6, 'developer system panel works')

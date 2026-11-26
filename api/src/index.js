@@ -501,6 +501,7 @@ on('POST', '/api/admin/payroll', async (env, req) => {
 // ── Staff / logins ─────────────────────────────────────────────────────────
 // ── Training library: Day 1–6 induction files (PDF, mock tests…). HR / Boss upload, every logged-in user opens ──
 const TR_KEY = 'training_files'
+const TRC_SQL = 'CREATE TABLE IF NOT EXISTS training_chunks (fid TEXT NOT NULL, n INTEGER NOT NULL, data BLOB, PRIMARY KEY (fid, n))'
 const trList = async (env) => { const r = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(TR_KEY).first(); return r ? JSON.parse(r.value) : [] }
 const trSave = (env, L) => env.DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(TR_KEY, JSON.stringify(L)).run()
 on('GET', '/api/training/files', async (env, req) => { await authUser(env, req); return json({ files: await trList(env) }) })
@@ -514,9 +515,16 @@ on('POST', '/api/admin/training/files', async (env, req, url) => {
   if (bytes.length > 25 * 1024 * 1024) throw bad('File too large (max 25 MB)')
   const id = 't' + Date.now() + Math.floor(Math.random() * 1000)
   const key = `training/day${day}/${id}-${name.replace(/\s+/g, '_')}`
-  try { await saveFile(env, key, bytes, mime) } catch (e) { throw new HttpError(503, 'File storage: ' + e.message) }
+  let store = 'sb'
+  try { await saveFile(env, key, bytes, mime) } catch (e) {
+    // Supabase refused → keep the file in our own database, split into 1.5 MB pieces
+    store = 'db'
+    await env.DB.prepare(TRC_SQL).run()
+    const CH = 1_500_000
+    for (let n = 0, o = 0; o < bytes.length; n++, o += CH) await env.DB.prepare('INSERT OR REPLACE INTO training_chunks (fid, n, data) VALUES (?, ?, ?)').bind(id, n, bytes.slice(o, o + CH)).run()
+  }
   const L = await trList(env)
-  const f = { id, day, name, size: bytes.length, mime, key, at: nowIso(), by: me.name }
+  const f = { id, day, name, size: bytes.length, mime, key, store, at: nowIso(), by: me.name }
   L.push(f); await trSave(env, L)
   await audit(env, me.id, 'training_upload', 'training', id, null, { day, name })
   return json({ ok: true, file: f })
@@ -525,15 +533,19 @@ on('GET', '/api/training/files/:id', async (env, req, url, p) => {
   await authUser(env, req)
   const f = (await trList(env)).find((x) => x.id === p.id)
   if (!f) throw new HttpError(404, 'File not found')
-  const o = await readFile(env, f.key)
-  if (!o) throw new HttpError(404, 'File not found in storage')
-  return new Response(o.body, { headers: { 'Content-Type': f.mime || o.mime, 'Content-Disposition': `inline; filename="${f.name.replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' } })
+  let body
+  if (f.store === 'db') {
+    const parts = (await env.DB.prepare('SELECT data FROM training_chunks WHERE fid = ? ORDER BY n').bind(f.id).all()).results.map((r) => new Uint8Array(r.data))
+    if (!parts.length) throw new HttpError(404, 'File not found in storage')
+    body = new Uint8Array(parts.reduce((a, b) => a + b.length, 0)); let o = 0; for (const p2 of parts) { body.set(p2, o); o += p2.length }
+  } else { const o = await readFile(env, f.key); if (!o) throw new HttpError(404, 'File not found in storage'); body = o.body }
+  return new Response(body, { headers: { 'Content-Type': f.mime || o.mime, 'Content-Disposition': `inline; filename="${f.name.replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' } })
 })
 on('POST', '/api/admin/training/files/:id/delete', async (env, req, url, p) => {
   const me = await authUser(env, req); needAdmin(me)
   const L = await trList(env), f = L.find((x) => x.id === p.id)
   if (!f) throw new HttpError(404, 'File not found')
-  try { await deleteFile(env, f.key) } catch {}
+  try { if (f.store === 'db') { await env.DB.prepare(TRC_SQL).run(); await env.DB.prepare('DELETE FROM training_chunks WHERE fid = ?').bind(f.id).run() } else await deleteFile(env, f.key) } catch {}
   await trSave(env, L.filter((x) => x.id !== p.id))
   await audit(env, me.id, 'training_delete', 'training', p.id, null, { name: f.name })
   return json({ ok: true })
