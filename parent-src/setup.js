@@ -129,7 +129,9 @@ V.settings=()=>{const u=UIP.get(),opt=(k,v,l,d)=>`<button class="uio ${u[k]===v?
  <details class="bpd"><summary>Connections · ${CONN.filter(c=>c[1]==='Live').length} live</summary><div class="list">${CONN.map(c=>{const ext=/^https?:/.test(c[2]);return `<${ext?'a':'button'} class="li conn" ${ext?`href="${c[2]}" target="_blank" rel="noopener"`:`data-a="connGo" data-to="${c[2].slice(1)}"`}><div class="tx"><b>${c[0]}</b><div class="m">${c[3]}</div></div>${pill(c[1],c[1]==='Live'?'g':'')}<span class="xs" style="color:var(--o);font-weight:700">Open ${ext?'↗':'→'}</span></${ext?'a':'button'}>`}).join('')}</div></details>`};
 A.connGo=e=>{const [v,a,b]=e.dataset.to.split(':');if(v==='co'){S.v='co';S.co=a;if(b)S.tab=b}else if(v==='chat'){S.v='chat';S.chm=a}else S.v=v;render()};
 /* ---- Communication: no page header, just the tabs; WhatsApp fills the screen ---- */
-const _chHeadX9=chatHead;chatHead=function(){const o=_chHeadX9(),i=o.indexOf('<div class="ctabs">');return i>0?o.slice(i):o};
+const _chHeadX9=chatHead;chatHead=function(){const o=_chHeadX9(),i=o.indexOf('<div class="ctabs">');const t=i>=0?o.slice(i):o;
+ /* tabs → small floating dock (bottom-right); the page shows only the open panel */
+ return t.replace('<div class="ctabs">','<div class="ctabs cdock" role="tablist" aria-label="Switch: WhatsApp, Email, Chat, Calls, Google Meet">')};
 /* ---- JDAC Notetaker: no tab in the header; "Generate notes" inside Google Meet + in the meeting ---- */
 const _chHeadX10=chatHead;chatHead=function(){return _chHeadX10().replace(/<button class="[^"]*" data-a="chm" data-t="notes">[\s\S]*?<\/button>/,'')};
 function gmAuto(m){m.log=m.log||[];m.tr=m.tr||[];const have=new Set(m.log.map(x=>x.t));let d=0,a=0;
