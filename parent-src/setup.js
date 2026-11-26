@@ -82,7 +82,9 @@ const _meStaffX=V.me;V.me=()=>{let out=_meStaffX();if(isBoss())return out;
  out=out.replace(/<div class="xs" style="margin-top:4px"><b>Weekly off:<\/b>[^<]*<\/div>/,'');
  out=out.replace(/(<main class="wrap[^"]*" id="main"><div class="row nw" style="margin-bottom:14px">[\s\S]*?<\/div><\/div>)(\s*<\/div>)?/,(m)=>m);
  const dt=new Date(TODAY+'T12:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
- out=out.replace(/(<h1 style="font-size:22px">[^<]*<\/h1><div class="mut sm">[^<]*<\/div><\/div>)/,`$1<div class="medate"><b>${dt.split(',')[0]}</b><span>${dt.split(',').slice(1).join(',').trim()}</span></div>`);
+ out=out.replace(/<div class="row nw" style="margin-bottom:14px">(<div class="av l"[^>]*>[^<]*<\/div>)<div style="flex:1">(<h1 style="font-size:22px">[^<]*<\/h1><div class="mut sm">[^<]*<\/div>)<\/div><\/div>/,(m,avh,nmh)=>`<div class="mehead"><div class="medate"><b>${dt.split(',')[0]}</b><span>${dt.split(',').slice(1).join(',').trim()}</span></div><div class="mewho"><div style="text-align:right">${nmh}</div>${avh}</div></div>`);
+ const ln=out.match(/<div class="latenote[^"]*"><b>([^<]*)<\/b><div class="sm">([^<]*)<\/div><\/div>/);
+ if(ln){out=out.replace(ln[0],'');out=out.replace('<div class="mehead">',`<div class="mehead">`).replace(/(<div class="medate">[\s\S]*?<\/div>)/,`$1<button class="latechip" data-a="lateInfo" data-t="${h(ln[1])}" data-d="${h(ln[2])}">⚠ ${h(ln[1])}</button>`)}
  /* salary slips → request from HR (email template) */
  out=out.replace(/<div class="card"><b>My salary slips<\/b>[\s\S]*?<\/div><\/div>(?=\s*(<div class="card">|<\/div>|$))/,`<div class="card slipreq"><div class="row nw" style="gap:12px"><span style="font-size:26px">🧾</span><div style="flex:1"><b>Need your salary slip?</b><div class="xs mut">Ask HR Manager Nameera. She sends it to your email.</div></div><button class="btn" data-a="slipReq">Email HR</button></div></div>`);
 
@@ -173,5 +175,18 @@ A.slipSend=()=>{const to=val('sr-to'),sub=val('sr-s'),body=val('sr-b');try{D.msg
 A.slipCopy=()=>{try{navigator.clipboard.writeText('To: '+val('sr-to')+'\nSubject: '+val('sr-s')+'\n\n'+val('sr-b'));toast('Copied')}catch(x){toast('Copy not available here')}};
 /* ---- Contacts: team members' details only for Darshan sir & Nameera; staff see their customers, carriers, partners ---- */
 const seesTeam=()=>isBoss()||S.me==='nameera'||(typeof LV!=='undefined'&&LV.me&&['boss','developer'].includes(LV.me.role))||(typeof LV!=='undefined'&&LV.me&&/nameera/i.test(LV.me.name||''));
-const _myCX=myContacts;myContacts=function(){const L=_myCX();return seesTeam()?L:L.filter(c=>c.type!=='Team')};
+const myTypes=()=>{const e=(D.emp||[]).find(x=>x.k===S.me)||{},r=[(P[S.me]||{}).r,e.desig,e.unit,K()].join(' ').toLowerCase();
+ if(/account|finance|acc\b/.test(r))return ['Customer','Carrier','Vendor','Supplier','Partner','Shop'];
+ if(/customer success|cse|sales|telecall/.test(r))return ['Customer','Shop','Partner'];
+ if(/operation|logistics coordinator|ops|pickup|delivery|driver/.test(r))return ['Carrier','Vendor','Customer','Partner'];
+ if(/warehouse|godown|store|goa team/.test(r))return ['Supplier','Shop','Carrier','Vendor'];
+ if(/hr|hiring|recruit/.test(r))return ['Employer','Job seeker'];
+ if(/social|marketing|content|design|studio/.test(r))return ['Partner','Vendor'];
+ return ['Customer','Partner']};
+const _myCX=myContacts;myContacts=function(){const L=_myCX();if(seesTeam())return L;const T=myTypes();return L.filter(c=>c.type!=='Team'&&T.includes(c.type))};
+A.lateInfo=e=>sheet(`<h2>⚠ ${h(e.dataset.t)}</h2><p>${h(e.dataset.d)}</p><button class="btn w" data-a="closeM">OK</button>`);
+/* ---- Dashboard greeting: top-right, elegant ---- */
+const _homeGX=V.home;V.home=()=>{const o=_homeGX();return o.replace('<div class="greet">','<div class="greet greetR">')};
+/* ---- Tasks: no visible scrollbars ---- */
+const _rTasksX=render;render=function(){_rTasksX.apply(this,arguments);try{document.documentElement.classList.toggle('v-tasks',S.v==='tasks')}catch(e){}};
 render();

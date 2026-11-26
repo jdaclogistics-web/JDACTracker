@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JDAC Sales · Team App</title>
@@ -803,6 +803,12 @@ html.staffmode .hd .spbtn,html.staffmode .hd [data-v="contacts"],html.staffmode 
 @media(max-width:760px){.ctabs.cdock{bottom:76px;right:10px;left:10px;justify-content:space-between}.ctabs.cdock button{padding:8px 9px!important;font-size:11.5px!important}.sfwrap2 .sf{height:calc(100vh - 160px)!important}}
 
 .medate{text-align:right;line-height:1.25;padding:6px 12px;border-radius:12px;background:#F3EBD3;border:1px solid #E6D3A0}.medate b{display:block;font-size:14px;color:#0B1F3A}.medate span{font-size:12px;color:#6B4A0C}
+
+.mehead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}.mewho{display:flex;align-items:center;gap:12px}.mewho h1{margin:0}
+.latechip{display:inline-flex;align-items:center;gap:4px;margin-top:8px;border:1px solid #F3D9A6;background:#FFF6E5;color:#8A5A00;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.mehead .medate{display:flex;flex-direction:column;align-items:flex-start;text-align:left}
+.greet.greetR{text-align:right;margin-left:auto}.greet.greetR h1{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:700;font-size:30px;letter-spacing:.2px;color:#0B1F3A}.greet.greetR p{font-size:13.5px}
+html.v-tasks *{scrollbar-width:none}html.v-tasks *::-webkit-scrollbar{display:none;width:0;height:0}
 </style>
 </head>
 <body>
@@ -4040,7 +4046,9 @@ const _meStaffX=V.me;V.me=()=>{let out=_meStaffX();if(isBoss())return out;
  out=out.replace(/<div class="xs" style="margin-top:4px"><b>Weekly off:<\/b>[^<]*<\/div>/,'');
  out=out.replace(/(<main class="wrap[^"]*" id="main"><div class="row nw" style="margin-bottom:14px">[\s\S]*?<\/div><\/div>)(\s*<\/div>)?/,(m)=>m);
  const dt=new Date(TODAY+'T12:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
- out=out.replace(/(<h1 style="font-size:22px">[^<]*<\/h1><div class="mut sm">[^<]*<\/div><\/div>)/,`$1<div class="medate"><b>${dt.split(',')[0]}</b><span>${dt.split(',').slice(1).join(',').trim()}</span></div>`);
+ out=out.replace(/<div class="row nw" style="margin-bottom:14px">(<div class="av l"[^>]*>[^<]*<\/div>)<div style="flex:1">(<h1 style="font-size:22px">[^<]*<\/h1><div class="mut sm">[^<]*<\/div>)<\/div><\/div>/,(m,avh,nmh)=>`<div class="mehead"><div class="medate"><b>${dt.split(',')[0]}</b><span>${dt.split(',').slice(1).join(',').trim()}</span></div><div class="mewho"><div style="text-align:right">${nmh}</div>${avh}</div></div>`);
+ const ln=out.match(/<div class="latenote[^"]*"><b>([^<]*)<\/b><div class="sm">([^<]*)<\/div><\/div>/);
+ if(ln){out=out.replace(ln[0],'');out=out.replace('<div class="mehead">',`<div class="mehead">`).replace(/(<div class="medate">[\s\S]*?<\/div>)/,`$1<button class="latechip" data-a="lateInfo" data-t="${h(ln[1])}" data-d="${h(ln[2])}">⚠ ${h(ln[1])}</button>`)}
  /* salary slips → request from HR (email template) */
  out=out.replace(/<div class="card"><b>My salary slips<\/b>[\s\S]*?<\/div><\/div>(?=\s*(<div class="card">|<\/div>|$))/,`<div class="card slipreq"><div class="row nw" style="gap:12px"><span style="font-size:26px">🧾</span><div style="flex:1"><b>Need your salary slip?</b><div class="xs mut">Ask HR Manager Nameera. She sends it to your email.</div></div><button class="btn" data-a="slipReq">Email HR</button></div></div>`);
 
@@ -4131,6 +4139,19 @@ A.slipSend=()=>{const to=val('sr-to'),sub=val('sr-s'),body=val('sr-b');try{D.msg
 A.slipCopy=()=>{try{navigator.clipboard.writeText('To: '+val('sr-to')+'\nSubject: '+val('sr-s')+'\n\n'+val('sr-b'));toast('Copied')}catch(x){toast('Copy not available here')}};
 /* ---- Contacts: team members' details only for Darshan sir & Nameera; staff see their customers, carriers, partners ---- */
 const seesTeam=()=>isBoss()||S.me==='nameera'||(typeof LV!=='undefined'&&LV.me&&['boss','developer'].includes(LV.me.role))||(typeof LV!=='undefined'&&LV.me&&/nameera/i.test(LV.me.name||''));
-const _myCX=myContacts;myContacts=function(){const L=_myCX();return seesTeam()?L:L.filter(c=>c.type!=='Team')};
+const myTypes=()=>{const e=(D.emp||[]).find(x=>x.k===S.me)||{},r=[(P[S.me]||{}).r,e.desig,e.unit,K()].join(' ').toLowerCase();
+ if(/account|finance|acc\b/.test(r))return ['Customer','Carrier','Vendor','Supplier','Partner','Shop'];
+ if(/customer success|cse|sales|telecall/.test(r))return ['Customer','Shop','Partner'];
+ if(/operation|logistics coordinator|ops|pickup|delivery|driver/.test(r))return ['Carrier','Vendor','Customer','Partner'];
+ if(/warehouse|godown|store|goa team/.test(r))return ['Supplier','Shop','Carrier','Vendor'];
+ if(/hr|hiring|recruit/.test(r))return ['Employer','Job seeker'];
+ if(/social|marketing|content|design|studio/.test(r))return ['Partner','Vendor'];
+ return ['Customer','Partner']};
+const _myCX=myContacts;myContacts=function(){const L=_myCX();if(seesTeam())return L;const T=myTypes();return L.filter(c=>c.type!=='Team'&&T.includes(c.type))};
+A.lateInfo=e=>sheet(`<h2>⚠ ${h(e.dataset.t)}</h2><p>${h(e.dataset.d)}</p><button class="btn w" data-a="closeM">OK</button>`);
+/* ---- Dashboard greeting: top-right, elegant ---- */
+const _homeGX=V.home;V.home=()=>{const o=_homeGX();return o.replace('<div class="greet">','<div class="greet greetR">')};
+/* ---- Tasks: no visible scrollbars ---- */
+const _rTasksX=render;render=function(){_rTasksX.apply(this,arguments);try{document.documentElement.classList.toggle('v-tasks',S.v==='tasks')}catch(e){}};
 render();
 </script></body></html>
