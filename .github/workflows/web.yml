@@ -17,6 +17,7 @@ jobs:
           cd web
           mv dist old && mkdir dist && mv old dist/old
           mv dist/old/f dist/f
+          mv dist/old/training dist/training
           cp dist/old/parent/index.html dist/index.html && rm -rf dist/old/parent
           cp dist/old/*.png dist/ 2>/dev/null || true
       # Employee app का web version → /JDACTracker/app/ (APK जैसा ही, browser में)

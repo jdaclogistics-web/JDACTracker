@@ -63,3 +63,18 @@ export async function flushPendingPhotos(env, limit = 20) {
 }
 
 export { bytesToB64 }
+
+// Training files (PDF, mock tests…) → same private Supabase bucket, under "training/"
+export async function saveFile(env, key, bytes, mime) {
+  if (!hasSupabase(env)) throw new Error('File storage is not connected')
+  await supabasePut(env, key, bytes, mime)
+}
+export async function readFile(env, key) {
+  if (!hasSupabase(env)) return null
+  const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${BUCKET}/${key}`, { headers: sbHeaders(env) })
+  return r.ok ? { mime: r.headers.get('content-type') || 'application/octet-stream', body: await r.arrayBuffer() } : null
+}
+export async function deleteFile(env, key) {
+  if (!hasSupabase(env)) return
+  await fetch(`${env.SUPABASE_URL}/storage/v1/object/${BUCKET}`, { method: 'DELETE', headers: { ...sbHeaders(env), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: [key] }) })
+}

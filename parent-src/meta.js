@@ -6,7 +6,7 @@ const META={at:METAP.at,preset:'',acc:{
  hr:{id:'1179889334704257',name:'JDAC HR CONSULTANCY',live:'',kind:'leads'}}};
 const mPer=()=>S.mP||'m';
 const mRows=(k,per)=>((METAP.acc[k]||{})[per||mPer()]||[]);
-const CPCO=[['all','All companies'],['log','JDAC Logistics'],['gb','GovaaBazaar'],['hr','HR Consultancy'],['jup','Jupiter'],['studios','JDAC Studios']];
+const CPCO=[['all','All companies'],['log','JDAC Logistics'],['hr','HR Consultancy'],['gb','GovaaBazaar'],['jup','Jupiter'],['studios','JDAC Studios']];
 const CPCONAME={log:'JDAC Logistics',gb:'GovaaBazaar',hr:'JDAC HR Consultancy',jup:'Jupiter Equipment',studios:'JDAC Studios'};
 const HIRE_RE2=/(hiring|cse|accountant|designer|nurse|recruiter|executive|job|teamleader|team leader|warehouse_|\bhr\b)/i;
 const mrow=r=>({n:r[0],st:r[1]==='A'?'ACTIVE':'PAUSED',sp:r[2],im:r[3],re:0,cl:r[4],ld:r[5],ch:r[6],pu:r[7]||0,pv:r[8]||0,hire:HIRE_RE2.test(r[0])});

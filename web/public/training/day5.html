@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Day 5 · Apni leads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Hind:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one induction day. Sticky stepper of slides (overview → chapters → timed tests → 3-hour assignment → wrap-up). Ink + one day accent; green/red only for right/wrong. */
+:root{
+  --bg:#f2f1ee; --sheet:#ffffff; --ink:#16212b; --muted:#5b6670; --line:#d9dcdf; --soft:#ebeceb;
+  --acc:#b7791f; --acc-ink:#ffffff; --acc-soft:#fbefd6;
+  --good:#0f8a5f; --good-soft:#dcf2e8; --bad:#c2410c; --bad-soft:#fbe5d9; --warn:#b7791f;
+  --chat:#efe7de; --out:#d9fdd3; --in:#ffffff;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Hind",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1418; --sheet:#182128; --ink:#e7ecef; --muted:#9aa6af; --line:#2a363f; --soft:#1f2a32;
+  --acc-soft:#3a2d10; --good:#3cc28d; --good-soft:#143628; --bad:#f08452; --bad-soft:#3d2014; --warn:#e0a84a;
+  --chat:#0e1a20; --out:#144d37; --in:#1f2c34; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1418; --sheet:#182128; --ink:#e7ecef; --muted:#9aa6af; --line:#2a363f; --soft:#1f2a32;
+  --acc-soft:#3a2d10; --good:#3cc28d; --good-soft:#143628; --bad:#f08452; --bad-soft:#3d2014; --warn:#e0a84a;
+  --chat:#0e1a20; --out:#144d37; --in:#1f2c34; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 64px;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.03;text-transform:uppercase;text-wrap:balance}
+h1{font-size:clamp(40px,8vw,72px);font-weight:800}
+h1 span{color:var(--acc)}
+h2{font-size:clamp(28px,5vw,40px);font-weight:800}
+h3{font-size:22px;font-weight:700}
+p{margin:0;max-width:68ch}
+a{color:var(--acc)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:14px;min-width:0}
+button,input,textarea{font:inherit;color:var(--ink)}
+button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--sheet)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+button:disabled{opacity:.55;cursor:default}
+.go{background:var(--ink);color:var(--bg);border:0;font-family:var(--display);font-weight:800;font-size:22px;text-transform:uppercase;padding:11px 24px;justify-self:start}
+.go.acc{background:var(--acc);color:var(--acc-ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.who{font-size:14px;border-left:4px solid var(--line);padding:6px 10px;background:var(--soft);border-radius:0 8px 8px 0}
+.who.ok{border-color:var(--good)}.who.owner{border-color:var(--acc)}.who.warn{border-color:var(--bad)}
+
+/* stepper */
+.steps{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);padding-block:8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin}
+.steps button{flex:0 0 auto;font-size:13px;padding:6px 10px;display:grid;gap:0;text-align:left;line-height:1.25;max-width:180px}
+.steps button b{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.steps button[aria-current="step"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.steps button[aria-current="step"] b{color:var(--acc-ink)}
+.steps button.done::after{content:" ✓";color:var(--good);font-weight:700}
+.steps button.test{border-style:dashed}
+.nav{display:flex;justify-content:space-between;gap:10px}
+.nav button{padding:10px 18px;font-weight:600}
+
+/* content blocks */
+.body{display:grid;gap:14px}
+.body ul,.body ol{margin:0;padding-left:22px;display:grid;gap:4px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.card{background:var(--soft);border-radius:12px;padding:12px;display:grid;gap:4px;align-content:start}
+.card .ic{font-size:34px;line-height:1}
+.card b{font-family:var(--display);font-size:22px;text-transform:uppercase}
+.big{font-family:var(--display);font-size:clamp(44px,9vw,72px);font-weight:800;line-height:1;color:var(--acc)}
+.say{border-left:4px solid var(--good);background:var(--good-soft);border-radius:0 10px 10px 0;padding:10px 14px}
+.never{border-left:4px solid var(--bad);background:var(--bad-soft);border-radius:0 10px 10px 0;padding:10px 14px}
+.say b,.never b{display:block;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.bubble{background:var(--chat);border-radius:12px;padding:10px;display:grid;gap:6px}
+.bubble .in{justify-self:start;background:var(--in);border-radius:10px 10px 10px 2px;padding:7px 11px;max-width:92%}
+.bubble .out{justify-self:end;background:var(--out);border-radius:10px 10px 2px 10px;padding:7px 11px;max-width:92%;white-space:pre-wrap}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+details.ask{border:2px dashed var(--acc);border-radius:12px;padding:10px 14px}
+details.ask summary{cursor:pointer;font-weight:700}
+details.ask[open] summary{margin-bottom:6px}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;position:relative}
+.flow div{background:var(--soft);border-radius:12px;padding:12px 10px;text-align:center;display:grid;gap:4px;animation:rise .5s both}
+.flow div .ic{font-size:36px}
+.flow div b{font-family:var(--display);font-size:19px;text-transform:uppercase}
+.flow div:nth-child(2){animation-delay:.15s}.flow div:nth-child(3){animation-delay:.3s}.flow div:nth-child(4){animation-delay:.45s}.flow div:nth-child(5){animation-delay:.6s}.flow div:nth-child(6){animation-delay:.75s}
+@keyframes rise{from{opacity:.2;transform:translateY(12px)}to{opacity:1;transform:none}}
+.truck{height:34px;position:relative;border-bottom:3px dashed var(--line);overflow:hidden}
+.truck span{position:absolute;bottom:0;font-size:28px;animation:drive 6s linear infinite}
+@keyframes drive{from{left:-40px}to{left:100%}}
+.pill{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--acc-soft);color:var(--ink)}
+.trainer{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* tests */
+.tbar{display:grid;gap:6px}
+.tbar .r{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.clock{font-family:var(--display);font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.clock.low{color:var(--bad);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.5}}
+.meter{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--acc);transition:width .2s linear}
+.ticks{display:flex;gap:3px;flex-wrap:wrap}
+.ticks i{width:16px;height:8px;border-radius:2px;background:var(--line)}
+.ticks i.r{background:var(--good)}.ticks i.h{background:var(--warn)}.ticks i.x{background:var(--bad)}.ticks i.now{outline:2px solid var(--ink)}
+.q{font-size:20px;font-weight:600}
+.opts{display:grid;gap:8px}
+.opt{text-align:left;padding:11px 14px;border-width:2px;font-size:16px}
+.opt:hover:not(:disabled){border-color:var(--acc)}
+.opt.ok{border-color:var(--good);background:var(--good-soft)}.opt.no{border-color:var(--bad);background:var(--bad-soft)}
+.fb{border-radius:12px;padding:10px 14px}
+.fb.ok{background:var(--good-soft)}.fb.no{background:var(--bad-soft)}
+.fb b{font-family:var(--display);font-size:20px;text-transform:uppercase}
+.calcin{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.calcin input{font-family:var(--mono);font-size:24px;width:9ch;padding:6px 10px;border:2px solid var(--line);border-radius:10px;background:var(--bg)}
+.callbox{background:var(--chat);border-radius:14px;padding:12px;display:grid;gap:8px}
+.callbox .cust{justify-self:start;background:var(--in);border-radius:12px 12px 12px 3px;padding:8px 12px;font-size:18px;font-weight:600;max-width:94%}
+.marks{display:flex;gap:6px}
+.marks span{flex:1;text-align:center;font-family:var(--mono);font-size:12px;padding:4px;border-radius:6px;background:var(--soft)}
+.marks span.on{background:var(--acc);color:var(--acc-ink)}
+.marks span.ok{background:var(--good);color:#fff}.marks span.late{background:var(--warn);color:#fff}.marks span.no{background:var(--bad);color:#fff}
+.result{display:grid;gap:10px}
+.score{font-family:var(--display);font-size:clamp(56px,11vw,90px);font-weight:800;line-height:1}
+.stamp{justify-self:start;font-family:var(--display);font-weight:800;font-size:30px;text-transform:uppercase;border:4px solid currentColor;border-radius:10px;padding:0 12px;transform:rotate(-3deg)}
+.stamp.pass{color:var(--good)}.stamp.fail{color:var(--bad)}
+.miss{display:grid;gap:6px}
+.miss div{border-left:4px solid var(--bad);background:var(--bad-soft);border-radius:0 8px 8px 0;padding:8px 12px;font-size:14px}
+
+/* assignment */
+.task{border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;background:var(--sheet)}
+.task .th{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.task .th b{font-family:var(--display);font-size:22px;text-transform:uppercase}
+.task textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);resize:vertical}
+.task input[type=number]{width:8ch;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--mono)}
+.task .saved{font-family:var(--mono);font-size:12px;color:var(--good)}
+.bigclock{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--acc-soft);border-radius:14px;padding:12px 16px}
+.bigclock .clock{font-size:40px}
+
+/* owner */
+.ob table{min-width:640px}
+.ob td button{font-size:13px;padding:4px 10px}
+.ans{display:grid;gap:10px;background:var(--soft);border-radius:12px;padding:12px}
+.ans .a{white-space:pre-wrap;background:var(--sheet);border-radius:8px;padding:8px 10px;font-size:14px}
+.mk{display:flex;gap:4px}.mk button{font-family:var(--mono);font-size:12px;padding:3px 9px}
+.mk button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header id="hd" style="display:grid;gap:10px"></header>
+  <nav class="steps" id="steps" aria-label="Day sections"></nav>
+  <main id="stage" class="sheet"></main>
+  <div class="nav"><button type="button" id="prev">← Pichla</button><button type="button" id="next">Agla →</button></div>
+  <section id="owner" hidden style="display:grid;gap:12px;border-top:3px solid var(--acc);padding-top:14px">
+    <div class="eyebrow">Sirf aapko dikhta hai · owner board</div>
+    <h2>Team result · <span id="oTitle"></span></h2>
+    <div class="tw ob"><table><thead id="oHead"></thead><tbody id="oRows"></tbody></table></div>
+    <div id="oDetail"></div>
+  </section>
+</div>
+<script>
+window.DAY={
+n:5,date:"Fri 20 Nov",title:"Apni leads",h1:"Apni <span>leads</span>",
+acc:"#b7791f",accSoft:"#fbefd6",accDark:"#3a2d10",
+goal:"Aaj aap apni khud ki fresh leads chalaoge, buddy saath baithega. Lakshya: charon round khud chalana aur pehli booking karna.",
+schedule:[["10:00–10:20","Huddle · status sawaal, har trainee ki list ka morning check","Neetu"],["10:20–11:00","Training 1 (chhota) · Ch 1–2: din ka loop, live practical ke niyam","Neetu"],["11:00–1:30","LIVE · apni 5–8 leads + 11:00 aur 1:00 round (buddy pehle 3 message check karega)","Buddies"],["1:30–2:30","Lunch","—"],["2:30–3:15","Training 2 · Ch 3–5: vendor, franchise, target aur ₹200 incentive","Balaji"],["3:15–6:30","Tests + Live Day assignment: live leads, 3:30 aur 5:30 round, 10 chats likhna","Buddies + Neetu"],["6:30–7:00","Sawaal-Jawab · pehli bookings · status task","Snehal"]],
+chapters:[
+{t:"Ek din ki kahani",min:20,who:"Neetu",html:`
+<p>Har CSE ka din ek hi loop pe chalta hai. Loop todo mat, har lead ko aaj uska agla kadam do.</p>
+<h3>10:00 · Morning check</h3>
+<div class="cards">
+<div class="card"><span class="ic">✅</span><b>Booking + HOT = 0</b><span>Booking ho gayi to HOT tag hatao.</span></div>
+<div class="card"><span class="ic">📅</span><b>Follow-up + HOT = 0</b><span>Follow-up wali lead HOT nahi rehti.</span></div>
+<div class="card"><span class="ic">❌</span><b>Lost + HOT = 0</b><span>Lost pe bhi HOT hatao.</span></div>
+</div>
+<h3>Poora din · ye loop</h3>
+<div class="flow">
+<div><span class="ic">🔥</span><b>1 · HOT</b><span class="note">Window khula, pickup aaj/kal</span></div>
+<div><span class="ic">💬</span><b>2 · Replies</b><span class="note">Jinhone jawab diya</span></div>
+<div><span class="ic">👋</span><b>3 · Naye greet</b><span class="note">GreetCour / GreetCargo + 2 sawaal</span></div>
+<div><span class="ic">💰</span><b>4 · Rate bhejo</b><span class="note">SEL_RateKg_HIN</span></div>
+<div><span class="ic">🔁</span><b>5 · Wapas HOT</b><span class="note">Loop phir se</span></div>
+</div>
+<h3>4 round · ghadi nahi hilti</h3>
+<div class="cards">
+<div class="card"><span class="big">11:00</span><span>Round 1</span></div>
+<div class="card"><span class="big">1:00</span><span>Round 2 (lunch se pehle)</span></div>
+<div class="card"><span class="big">3:30</span><span>Round 3</span></div>
+<div class="card"><span class="big">5:30</span><span>Round 4</span></div>
+</div>
+<p>Round ulte order mein: Chase 3 → Lost pehle, phir Chase 2, Chase 1, Contacted. Q-Chase aur F-Chase bhi. Khatam hote hi ghanta bajao aur group mein likho: <b>"Round done · Chase 1: 0 · Q-Chase 1: 0"</b>.</p>
+<div class="say"><b>Din ke 3 pakke niyam</b>Har lead 24 ghante ke WhatsApp window ke andar final stage mein band. Har lead pe 5 tag: kahan se aaya · business ya personal · mahine ke parcel · typical weight · outcome. 7:00 baje group mein apna din ka score post karo.</div>
+<details class="ask"><summary>Room se poocho: 12:55 hai, ek naya lead aaya aur 1:00 ka round bhi hai. Pehle kya?</summary><p>Naye lead ko greet karo (1 minute), phir 1:00 ka round shuru. Round kabhi skip nahi, aur naya lead bhi thanda nahi hona chahiye.</p></details>`},
+{t:"Live practical ke niyam",min:15,who:"Neetu",html:`
+<p>Aaj 11:00 baje se Superfone aapko <b>5–8 fresh leads</b> dega. Ye aapki leads hain: pehle message se booking tak.</p>
+<div class="tw"><table><thead><tr><th>Niyam</th><th>Kyun</th></tr></thead><tbody>
+<tr><td>Pehli 3 leads pe buddy har message bhejne se pehle padhega</td><td>Galat rate ya galat vaada customer tak na pahunche</td></tr>
+<tr><td>Uske baad buddy spot-check karega</td><td>Aap khud chalao, buddy peeche se dekhe</td></tr>
+<tr><td>Customer ko call tabhi jab buddy ne aaj ek role-play call sun li</td><td>Tone aur 60-second call pehle check</td></tr>
+<tr><td>Booking Operations ko waise hi jaise Day 4 mein sikha</td><td>Address, contact, saamaan + approx weight, pickup date</td></tr>
+<tr><td>Aapki booking aapke naam</td><td>Incentive aur score aapka</td></tr>
+</tbody></table></div>
+<div class="never"><b>Kabhi nahi, aaj bhi nahi</b>Delivery ka din promise · packing promise · "pickup pe weight" · 2–3 courier ke rate · bina buddy ke rate jab tak buddy na bole.</div>
+<details class="ask"><summary>Room se poocho: Booking 3:15 pe pakki hui. Pickup kab?</summary><p>Kal. Pickup 10:00–1:30 chalte hain, 2:30 ke baad ki booking agle din jaati hai.</p></details>`},
+{t:"Vendor aur franchise",min:20,who:"Balaji",html:`
+<p>Ek hi WhatsApp number pe customer, transporter aur franchise teeno aate hain. Pehchano kaun hai, sahi code bhejo, sahi insaan tak pahunchao.</p>
+<div class="cards">
+<div class="card"><span class="ic">📦</span><b>SEL · Customer</b><span>"Parcel bhejna hai", "rate kya hai", "Pune se Delhi". Aapka kaam: rate se booking tak.</span></div>
+<div class="card"><span class="ic">🚛</span><b>VEN · Transporter</b><span>"Mere paas gaadi hai", "transport business hai", "aapke saath judna hai".</span></div>
+<div class="card"><span class="ic">🏪</span><b>FRN · Franchise</b><span>"Franchise chahiye", "city partner banna hai", "apne shehar mein JDAC kholna hai".</span></div>
+</div>
+<h3>Transporter (VEN)</h3>
+<ol><li><b>VEN_Onboard</b>: gaadi wale transporter ko. <b>VEN_OnboardAgg</b>: jo khud aggregator/agency chalata hai.</li><li><b>VEN_Details</b>: visiting card aur GST maango.</li><li>Lead <b>Balaji</b> ko pass karo.</li></ol>
+<h3>Franchise (FRN)</h3>
+<ol><li>FRN message bhejo.</li><li>5 cheezein lo: <b>naam · shehar · budget · business · call ka time</b>.</li><li>Business team ko pass karo.</li></ol>
+<div class="bubble"><div class="in">Bhai mere paas 3 tempo hain Hadapsar mein, aapke saath kaam milega?</div><div class="out">VEN_Onboard_HIN bhejo → phir VEN_Details_HIN (visiting card, GST) → Balaji ko pass</div></div>
+<details class="ask"><summary>Room se poocho: "Nashik mein JDAC ka office kholna hai, kitna lagega?" Kaun hai?</summary><p>Franchise (FRN). Naam, shehar, budget, business, call time lo aur business team ko do. Khud koi number mat bolo.</p></details>`},
+{t:"Target aur ₹200 incentive",min:15,who:"Balaji",html:`
+<div class="cards">
+<div class="card"><span class="ic">📈</span><b>Week 2</b><span>Lagbhag aadha target, settle hone ke liye.</span></div>
+<div class="card"><span class="ic">🚀</span><b>Week 3 se</b><span>Poora target, jaise team leader set karein.</span></div>
+<div class="card"><span class="big">₹200</span><b>5 booking = 1 din</b><span>Ek din mein 5 confirmed booking = us din ka ₹200 spot incentive.</span></div>
+<div class="card"><span class="big">₹5,000</span><b>Mahine mein</b><span>25 din × ₹200, lagbhag.</span></div>
+</div>
+<p>Har booking <a href="https://claude.ai/artifact/GQE49kV9jKKcUhf8PL8hmJ" target="_blank" rel="noopener">Paanch Order Challenge ↗</a> board pe daalo: customer, route, kg, AWB. Booking tab gino jab CRM mein stage Booking ho. Cancel hui to board se hatao.</p>
+<h3>No excuse wall</h3>
+<div class="tw"><table><thead><tr><th>Bahana</th><th>Jawab</th></tr></thead><tbody>
+<tr><td>Rate zyada hai</td><td>PAKKA: poocho, apnao, kul farak, kya milega, aaj book</td></tr>
+<tr><td>Customer reply nahi karta</td><td>4 round: Chase 1→2→3, Q-Chase, F-Chase. HOT pehle.</td></tr>
+<tr><td>Total poochta hai</td><td>SEL_RateApprox: approx total, pakka sirf per kg</td></tr>
+<tr><td>Carrier pickup nahi kar raha</td><td>SEL_CarrierChange: doosra lagao, extra seedha batao</td></tr>
+<tr><td>Pehli baar, bharosa nahi</td><td>SEL_HotFirst: chhota trial parcel</td></tr>
+<tr><td>Aaj leads kam hain</td><td>HOT → Follow-up ke task → Q-Chase list. Har lead ka agla kadam aaj.</td></tr>
+</tbody></table></div>`},
+{t:"Kaun hai ye customer?",min:15,who:"Balaji",html:`
+<p>Pehle 2 sawaal se customer ki pehchaan: <b>"Business ke liye bhejte ho?"</b> aur <b>"Mahine mein kitne parcel?"</b></p>
+<div class="cards">
+<div class="card"><span class="ic">🏭</span><b>Business (B2B)</b><span>Trader, manufacturer, online seller, dukaan. Har hafte bhejta hai. CSE iske saath rehta hai, account banata hai.</span></div>
+<div class="card"><span class="ic">🙋</span><b>Personal, ek baar</b><span>Ghar ka saamaan, gift, ek parcel. Online booking link bhejo, CSE ka time business pe.</span></div>
+</div>
+<div class="tw"><table><thead><tr><th>Message</th><th>Kaun</th><th>Kya karo</th></tr></thead><tbody>
+<tr><td>"Har hafte 20 carton Indore jaate hain"</td><td>SEL · B2B</td><td>Rate, trial parcel, account</td></tr>
+<tr><td>"Beti ko hostel mein ek box bhejna hai"</td><td>SEL · personal</td><td>Online booking link</td></tr>
+<tr><td>"Meri 2 gaadi khaali khadi rehti hain"</td><td>VEN</td><td>VEN_Onboard → Balaji</td></tr>
+<tr><td>"Kolhapur ka partner banna hai"</td><td>FRN</td><td>5 details → business team</td></tr>
+</tbody></table></div>
+<details class="ask"><summary>Room se poocho: "Main Amazon pe bechta hoon, mahine mein 40 order." Kaun?</summary><p>Business customer (online seller). Ye account hai: rate bhejo, trial parcel, aur har hafte follow karo.</p></details>`}
+],
+tests:[
+{id:"t1",title:"Ye kaun hai?",short:"Kaun",kind:"mcq",secs:15,n:12,pass:9,intro:"12 message, har ek pe 15 second. Batao kaun hai aur kya karna hai.",pool:[
+{q:"Kaun hai, kya karoge?",chat:"Mere paas 3 tempo hain Hadapsar mein, aapke saath kaam milega?",o:["VEN · VEN_Onboard, phir Balaji","SEL · rate bhejo","FRN · business team","Ignore karo"]},
+{q:"Kaun hai, kya karoge?",chat:"Nashik mein JDAC ki franchise leni hai",o:["FRN · naam, shehar, budget, business, call time → business team","VEN · VEN_Onboard","SEL · rate bhejo","Khud franchise fee bata do"]},
+{q:"Kaun hai, kya karoge?",chat:"Har hafte 20 carton Pune se Indore bhejte hain",o:["SEL · B2B, per-kg rate + trial parcel","SEL · online booking link","VEN · Balaji ko","FRN · business team"]},
+{q:"Kaun hai, kya karoge?",chat:"Beti ke hostel ek box bhejna hai Bengaluru, bas ek baar",o:["SEL · personal, online booking link","VEN · VEN_Details","FRN · business team","Lamba call karo"]},
+{q:"Kaun hai, kya karoge?",chat:"Hum transport agency chalate hain, 15 gaadiyan attached hain",o:["VEN · VEN_OnboardAgg, phir Balaji","VEN · VEN_Onboard","SEL · rate","FRN · franchise"]},
+{q:"Transporter ne onboard message ka jawab diya. Agla?",chat:"Haan bhai judna hai, aage kya?",o:["VEN_Details: visiting card aur GST maango","Rate card bhejo","Booking karo","Franchise fee batao"]},
+{q:"Kaun hai, kya karoge?",chat:"Main Amazon pe bechta hoon, mahine mein 40 order",o:["SEL · B2B online seller, rate + account","SEL · personal, booking link","FRN · partner","VEN · Balaji"]},
+{q:"Franchise lead ke liye kaunsi 5 cheezein?",o:["Naam, shehar, budget, business, call time","Naam, pincode, weight, size, rate","GST, PAN, Aadhaar, bank, photo","Gaadi number, driver, route, rate, time"]},
+{q:"Kaun hai, kya karoge?",chat:"Kolhapur mein aapka city partner banna hai",o:["FRN · 5 details → business team","SEL · rate","VEN · VEN_Onboard","Mana kar do"]},
+{q:"Kaun hai, kya karoge?",chat:"Factory se roz 200 kg maal Gujarat jaata hai",o:["SEL · B2B, per-kg rate, isko pakdo","SEL · personal, booking link","VEN · transporter","FRN · franchise"]},
+{q:"Transporter lead kisko pass karte ho?",o:["Balaji","Operations (Om)","Darshan sir","Snehal"]},
+{q:"Kaun hai, kya karoge?",chat:"Diwali gift ek baar Mumbai bhejna hai, 2 kg",o:["SEL · personal, online booking link","SEL · B2B account","VEN · Balaji","FRN · business team"]},
+{q:"Franchise wala poochta hai \"kitna paisa lagega?\" Aap?",o:["Details lo, business team call karke batayegi","Apne mann se number bata do","₹1 lakh bol do","Mana kar do"]},
+{q:"Kaun hai, kya karoge?",chat:"Meri 2 gaadi khaali khadi rehti hain, kaam do",o:["VEN · VEN_Onboard → Balaji","SEL · rate","FRN · partner","Lost mark karo"]}
+]},
+{id:"t2",title:"Mere loop mein agla kya?",short:"Loop",kind:"mcq",secs:20,n:12,pass:9,intro:"12 situation, har ek pe 20 second. Din ke loop mein sahi agla kadam chuno.",pool:[
+{q:"10:00 baje morning check. Ek lead Booking stage mein hai aur HOT tag laga hai. Kya karoge?",o:["HOT tag hatao","Chase 1 bhejo","Lost karo","Kuch nahi"]},
+{q:"11:00 ka round. Kis list se shuru?",o:["Chase 3 → Lost pehle, ulte order mein","Contacted se","Naye leads se","Jo man kare"]},
+{q:"Round khatam. Ab?",o:["Ghanta bajao + group mein \"Round done · Chase 1: 0\"","Lunch pe chalo","Kuch nahi","Buddy ko bata do bas"]},
+{q:"12:55 pe naya lead aaya, 1:00 ka round bhi hai.",o:["Naye ko greet karo, phir turant round","Round skip karo","Lead ko 3:30 tak chhodo","Lunch ke baad dekhenge"]},
+{q:"HOT lead ne reply kiya: \"kal pickup ho jayega?\" Loop mein ye kahan?",o:["Sabse pehle: HOT reply ka turant jawab","Round ke baad","Kal subah","Lunch ke baad"]},
+{q:"Customer ne pincode aur weight bhej diya.",o:["SEL_RateKg_HIN: per kg + minimum + machine weight + pickup kab","Teen courier ke total","Chase 2","Lost"]},
+{q:"Pehli 3 leads pe message bhejne se pehle?",o:["Buddy padhega, phir bhejo","Seedha bhejo","Darshan sir ko bhejo","Customer se poocho"]},
+{q:"Customer ko call karni hai, buddy ne aaj role-play nahi suna.",o:["Pehle buddy ke saath ek role-play call","Seedha call karo","Call mat karo kabhi","Text pe hi raho hamesha"]},
+{q:"Booking pakki ho gayi. Ab?",o:["Details Operations ko, Paanch Order board pe entry, HOT hatao","Bas customer ko thanks","Kal dekhenge","Chase 1 bhejo"]},
+{q:"7:00 baje kya?",o:["Group mein din ka score post karo","Ghar jao, kal batayenge","Sirf buddy ko batao","Kuch nahi"]},
+{q:"Lead ka 24 ghante ka window khatam hone wala hai, customer chup.",o:["Ladder ke hisaab se final stage mein band karo","Aise hi chhod do","Naya lead banao","HOT laga do"]},
+{q:"Har lead pe 5 tag kaunse?",o:["Source · business/personal · mahine ke parcel · typical weight · outcome","Naam · phone · email · address · PAN","Rate · carrier · din · AWB · POD","Sirf HOT"]},
+{q:"Aaj leads kam aaye. Kya karoge?",o:["HOT → Follow-up ke task → Q-Chase list, sabko agla kadam","Baith ke wait","Ghar jaldi","Purane Lost leads ko Booking mark karo"]},
+{q:"3:15 pe booking hui. Customer: \"aaj pickup?\"",o:["Kal subah: pickup 10:00–1:30, 2:30 ke baad agle din","Haan aaj","Abhi 1 ghante mein","Pata nahi"]}
+]},
+{id:"t3",title:"60-second call marathon",short:"Calls",kind:"call",secs:60,n:8,pass:18,intro:"8 poori call. Har call pe 60 second: 10 sec tak pehchaan/qualify, 30 sec tak rate, 60 sec tak close. Der se sahi = aadha point.",pool:[
+{ctx:"Naya WhatsApp lead, call kiya",cust:"Haan bolo, maine message kiya tha, Pune se Indore 8 carton jaane hain, har hafte.",steps:[
+{label:"Qualify",at:10,ask:"Pehle kya bologe?",o:["\"Sir har hafte jaata hai to aap business ke liye bhejte ho, sahi? Ek carton ka weight kitna?\"","\"Sir humari company 2015 mein bani…\"","\"Address bhejo\"","\"Rate kal bhejta hoon\""]},
+{label:"Rate",at:30,ask:"Weight 12 kg/carton. Rate kaise?",o:["\"₹__/kg, minimum __ kg, final machine weight se\"","\"Delhivery ₹1,240, DP World ₹1,180…\"","\"Total ₹1,200 fix\"","\"Pickup pe weight karke batayenge\""]},
+{label:"Close",at:60,ask:"Close kaise?",o:["\"Aaj pickup rakhein ya kal subah?\"","\"Soch ke batana\"","\"Kal tak rate badh jayega\"","\"Theek hai bye\""]}]},
+{ctx:"Customer call pe",cust:"Dusre ₹14/kg bol rahe hain, aap ₹17 kyun?",steps:[
+{label:"Poocho",at:10,ask:"Pehla jawab?",o:["\"Sahi kiya compare kiya sir. Unke rate mein pickup included hai?\"","\"Woh fraud hain sir\"","\"Theek hai ₹14 kar deta hoon\"","\"Rate fix hai, lena hai to lo\""]},
+{label:"Value",at:30,ask:"30 kg hai. Ab?",o:["\"Farak sirf ₹90 ka. Usme ghar se pickup, machine se sahi weight, main khud WhatsApp pe\"","\"Hum best hain\"","\"Kal se rate badhega\"","\"100% guarantee\""]},
+{label:"Close",at:60,ask:"Close?",o:["\"Ek baar try kijiye, aaj pickup rakhein ya kal?\"","\"Soch lo\"","\"Bye\"","\"Main manager se discount dila dunga\""]}]},
+{ctx:"Unknown number call",cust:"Hello, mere paas 3 tempo hain, aapke saath judna hai.",steps:[
+{label:"Pehchaan",at:10,ask:"Kaun hai?",o:["Transporter (VEN)","Customer (SEL)","Franchise (FRN)","Galat number"]},
+{label:"Message",at:30,ask:"Kya bhejoge?",o:["VEN_Onboard, phir VEN_Details (card, GST)","SEL_RateKg","FRN welcome","Kuch nahi"]},
+{label:"Pass",at:60,ask:"Kisko pass?",o:["Balaji","Operations","Darshan sir","Snehal"]}]},
+{ctx:"Ghar ka saamaan",cust:"Kothrud se Bengaluru shift ho rahe hain, aap pack karke 3rd floor se utaar loge?",steps:[
+{label:"Packing",at:10,ask:"Packing pe?",o:["\"Packing aapko karwani hogi, local packer sasta padega\"","\"Haan hum pack kar denge\"","\"Packers bhej dunga\"","\"Extra do sab ho jayega\""]},
+{label:"Floor",at:30,ask:"3rd floor pe?",o:["\"Ground floor pe rakhwa dijiye, gaadi mein ek helper aata hai\"","\"Haan upar se le lenge\"","\"Lift hai to theek\"","\"Kal batata hoon\""]},
+{label:"Weight",at:60,ask:"Weight kaise?",o:["\"Tempo socho: aadha bharega? Final warehouse machine se\"","\"Pickup boy saamne tolega\"","\"Aap bata do, wahi final\"","\"Formula samjhata hoon 10 minute\""]}]},
+{ctx:"Customer call pe",cust:"Bas total batao, per kg mat bolo. 25 kg Nagpur se Chennai.",steps:[
+{label:"Approx",at:10,ask:"Pehle?",o:["\"25 kg pe approx ₹__ banega sir\"","\"Total nahi batate\"","\"Pehle size bhejo phir\"","\"Teen courier ke total bhejta hoon\""]},
+{label:"Per kg",at:30,ask:"Phir?",o:["\"Pakka per kg ₹__ hai, final machine weight se, kam aaya to kam\"","\"Ye total fix hai\"","\"Weight pickup pe hoga\"","\"Baad mein dekhenge\""]},
+{label:"Close",at:60,ask:"Close?",o:["\"Pickup kab rakhein sir?\"","\"Theek hai\"","\"Soch ke batana\"","\"Discount chahiye?\""]}]},
+{ctx:"Unknown number call",cust:"Satara mein JDAC ka partner banna hai, kaise hoga?",steps:[
+{label:"Pehchaan",at:10,ask:"Kaun hai?",o:["Franchise (FRN)","Transporter (VEN)","Customer (SEL)","Spam"]},
+{label:"Details",at:30,ask:"Kya lena hai?",o:["Naam, shehar, budget, business, call time","Pincode aur weight","GST aur visiting card","Kuch nahi"]},
+{label:"Next",at:60,ask:"Phir?",o:["\"Business team aapko call karegi\" + pass karo","Khud fee bata do","Mana karo","Rate bhejo"]}]},
+{ctx:"Online seller",cust:"Main Meesho pe bechta hoon, mahine mein 40 parcel, 2 kg ke. Kaunsa courier lagaoge? Delhivery chahiye.",steps:[
+{label:"Qualify",at:10,ask:"Kaun hai?",o:["Business customer, account banao","Personal, booking link","Vendor","Franchise"]},
+{label:"Courier",at:30,ask:"Courier pe jawab?",o:["\"Delhivery, DP World, DHL jaise major carrier; route ke hisaab se hum chunte hain, rate same\"","\"Haan sirf Delhivery\"","\"Teeno ke rate bhejta hoon\"","\"Jo sasta ho\""]},
+{label:"Close",at:60,ask:"Close?",o:["\"Aaj ka ek parcel dijiye trial ke liye, pickup kab rakhein?\"","\"Mahine baad baat karte hain\"","\"Soch lo\"","\"Bye\""]}]},
+{ctx:"Booking ke agle din",cust:"App mein in transit dikha raha hai par mera saamaan to dukaan mein hi pada hai!",steps:[
+{label:"Shant",at:10,ask:"Pehla jawab?",o:["\"Maafi chahte hain sir, abhi dekhta hoon\"","\"System galat nahi hota\"","\"Carrier ki galti hai, hum kya karein\"","\"Kal call karna\""]},
+{label:"Action",at:30,ask:"Kya karoge?",o:["Carrier pe ticket + saamaan ki photo maango","Booking cancel karo","Kuch nahi, wait","Customer ko khud le jaane bolo"]},
+{label:"Close",at:60,ask:"Close?",o:["\"Naya pickup aaj ya kal fix karke time batata hoon\" (SEL_PickupIssue)","\"Dekhte hain\"","\"Refund le lo\"","\"Bye\""]}]},
+{ctx:"HOT lead, follow-up task aaj",cust:"Haan kal pickup rakhna hai, kya chahiye?",steps:[
+{label:"Details",at:10,ask:"Kya maangoge?",o:["Pickup address, contact, saamaan + approx weight","Aadhaar card","Kuch nahi","Bank details"]},
+{label:"Time",at:30,ask:"Pickup time?",o:["\"Kal 10:00–1:30 ke beech, aane se pehle call aayega\"","\"Raat 9 baje\"","\"Jab man kare\"","\"Pakka 10:15\""]},
+{label:"Close",at:60,ask:"Phir?",o:["Booking karke Ops ko details, HOT hatao, board pe entry","Kuch nahi","Lost mark karo","Chase 1 bhejo"]}]}
+]}
+],
+assignment:{title:"Live Day",hours:3,intro:"3:15 se 6:30. Aaj ka assignment asli kaam hai: apni leads, apne round, aur shaam ko 10 chats likhna. Sab yahin likho, apne aap save hota hai.",tasks:[
+{id:"leadlog",t:"Live lead log",min:60,kind:"text",rows:10,marks:2,prompt:"<p>Aaj ki har lead ki ek line: <b>time · customer · stage abhi · agla kadam</b>. Din bhar update karte raho.</p><p class='note'>Example: 11:20 · Ramesh Traders · Quotation Sent · 1:00 round mein Q-Chase 1</p>"},
+{id:"r330",t:"3:30 round",min:20,kind:"check",checkText:"Round poora + ghanta bajaya + group mein post kiya",prompt:"<p>Ulte order mein: Chase 3 → Lost, Chase 2, Chase 1, Contacted, phir Q-Chase aur F-Chase. Khatam karke ghanta bajao aur group mein: \"Round done · Chase 1: 0 · Q-Chase 1: 0\".</p>"},
+{id:"r530",t:"5:30 round",min:20,kind:"check",checkText:"Round poora + ghanta bajaya + group mein post kiya",prompt:"<p>Din ka aakhri round. Har lead ka agla kadam aaj hi. 24 ghante ka window dhyaan rakho.</p>"},
+{id:"bookings",t:"Aaj ki bookings",min:10,kind:"text",rows:4,marks:2,prompt:"<p>Har booking ki ek line: <b>customer · route · kg · Ops ko kitne baje di</b>. Paanch Order board pe bhi daalo.</p>"},
+{id:"chats",t:"10 poori chat likho",min:60,kind:"multi",marks:2,prompt:"<p>Trainee Handbook ke case cards. Har card ke liye customer ke \"Hi\" se Booking ya Lost tak poori WhatsApp chat likho. Jahan quick message ho, uska code likho (jaise SEL_RateKg_HIN), aur stage badle to likho.</p>",parts:[
+{id:"c1",label:"1 · Ramesh Traders, Pune → Indore, 8 carton 45×35×35, 12 kg each, har hafte. \"Dusre ₹14/kg bol rahe hain\". 3:15 pe haan bola.",rows:5},
+{id:"c2",label:"2 · Kothrud family, 3rd floor, Bengaluru shift, aadha tempo, kuch pack nahi, packing chahiye",rows:5},
+{id:"c3",label:"3 · Online seller, 40 parcel/mahina, 2 kg each. \"Sirf Delhivery chahiye\"",rows:5},
+{id:"c4",label:"4 · Kal ki booking: 40 kg Pune→Delhi @ ₹31/kg bataya, machine report 52 kg",rows:5},
+{id:"c5",label:"5 · Kal ki booking: app mein in transit, saamaan dukaan mein pada, customer gussa",rows:5},
+{id:"c6",label:"6 · Nagpur → Chennai, 25 kg: \"Per kg mat bolo, seedha total batao\"",rows:5},
+{id:"c7",label:"7 · Rate 10:30 pe bheja, koi reply nahi, 1:00 ka round, pickup kal chahiye tha",rows:5},
+{id:"c8",label:"8 · Rate ke baad: \"15 tarikh ko bhejna hai\" (5 din baad)",rows:5},
+{id:"c9",label:"9 · Transporter, 3 tempo: \"Aapke saath kaam karna hai, kaise judun?\"",rows:5},
+{id:"c10",label:"10 · Pharma sample 5 kg, Pune → Delhi, jaldi: \"Kal tak pahunch jayega?\"",rows:5}]},
+{id:"oral",t:"Quick Message Oral Test (jodi mein)",min:15,kind:"score",max:40,link:"https://claude.ai/artifact/Mw8QkN3NtQH7VLoEgNweMF",linkText:"Quick Message Oral Test",prompt:"<p>Jodi banao. Ek examiner bane, page se sawaal padhe; doosra bole. Phir badlo. Apna score yahan likho.</p>"},
+{id:"status",t:"Aaj raat ka status",min:5,kind:"check",checkText:"Status post kar diya",prompt:"<p>Wrap-up page pe diya hua status apni desk ki photo ke saath post karo. Koi sach mein bhejna chahe to wo asli lead hai: buddy ko do.</p>"}
+]},
+remember:["Morning check: Booking, Follow-up, Lost pe HOT = 0. Phir loop: HOT → replies → naye greet → rate → wapas HOT.","11:00 · 1:00 · 3:30 · 5:30 round kabhi nahi chhootte. Ulte order, ghanta, group post.","VEN → Balaji. FRN → 5 details, business team. 5 booking ek din = ₹200."],
+status:"Week 1 done ✅ Kuch bhejna ho to batao — per kg rate, poore India mein."
+};
+
+</script>
+<script>
+(function(){
+"use strict";
+const D=window.DAY;
+const $=id=>document.getElementById(id);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+const hms=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+":"+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0")};
+
+/* ---------- state ---------- */
+let db=null,user=null,myId=null,isOwner=false,whoText="Check ho raha hai aap kaun ho…",whoCls="";
+let me={tests:{},answers:{},nums:{},checks:{}};let loaded=false;
+let saving=false,dirty=false,saveTimer=null;
+function setWho(t,c){whoText=t;whoCls=c;document.querySelectorAll(".whoBox").forEach(w=>{w.textContent=t;w.className="who whoBox "+c})}
+function whoEl(){const w=el("div","who whoBox "+whoCls,whoText);return w}
+async function flush(){if(!db||!myId){return}if(saving){dirty=true;return}saving=true;dirty=false;
+  try{me.uid=myId;me.at=Date.now();await db.doc("subs/"+myId).set(me);document.querySelectorAll(".saved").forEach(s=>s.textContent="✓ save ho gaya "+new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}))}
+  catch(e){const m=e&&(e.code==="permission_denied"||e.code==="invalid_argument")?"Save nahi hua: Contributor access maango.":"Save nahi hua ("+((e&&e.code)||"error")+")";document.querySelectorAll(".saved").forEach(s=>s.textContent=m)}
+  finally{saving=false;if(dirty)flush()}}
+function save(delay){clearTimeout(saveTimer);saveTimer=setTimeout(flush,delay==null?1200:delay)}
+
+/* ---------- slides ---------- */
+const S=[];
+S.push({k:"start",t:"Aaj ka din",n:"Start"});
+D.chapters.forEach((c,i)=>S.push({k:"ch",t:c.t,n:"Ch "+(i+1),c}));
+D.tests.forEach((t,i)=>S.push({k:"test",t:t.title,n:"Test "+(i+1),test:t}));
+S.push({k:"asg",t:"3-ghante ka assignment",n:"Assignment"});
+S.push({k:"end",t:"Mera score",n:"Wrap-up"});
+let cur=0;const seen=new Set([0]);let live=null;
+S.forEach((s,i)=>{const b=el("button",s.k==="test"?"test":"");b.type="button";b.append(el("b",null,s.n),document.createTextNode(s.t));b.addEventListener("click",()=>go(i));$("steps").appendChild(b)});
+function go(i){if(live&&live.running){if(!live.leaveOk){live.warn();return}}stopLive();cur=Math.max(0,Math.min(S.length-1,i));seen.add(cur);render();window.scrollTo({top:0})}
+function stopLive(){if(live){clearInterval(live.tick);live=null}}
+$("prev").addEventListener("click",()=>go(cur-1));$("next").addEventListener("click",()=>go(cur+1));
+function render(){[...$("steps").children].forEach((b,i)=>{if(i===cur)b.setAttribute("aria-current","step");else b.removeAttribute("aria-current");const s=S[i];b.classList.toggle("done",s.k==="test"?!!me.tests[s.test.id]:seen.has(i)&&i!==cur)});
+  const cb=$("steps").children[cur];if(cb&&cb.scrollIntoView)cb.scrollIntoView({block:"nearest",inline:"center"});
+  $("prev").disabled=cur===0;$("next").disabled=cur===S.length-1;const st=$("stage");st.innerHTML="";const s=S[cur];
+  if(s.k==="start")startSlide(st);else if(s.k==="ch")chSlide(st,s.c);else if(s.k==="test")testIntro(st,s.test);else if(s.k==="asg")asgSlide(st);else endSlide(st)}
+
+/* ---------- header ---------- */
+(function(){const h=$("hd");h.appendChild(el("div","eyebrow","JDAC Logistics · CSE induction · Day "+D.n+" · "+D.date));const t=el("h1");t.innerHTML=D.h1;h.appendChild(t);h.appendChild(el("p",null,D.goal))})();
+
+function startSlide(st){st.append(el("div","eyebrow","Aaj ka plan · 10:00 se 7:00"),el("h2",null,D.title));
+  const tw=el("div","tw");const tb=el("table");tb.innerHTML="<thead><tr><th>Time</th><th>Kya</th><th>Kaun</th></tr></thead>";const bd=el("tbody");D.schedule.forEach(r=>{const tr=el("tr");r.forEach(x=>tr.appendChild(el("td",null,x)));bd.appendChild(tr)});tb.appendChild(bd);tw.appendChild(tb);st.appendChild(tw);
+  const cards=el("div","cards");[["📘",D.chapters.length+" chapter","Trainer padhayenge, aap saath mein yahan dekhoge"],["⏱️",D.tests.length+" timed test","Har sawaal pe ghadi chalti hai"],["📝","3 ghante","Bada assignment, answers yahin save"],["🙋","3 sawaal","Har roz 6:30 pe kam se kam 3 sawaal poocho"]].forEach(([i,b,s])=>{const c=el("div","card");c.append(el("span","ic",i),el("b",null,b),el("span","note",s));cards.appendChild(c)});st.appendChild(cards);
+  st.appendChild(whoEl());const g=el("button","go acc","Chapter 1 shuru →");g.type="button";g.addEventListener("click",()=>go(1));st.appendChild(g)}
+function chSlide(st,c){const top=el("div","row");top.append(el("span","eyebrow",(c.min?c.min+" min · ":"")+"Chapter"),c.who?el("span","pill","Trainer: "+c.who):"");st.appendChild(top);st.appendChild(el("h2",null,c.t));const b=el("div","body");b.innerHTML=c.html;st.appendChild(b)}
+
+/* ---------- tests ---------- */
+function testIntro(st,t){st.append(el("div","eyebrow","Timed test"),el("h2",null,t.title),el("p",null,t.intro));
+  const info=el("div","cards");const n=Math.min(t.n||t.pool.length,t.pool.length);
+  [["❓",n+" sawaal","Random, har baar alag"],["⏱️",t.kind==="call"?"60 sec / call":t.secs+" sec / sawaal","Time khatam = galat"],["🎯","Pass "+t.pass+"/"+maxOf(t,n),"Score owner board pe jaata hai"]].forEach(([i,b,s])=>{const c=el("div","card");c.append(el("span","ic",i),el("b",null,b),el("span","note",s));info.appendChild(c)});st.appendChild(info);
+  const prev=me.tests[t.id];if(prev)st.appendChild(el("p","note","Pichla score: "+prev.score+"/"+prev.max+" · "+(prev.tries||1)+" try"));
+  st.appendChild(whoEl());const g=el("button","go acc","Start · ghadi chalegi");g.type="button";g.addEventListener("click",()=>runTest(st,t));st.appendChild(g)}
+function maxOf(t,n){return t.kind==="call"?n*3:n}
+function runTest(st,t){const n=Math.min(t.n||t.pool.length,t.pool.length);const R={t,q:shuffle(t.pool).slice(0,n),i:0,res:[],t0:Date.now(),running:true,leaveOk:false};
+  live=R;R.warn=()=>{const w=$("leaveWarn");if(w){w.hidden=false}};
+  st.innerHTML="";const bar=el("div","tbar");const r=el("div","r");const lab=el("span","eyebrow",t.title);const ck=el("span","clock");ck.id="ck";r.append(lab,ck);bar.appendChild(r);const m=el("div","meter");const mi=el("i");mi.id="mi";m.appendChild(mi);bar.appendChild(m);const tk=el("div","ticks");tk.id="tk";bar.appendChild(tk);st.appendChild(bar);
+  const lw=el("div","fb no");lw.id="leaveWarn";lw.hidden=true;lw.append(el("b",null,"Test chal raha hai"),el("p",null,"Pehle test poora karo. Chhodna hai to 'Test chhodo' dabao."));const q=el("button",null,"Test chhodo");q.type="button";q.addEventListener("click",()=>{R.running=false;stopLive();render()});lw.appendChild(q);st.appendChild(lw);
+  const box=el("div");box.style.cssText="display:grid;gap:12px";box.id="qbox";st.appendChild(box);nextQ(R)}
+function ticks(R){const tk=$("tk");tk.innerHTML="";R.q.forEach((_,j)=>{const v=R.res[j];tk.appendChild(el("i",(v==null?"":v>=1?"r":v>0?"h":"x")+(j===R.i?" now":"")))})}
+function clockRun(R,limit,onEnd){clearInterval(R.tick);const t0=Date.now();R.qt0=t0;const tickF=()=>{const left=limit-(Date.now()-t0)/1000;const ck=$("ck");if(!ck){clearInterval(R.tick);return}ck.textContent=Math.max(0,Math.ceil(left));ck.classList.toggle("low",left<=Math.min(5,limit*.25));$("mi").style.width=Math.max(0,left/limit*100)+"%";if(R.onTick)R.onTick((Date.now()-t0)/1000);if(left<=0){clearInterval(R.tick);onEnd()}};R.tick=setInterval(tickF,200);tickF()}
+function nextQ(R){ticks(R);if(R.i>=R.q.length){finish(R);return}const t=R.t,it=R.q[R.i],box=$("qbox");box.innerHTML="";R.onTick=null;
+  box.appendChild(el("span","eyebrow","Sawaal "+(R.i+1)+" / "+R.q.length));
+  if(t.kind==="mcq")mcq(R,t,it,box);else if(t.kind==="calc")calc(R,t,it,box);else call(R,t,it,box)}
+function afterQ(R,val,fbOk,fbText,box){R.res[R.i]=val;clearInterval(R.tick);ticks(R);const f=el("div","fb "+(fbOk?"ok":"no"));f.append(el("b",null,fbOk?"Sahi":"Galat"));if(fbText)f.appendChild(el("p",null,fbText));box.appendChild(f);
+  const n=el("button","go",R.i<R.q.length-1?"Agla →":"Result dekho");n.type="button";n.addEventListener("click",()=>{R.i++;nextQ(R)});box.appendChild(n);n.focus()}
+function mcq(R,t,it,box){box.appendChild(el("div","q",it.q));if(it.chat){const c=el("div","bubble");c.appendChild(el("div","in",it.chat));box.appendChild(c)}
+  const o=el("div","opts");const right=it.o[0];shuffle(it.o).forEach(x=>{const b=el("button","opt",x);b.type="button";b.addEventListener("click",()=>pick(x,b));o.appendChild(b)});box.appendChild(o);
+  let done=false;function pick(x,b){if(done)return;done=true;[...o.children].forEach(y=>{y.disabled=true;if(y.textContent===right)y.classList.add("ok")});const ok=x===right;if(!ok&&b)b.classList.add("no");afterQ(R,ok?1:0,ok,(b?"":"Time khatam. ")+(it.why||(ok?"":"Sahi: "+right)),box)}
+  clockRun(R,it.secs||t.secs,()=>pick(null,null));o.firstChild.focus()}
+function calc(R,t,it,box){box.appendChild(el("div","q",it.q));const w=el("div","calcin");const inp=el("input");inp.type="number";inp.step="any";inp.inputMode="decimal";inp.id="calcIn";inp.setAttribute("aria-label","Answer");const sub=el("button","go","Check");sub.type="button";w.append(inp,el("span","note",it.unit||""),sub);box.appendChild(w);
+  let done=false;function check(timeout){if(done)return;done=true;inp.disabled=true;sub.disabled=true;const v=parseFloat(inp.value);const ok=!timeout&&isFinite(v)&&Math.abs(v-it.a)<=(it.tol==null?0.5:it.tol);afterQ(R,ok?1:0,ok,(timeout?"Time khatam. ":"")+"Sahi jawab: "+it.a+" "+(it.unit||"")+(it.why?" · "+it.why:""),box)}
+  sub.addEventListener("click",()=>check(false));inp.addEventListener("keydown",e=>{if(e.key==="Enter")check(false)});clockRun(R,it.secs||t.secs,()=>check(true));inp.focus()}
+function call(R,t,it,box){const c=el("div","callbox");c.appendChild(el("span","eyebrow","📞 Call chal rahi hai · "+(it.ctx||"")));c.appendChild(el("div","cust",it.cust));box.appendChild(c);
+  const mk=el("div","marks");it.steps.forEach(s=>mk.appendChild(el("span",null,s.label+" · "+s.at+"s")));box.appendChild(mk);
+  const area=el("div");area.style.cssText="display:grid;gap:8px";box.appendChild(area);let si=0,pts=0,over=false;const notes=[];
+  function step(){area.innerHTML="";[...mk.children].forEach((x,j)=>{if(j===si)x.classList.add("on")});if(si>=it.steps.length){end();return}const s=it.steps[si];area.appendChild(el("div","q",s.ask));const o=el("div","opts");const right=s.o[0];
+    shuffle(s.o).forEach(x=>{const b=el("button","opt",x);b.type="button";b.addEventListener("click",()=>{if(over)return;const tm=(Date.now()-R.qt0)/1000;const ok=x===right;const late=tm>s.at;[...o.children].forEach(y=>{y.disabled=true;if(y.textContent===right)y.classList.add("ok")});if(!ok)b.classList.add("no");
+      const sp=mk.children[si];sp.classList.remove("on");sp.classList.add(ok?(late?"late":"ok"):"no");pts+=ok?(late?0.5:1):0;if(!ok)notes.push(s.label+": "+right);else if(late)notes.push(s.label+" der se ("+Math.round(tm)+"s)");si++;setTimeout(step,450)});o.appendChild(b)});area.appendChild(o);o.firstChild.focus()}
+  function end(timeout){if(over)return;over=true;clearInterval(R.tick);area.innerHTML="";for(let j=si;j<it.steps.length;j++){mk.children[j].classList.remove("on");mk.children[j].classList.add("no");notes.push(it.steps[j].label+": "+it.steps[j].o[0])}
+    R.res[R.i]=pts/it.steps.length;R.pts=(R.pts||0)+pts;ticks(R);const f=el("div","fb "+(pts===it.steps.length?"ok":"no"));f.append(el("b",null,(timeout?"60 second khatam · ":"")+pts+" / "+it.steps.length));if(notes.length)f.appendChild(el("p",null,notes.join(" · ")));if(it.why)f.appendChild(el("p",null,it.why));box.appendChild(f);
+    const n=el("button","go",R.i<R.q.length-1?"Agli call →":"Result dekho");n.type="button";n.addEventListener("click",()=>{R.i++;nextQ(R)});box.appendChild(n);n.focus()}
+  clockRun(R,60,()=>end(true));step()}
+function finish(R){R.running=false;clearInterval(R.tick);const t=R.t;const secs=Math.round((Date.now()-R.t0)/1000);
+  const score=t.kind==="call"?Math.round((R.pts||0)*2)/2:R.res.filter(v=>v>=1).length;const max=maxOf(t,R.q.length);const pass=score>=t.pass;
+  const prev=me.tests[t.id]||{};me.tests[t.id]={score,max,secs,pass,tries:(prev.tries||0)+1,best:Math.max(prev.best||0,score),at:Date.now()};save(0);
+  const st=$("stage");st.innerHTML="";const w=el("div","result");w.append(el("div","eyebrow",t.title+" · result"),el("div","score",score+" / "+max),el("div","stamp "+(pass?"pass":"fail"),pass?"Pass":"Phir se · pass "+t.pass),el("p","note","Time: "+mmss(secs)));
+  const miss=R.q.map((q,j)=>({q,v:R.res[j]})).filter(x=>x.v==null||x.v<1);if(miss.length){w.appendChild(el("h3",null,"Ye dobara padho"));const m=el("div","miss");miss.forEach(x=>m.appendChild(el("div",null,(x.q.q||x.q.cust)+" → "+(x.q.o?x.q.o[0]:x.q.a!=null?x.q.a+" "+(x.q.unit||""):x.q.steps.map(s=>s.o[0]).join(" · ")))));w.appendChild(m)}
+  const sv=el("p","note saved",db&&myId?"Save ho raha hai…":"Score save nahi hoga: claude.ai par sign in karke kholo.");w.appendChild(sv);
+  const r=el("div","row");const a=el("button","go acc","Phir se test do");a.type="button";a.addEventListener("click",()=>{stopLive();runTest(st,t)});const b=el("button","go","Agla →");b.type="button";b.addEventListener("click",()=>{stopLive();go(cur+1)});r.append(a,b);w.appendChild(r);st.appendChild(w);render2()}
+function render2(){[...$("steps").children].forEach((b,i)=>{const s=S[i];if(s.k==="test")b.classList.toggle("done",!!me.tests[s.test.id])})}
+
+/* ---------- assignment ---------- */
+let asgTick=null;
+function asgSlide(st){const A=D.assignment;st.append(el("div","eyebrow","3:30 se 6:30 · answers yahin save hote hain"),el("h2",null,A.title),el("p",null,A.intro));
+  const bc=el("div","bigclock");const ck=el("span","clock","3:00:00");const lab=el("span",null,"");const sb=el("button","go acc","Assignment shuru");sb.type="button";bc.append(ck,lab,sb);st.appendChild(bc);
+  function upd(){if(!me.started){ck.textContent=hms(A.hours*3600);lab.textContent="Start dabao, ghadi 3 ghante ki chalegi";return}const left=A.hours*3600-(Date.now()-me.started)/1000;ck.textContent=left>0?hms(left):"-"+hms(-left);ck.classList.toggle("low",left<900);lab.textContent=me.submitted?"Submit ho gaya ✓":left>0?"baaki":"time khatam, jaldi submit karo";sb.hidden=true}
+  sb.addEventListener("click",()=>{me.started=Date.now();save(0);upd()});clearInterval(asgTick);asgTick=setInterval(()=>{if(!document.body.contains(ck)){clearInterval(asgTick);return}upd()},1000);upd();
+  st.appendChild(whoEl());
+  A.tasks.forEach((k,i)=>{const t=el("div","task");const th=el("div","th");th.append(el("b",null,(i+1)+" · "+k.t),el("span","pill",k.min+" min"));t.appendChild(th);const p=el("div","body");p.innerHTML=k.prompt;t.appendChild(p);
+    if(k.link){const a=el("a",null,"Page kholo: "+k.linkText+" ↗");a.href=k.link;a.target="_blank";a.rel="noopener";t.appendChild(a)}
+    if(k.kind==="text"||k.kind==="multi"){const parts=k.kind==="multi"?k.parts:[{id:k.id,label:null,rows:k.rows}];parts.forEach(pt=>{if(pt.label)t.appendChild(el("label","note",pt.label));const ta=el("textarea");ta.id="ta_"+pt.id;ta.rows=pt.rows||5;ta.value=me.answers[pt.id]||"";ta.placeholder="Yahan likho…";ta.addEventListener("input",()=>{me.answers[pt.id]=ta.value;save()});if(pt.label)ta.setAttribute("aria-label",pt.label);else ta.setAttribute("aria-label",k.t);t.appendChild(ta)})}
+    if(k.kind==="score"){const r=el("div","row");const l=el("label","note","Mera score:");const inp=el("input");inp.type="number";inp.id="num_"+k.id;inp.value=me.nums[k.id]!=null?me.nums[k.id]:"";inp.addEventListener("input",()=>{me.nums[k.id]=inp.value===""?null:+inp.value;save()});l.htmlFor=inp.id;r.append(l,inp,el("span","note","/ "+k.max));t.appendChild(r)}
+    if(k.kind==="check"||k.check){const r=el("label","row");const cb=el("input");cb.type="checkbox";cb.checked=!!me.checks[k.id];cb.addEventListener("change",()=>{me.checks[k.id]=cb.checked;save(0)});r.append(cb,el("span",null,k.checkText||"Ho gaya"));t.appendChild(r)}
+    t.appendChild(el("span","saved",""));st.appendChild(t)});
+  const s=el("button","go acc",me.submitted?"Dobara submit karo":"Assignment submit karo");s.type="button";s.addEventListener("click",()=>{me.submitted=Date.now();save(0);s.textContent="Submit ho gaya ✓"});st.appendChild(s)}
+
+/* ---------- wrap-up ---------- */
+function endSlide(st){st.append(el("div","eyebrow","Din ka hisaab"),el("h2",null,"Mera score · Day "+D.n));
+  const tw=el("div","tw");const tb=el("table");tb.innerHTML="<thead><tr><th>Test</th><th>Score</th><th>Pass</th><th>Tries</th></tr></thead>";const bd=el("tbody");D.tests.forEach(t=>{const r=me.tests[t.id];const tr=el("tr");tr.append(el("td",null,t.title),el("td",null,r?r.score+"/"+r.max:"—"),el("td",null,r?(r.pass?"✓":"✗ (pass "+t.pass+")"):"—"),el("td",null,r?String(r.tries):"0"));bd.appendChild(tr)});tb.appendChild(bd);tw.appendChild(tb);st.appendChild(tw);
+  const done=D.assignment.tasks.filter(k=>taskDone(k,me)).length;st.appendChild(el("p",null,"Assignment: "+done+" / "+D.assignment.tasks.length+" kaam bhare"+(me.submitted?" · submit ho gaya ✓":" · abhi submit nahi hua")));
+  st.appendChild(el("h3",null,"Aaj ki 3 baatein"));const ul=el("ol");D.remember.forEach(x=>ul.appendChild(el("li",null,x)));st.appendChild(ul);
+  if(D.status){st.appendChild(el("h3",null,"Aaj raat ka WhatsApp status"));const b=el("div","bubble");b.appendChild(el("div","out",D.status));st.appendChild(b);st.appendChild(el("p","note","Dost jo sawaal poochhein, kal 10:00 ke huddle mein lao."))}
+  st.appendChild(whoEl())}
+function taskDone(k,m){if(k.kind==="text")return !!(m.answers&&m.answers[k.id]&&m.answers[k.id].trim());if(k.kind==="multi")return k.parts.every(p=>m.answers&&m.answers[p.id]&&m.answers[p.id].trim());if(k.kind==="score")return m.nums&&m.nums[k.id]!=null;return !!(m.checks&&m.checks[k.id])}
+
+/* ---------- owner board ---------- */
+let subs=[],marks={},names={},openId=null;
+async function ownerRender(){$("oTitle").textContent="Day "+D.n;const hd=$("oHead");hd.innerHTML="";const hr=el("tr");["Trainee"].concat(D.tests.map(t=>t.short||t.title),["Assignment","Marks","Submit",""]).forEach(x=>hr.appendChild(el("th",null,x)));hd.appendChild(hr);
+  const ids=subs.map(d=>d.id);try{if(ids.length)names=await user.profiles(ids)}catch(e){}
+  const tb=$("oRows");tb.innerHTML="";if(!subs.length){const tr=el("tr");const td=el("td","note","Abhi kisi trainee ne kuch save nahi kiya.");td.colSpan=D.tests.length+5;tr.appendChild(td);tb.appendChild(tr)}
+  subs.forEach(d=>{const v=d.data();const tr=el("tr");tr.appendChild(el("td",null,(names[d.id]&&names[d.id].name)||"Trainee · "+d.id.slice(-4)));
+    D.tests.forEach(t=>{const r=v.tests&&v.tests[t.id];const td=el("td",null,r?r.score+"/"+r.max+(r.tries>1?" ("+r.tries+")":""):"—");if(r)td.style.color=r.pass?"var(--good)":"var(--bad)";tr.appendChild(td)});
+    const done=D.assignment.tasks.filter(k=>taskDone(k,v)).length;tr.appendChild(el("td",null,done+"/"+D.assignment.tasks.length));
+    const mk=marks[d.id]||{};const got=Object.values(mk).reduce((a,b)=>a+(+b||0),0);tr.appendChild(el("td",null,got+"/"+markMax()));
+    tr.appendChild(el("td",null,v.submitted?new Date(v.submitted).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}):"—"));
+    const b=el("button",null,openId===d.id?"Band karo":"Answers");b.type="button";b.addEventListener("click",()=>{openId=openId===d.id?null:d.id;ownerRender()});const td=el("td");td.appendChild(b);tr.appendChild(td);tb.appendChild(tr)});
+  const od=$("oDetail");od.innerHTML="";const d=subs.find(x=>x.id===openId);if(!d)return;const v=d.data();const box=el("div","ans");box.appendChild(el("h3",null,((names[d.id]&&names[d.id].name)||"Trainee")+" · answers"));
+  D.assignment.tasks.forEach(k=>{const w=el("div");w.style.cssText="display:grid;gap:6px";w.appendChild(el("b",null,k.t));
+    const vals=k.kind==="multi"?k.parts.map(p=>p.label+"\n"+((v.answers||{})[p.id]||"—")):k.kind==="text"?[((v.answers||{})[k.id]||"—")]:k.kind==="score"?["Score: "+((v.nums||{})[k.id]!=null?v.nums[k.id]+" / "+k.max:"—")]:[((v.checks||{})[k.id]?"✓ ho gaya":"✗ nahi kiya")];
+    vals.forEach(x=>w.appendChild(el("div","a",x)));
+    if(k.marks){const m=el("div","mk");m.appendChild(el("span","note","Marks:"));for(let s=0;s<=k.marks;s++){const b=el("button",null,String(s));b.type="button";b.setAttribute("aria-pressed",String((marks[d.id]||{})[k.id]===s));b.addEventListener("click",()=>setMark(d.id,k.id,s));m.appendChild(b)}w.appendChild(m)}
+    box.appendChild(w)});od.appendChild(box)}
+function markMax(){return D.assignment.tasks.reduce((a,k)=>a+(k.marks||0),0)}
+async function setMark(uid,tid,s){const m=Object.assign({},marks[uid]||{});m[tid]=s;marks[uid]=m;ownerRender();try{await db.doc("marks/"+uid).set(m)}catch(e){}}
+
+/* ---------- boot ---------- */
+render();
+(async()=>{try{for(let k=0;k<30&&!(window.claude&&window.claude.use);k++)await new Promise(r=>setTimeout(r,100));
+  if(!window.claude||!window.claude.use)throw 0;[db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
+  if(user){myId=await user.id();isOwner=await user.isOwner()}
+  if(db&&myId){try{const s=await db.doc("subs/"+myId).get();if(s.exists){const v=s.data();me=Object.assign({tests:{},answers:{},nums:{},checks:{}},v)}}catch(e){}loaded=true;render()}
+  if(isOwner){setWho("Aap owner ho. Sabka result neeche live dikhega.","owner");$("owner").hidden=false;
+    db.collection("subs").onSnapshot(s=>{subs=s.docs;ownerRender()},()=>{});db.collection("marks").onSnapshot(s=>{marks={};s.docs.forEach(d=>marks[d.id]=d.data());ownerRender()},()=>{})}
+  else if(db&&myId)setWho("Aap sign in ho. Aapke score aur answers save honge.","ok");
+  else setWho("Padh sakte ho, par score save nahi hoga. claude.ai par sign in karke kholo.","warn")}
+ catch(e){setWho("Score sirf claude.ai par sign in karke kholne se save hota hai.","warn")}})();
+})();
+</script>
+</body>
+</html>

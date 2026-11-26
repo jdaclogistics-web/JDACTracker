@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Boss Exam · CSE Day 6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Hind:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: examiner console. Header + tabs (Exam / Practice / History). Exam: name gate → one big question card with reveal + 2/1/0 → role-play card → result. Ink + magenta accent; green/amber/red for marks. */
+:root{
+  --bg:#f3f1f2; --sheet:#ffffff; --ink:#1d1520; --muted:#64596a; --line:#ddd6dc; --soft:#efeaee;
+  --acc:#c2185b; --acc-ink:#ffffff; --acc-soft:#fbe2ec;
+  --good:#0f8a5f; --good-soft:#dcf2e8; --bad:#c2410c; --bad-soft:#fbe5d9; --warn:#b7791f; --warn-soft:#fbf0d9;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Hind",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141015; --sheet:#1e1820; --ink:#efe8ee; --muted:#a99fa8; --line:#342b36; --soft:#271f29;
+  --acc:#f0629a; --acc-ink:#1d1520; --acc-soft:#3d1428;
+  --good:#3cc28d; --good-soft:#143628; --bad:#f08452; --bad-soft:#3d2014; --warn:#e0a84a; --warn-soft:#3a2d10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141015; --sheet:#1e1820; --ink:#efe8ee; --muted:#a99fa8; --line:#342b36; --soft:#271f29;
+  --acc:#f0629a; --acc-ink:#1d1520; --acc-soft:#3d1428;
+  --good:#3cc28d; --good-soft:#143628; --bad:#f08452; --bad-soft:#3d2014; --warn:#e0a84a; --warn-soft:#3a2d10; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.wrap{max-width:900px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 64px;display:grid;gap:18px}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.03;text-transform:uppercase;text-wrap:balance}
+h1{font-size:clamp(40px,8vw,70px);font-weight:800}
+h1 span{color:var(--acc)}
+h2{font-size:clamp(26px,5vw,36px);font-weight:800}
+h3{font-size:21px;font-weight:700}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:14px;min-width:0}
+button,input,textarea{font:inherit;color:var(--ink)}
+button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--sheet)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+.go{background:var(--ink);color:var(--bg);border:0;font-family:var(--display);font-weight:800;font-size:22px;text-transform:uppercase;padding:11px 24px;justify-self:start}
+.go.acc{background:var(--acc);color:var(--acc-ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.who{font-size:14px;border-left:4px solid var(--line);padding:6px 10px;background:var(--soft);border-radius:0 8px 8px 0}
+.who.owner{border-color:var(--acc)}.who.warn{border-color:var(--bad)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px}
+.tabs button{font-family:var(--display);font-weight:700;font-size:19px;text-transform:uppercase;padding:6px 16px;border-width:2px}
+.tabs button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+label.f{display:grid;gap:4px;font-size:14px;color:var(--muted);max-width:420px}
+input[type=text],textarea{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--bg);width:100%}
+textarea{min-height:60px;resize:vertical}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.rules div{background:var(--soft);border-radius:12px;padding:10px 12px;display:grid;gap:2px;font-size:14px}
+.rules b{font-family:var(--display);font-size:24px;text-transform:uppercase}
+
+.clocks{position:sticky;top:calc(env(safe-area-inset-top,0px) + 54px);z-index:4;background:var(--bg);padding-block:6px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.clk{display:grid;gap:0}
+.clk b{font-family:var(--display);font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.clk b.low{color:var(--bad)}
+.clk span{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ticks{display:flex;gap:3px;flex-wrap:wrap}
+.ticks i{width:18px;height:8px;border-radius:2px;background:var(--line)}
+.ticks i.m2{background:var(--good)}.ticks i.m1{background:var(--warn)}.ticks i.m0{background:var(--bad)}.ticks i.now{outline:2px solid var(--ink)}
+.qcard{display:grid;gap:14px}
+.chpill{justify-self:start;font-family:var(--mono);font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;background:var(--acc-soft)}
+.safe{font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--bad);color:#fff;margin-left:6px}
+.qtext{font-size:clamp(22px,4.4vw,32px);font-weight:700;line-height:1.3}
+.model{background:var(--good-soft);border-left:4px solid var(--good);border-radius:0 10px 10px 0;padding:10px 14px}
+.model b{display:block;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.marks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.marks button{font-family:var(--display);font-weight:800;font-size:30px;padding:10px 6px;border-width:2px;display:grid;gap:0;line-height:1}
+.marks button small{font-family:var(--body);font-size:13px;font-weight:500}
+.marks button[data-m="2"][aria-pressed="true"]{background:var(--good);border-color:var(--good);color:#fff}
+.marks button[data-m="1"][aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:#fff}
+.marks button[data-m="0"][aria-pressed="true"]{background:var(--bad);border-color:var(--bad);color:#fff}
+.chk{display:grid;gap:8px}
+.chk label{display:flex;gap:10px;align-items:flex-start;background:var(--soft);border-radius:10px;padding:10px 12px;cursor:pointer}
+.chk input{width:20px;height:20px;margin-top:2px;flex:0 0 auto}
+.scene{background:var(--acc-soft);border-radius:12px;padding:14px;font-size:20px;font-weight:600}
+.total{font-family:var(--display);font-size:clamp(64px,13vw,104px);font-weight:800;line-height:1}
+.stamp{justify-self:start;font-family:var(--display);font-weight:800;font-size:30px;text-transform:uppercase;border:4px solid currentColor;border-radius:10px;padding:0 12px;transform:rotate(-3deg)}
+.stamp.Independent{color:var(--good)}.stamp.Supervised{color:var(--acc)}.stamp.Extra{color:var(--warn)}.stamp.Retrain{color:var(--bad)}
+.chs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.chs div{border-radius:10px;padding:8px 10px;background:var(--soft);display:grid;gap:2px;font-size:14px}
+.chs div.weak{background:var(--bad-soft)}
+.chs b{font-family:var(--display);font-size:24px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--sheet)}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums}
+.bank{display:grid;gap:18px}
+.bank section{display:grid;gap:8px}
+.bank details{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.bank summary{cursor:pointer;font-weight:600}
+.bank details p{margin-top:6px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <div class="eyebrow">JDAC Logistics · CSE induction · Day 6 · Sat 21 Nov</div>
+    <h1>Boss <span>exam</span></h1>
+    <p>Darshan ka verbal exam. 12 sawaal (har chapter se kam se kam ek) + 1 role-play. 2 / 1 / 0 marks, kul 30, pass 22. Har trainee ~25 minute.</p>
+    <div class="who" id="whoBox">Check ho raha hai aap kaun ho…</div>
+  </header>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" id="t-exam" aria-selected="true">Exam</button>
+    <button type="button" role="tab" id="t-bank" aria-selected="false">Practice · bank</button>
+    <button type="button" role="tab" id="t-hist" aria-selected="false">History</button>
+  </nav>
+  <main id="p-exam" class="sheet"></main>
+  <section id="p-bank" hidden class="bank"></section>
+  <section id="p-hist" hidden style="display:grid;gap:12px">
+    <h2>Pichle exam</h2>
+    <div class="tw"><table><thead><tr><th>Trainee</th><th>Total</th><th>Decision</th><th>Date</th><th></th></tr></thead><tbody id="hRows"><tr><td colspan="5" class="note">Abhi koi exam save nahi hua.</td></tr></tbody></table></div>
+    <div id="hDetail"></div>
+  </section>
+  <p class="note" id="lockNote" hidden>Ye page sirf Darshan ke liye hai.</p>
+</div>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const mmss=s=>{const neg=s<0;s=Math.abs(Math.round(s));return (neg?"-":"")+Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+const CH=["","Company & parcel ka safar","Weight, size, modes","WhatsApp & quick messages","Per-kg rate","Stages, HOT, 60-sec call","Chase ladders & rounds","Convince · PAKKA","After booking"];
+/* [chapter, question, model answer, safety?] safety = a wrong answer here means a false promise or wrong rate to a customer */
+const BANK=[
+[1,"JDAC kya karta hai, 30 second mein?","Door pickup, warehouse, door delivery poore India mein, major carriers ke through; part load (PTL), un businesses ke liye jo regular bhejte hain.",0],
+[1,"Hum FTL kyun nahi karte?","Poora truck risky hai (driver bhaag sakta hai); hum sirf part load karte hain.",0],
+[1,"Customer bole \"kal tak pahunch jayega na?\"","Saamaan warehouse se jaata hai, isliye din pakka nahi bolte; tracking aur har update WhatsApp pe.",1],
+[1,"Hamara ideal customer kaun hai?","Business (trader, manufacturer, seller) jo har hafte bhejta hai. Personal ek-baar wale ko booking link.",0],
+[1,"Packing kaun karta hai?","Customer khud. Hum packers-and-movers nahi hain; local packer se sasta padega.",1],
+[1,"Saamaan 3rd floor pe hai, utaar loge?","Ground floor pe rakhwa dijiye; gaadi mein ek helper aata hai. Per-floor charge sirf Pune mein.",1],
+[2,"Volumetric weight kaise nikaalte ho?","L × W × H cm mein ÷ 5000 (courier/air) ya 4500 (surface); asli aur volumetric mein jo zyada, wo charge.",0],
+[2,"60×40×40 cm box, asli 3 kg. Charge kis par?","Size pe: 96,000 ÷ 5000 = 19.2 kg, jo 3 kg se zyada hai.",0],
+[2,"Weight kahan hota hai?","Warehouse ki machine pe, pickup ke baad. Pickup pe kabhi nahi.",1],
+[2,"Household customer ko weight kaise samjhaoge?","Tempo sawaal: aadha tempo lagbhag 400–450 kg; video bhejo, lecture nahi.",0],
+[2,"1 foot kitne cm, aur 1 inch?","1 ft = 30.48 cm, 1 inch = 2.54 cm. Pehle cm mein badlo, phir guna.",0],
+[2,"Surface cargo ka divisor kya hai?","÷ 4500 (courier/air ÷ 5000, heavy truck ÷ 2700).",0],
+[3,"SEL_GreetCargo1_HIN ka matlab?","Customer (SEL), cargo greeting jo boxes poochta hai, option 1, Hinglish.",0],
+[3,"VEN aur FRN kya hai?","VEN = transporter/vendor, FRN = franchise.",0],
+[3,"Free typing kab allowed hai?","Sirf client-specific point ke liye jo kisi quick message mein nahi hai.",0],
+[3,"GreetCour vs GreetCargo?","Cour = parcel, box count nahi; Cargo = boxes aur size poochta hai.",0],
+[3,"Naye lead se pehle 2 sawaal kaunse?","\"Business ke liye bhejte ho?\" aur \"Mahine mein kitne parcel?\"",0],
+[3,"Message mein kaunse 2 shabd kabhi nahi likhte?","\"Shipment\" (saamaan/parcel bolo) aur \"andaaz\" (approx bolo).",0],
+[4,"Rate message mein kya-kya hota hai?","₹/kg, minimum booking, \"final amount machine weight se\", \"pickup kab rakhein?\".",1],
+[4,"Customer bole \"total batao\"?","Approx total, phir: per-kg rate fixed hai, final machine weight se (SEL_RateApprox).",1],
+[4,"Customer bole \"kaunsa courier?\"","Delhivery, DP World, DHL jaise major carrier; route ke hisaab se hum chunte hain; rate wahi (SEL_WhichCarrier).",0],
+[4,"Average rate kaise nikaalte ho?","Panel pe 2–3 carrier ka per kg dekho, beech wala round karke bolo.",0],
+[4,"2–3 courier ke rate kyun nahi bhejte?","Customer sabse sasta chunta hai, confuse hota hai, aur weight badalne pe jhagda hota hai.",1],
+[4,"Household mein quote se pehle kaunse 3 sawaal?","Packing customer karega, saamaan ground floor pe, weight warehouse machine se. Value ₹50,000 se kam.",1],
+[5,"HOT tag kab lagta hai, kab hat-ta hai?","Window khula + pickup aaj ya kal. Booking, follow-up, lost/cancel ya window band pe hatao.",0],
+[5,"Lead kitne time mein close karni hai?","24-ghante WhatsApp window ke andar (customer ke aakhri message se), kisi final stage mein.",0],
+[5,"60-second call kya hai?","10 sec mein tag, 30 mein quote, 60 mein booking ya agla stage.",0],
+[5,"Morning check mein kya dekhte ho?","Booking + HOT = 0, Follow-up + HOT = 0, Lost + HOT = 0.",0],
+[5,"Lead kiski hoti hai?","Jis CSE ko pehle mili, booking tak usi ki; incentive bhi usi ka.",0],
+[5,"Note kaise likhte ho?","Ek line: requirement + outcome + next action. Jaise \"Pune→Indore 60 kg, ₹31/kg bheja, pickup Fri, task Thu\".",0],
+[6,"Rounds kitne baje?","11:00, 1:00, 3:30, 5:30.",0],
+[6,"Round kis order mein?","Ulta: pehle Chase 3 → Lost, phir Chase 2, Chase 1, Contacted.",0],
+[6,"Message bheja, stage ka kya?","Stage ek aage. Customer ne reply kiya → ladder se bahar.",0],
+[6,"Follow-up mein kab message karte ho?","Sirf Add Task wale din se (pickup se ek din pehle): F-Chase 1, 2, 3, phir Lost.",0],
+[6,"Q-Chase 3 ke baad customer chup?","Agle round mein Lost, HOT hatao.",0],
+[6,"Ghanta Round kya hai?","Ghanta bajta hai = round shuru. List khatam karke ghanta bajao aur group mein \"Round done · Chase 1: 0\" daalo.",0],
+[7,"\"Aapka rate zyada hai\" — jawab do.","PAKKA: kis se compare kar rahe poocho, maano, kul farak chhota batao, kya milega batao, \"aaj ya kal pickup?\".",1],
+[7,"4 cheezein jo kabhi nahi bolni?","Competitor ki burai, jhooti jaldi, jhootha vaada, bina value samjhaye rate girana.",1],
+[7,"Pehli baar wale customer ko kya offer?","Ek chhota trial parcel; har update WhatsApp pe.",0],
+[7,"Discount maange to?","Rate pehle se tight hai; regular volume pe baad mein review; pickup date se close karo.",1],
+[7,"\"Mera transporter already hai\"?","\"Bahut badiya sir, ek backup rakhiye — jab unki gaadi na mile, ek message pe pickup.\"",0],
+[7,"\"Sochta hoon, baad mein batata hoon\"?","\"Bilkul sir, rate soch rahe hain ya pehli baar ka doubt? Abhi clear kar deta hoon.\" Rukawat poochho.",0],
+[8,"Machine weight zyada aaya, kya karoge?","SEL_WtScan: machine weight batao, per-kg rate wahi, balance delivery se pehle.",1],
+[8,"App mein \"in transit\" par saamaan customer ke paas?","Sorry bolo, carrier pe ticket, photo maango, naya pickup fix karo (SEL_PickupIssue).",0],
+[8,"Booking ke liye kya details chahiye?","Pickup address, contact, saamaan + approx weight, pickup date; phir Operations ko.",0],
+[8,"3 baje booking aayi, pickup kab?","Agle din: pickup 10:00–1:30; 2:30 ke baad ki booking next day.",1],
+[8,"Carrier is rate pe pickup nahi kar raha?","Doosra carrier arrange karo, extra ₹/kg seedha batao (SEL_CarrierChange). Customer toote nahi.",0],
+[8,"Customer ko weight report galat lage to?","Carrier se report dobara mangwa denge; machine ka process hum badal nahi sakte.",0]
+].map((r,i)=>({id:i,ch:r[0],q:r[1],a:r[2],safe:!!r[3]}));
+const ROLE={scene:"Darshan = B2B trader: \"Pune se Indore 60 kg, dusra ₹14/kg bol raha hai, aap kitna?\"",checks:["Per-kg rate + minimum + \"final machine weight se\" line","PAKKA, rate giraye bina (kul farak + kya milega)","Close: \"aaj ya kal pickup?\""]};
+const LIMIT=25*60,PASS=22;
+
+/* tabs */
+const TABS=["exam","bank","hist"];
+function tab(k){TABS.forEach(t=>{$("t-"+t).setAttribute("aria-selected",t===k?"true":"false");$("p-"+t).hidden=t!==k})}
+TABS.forEach(t=>$("t-"+t).addEventListener("click",()=>tab(t)));
+
+/* bank */
+(function(){const b=$("p-bank");b.appendChild(el("p","note","Saturday se pehle padh lijiye. Laal \"safety\" wale sawaal pe 0 = galat vaada ya galat rate, to trainee Independent nahi ho sakta."));
+  for(let c=1;c<=8;c++){const s=el("section");s.appendChild(el("h3",null,"Ch "+c+" · "+CH[c]));BANK.filter(q=>q.ch===c).forEach(q=>{const d=el("details");const sm=el("summary",null,q.q);if(q.safe)sm.appendChild(el("span","safe","safety"));d.append(sm,el("p",null,q.a));s.appendChild(d)});b.appendChild(s)}
+  const s=el("section");s.appendChild(el("h3",null,"Role-play"));s.appendChild(el("p",null,ROLE.scene));ROLE.checks.forEach(c=>s.appendChild(el("p","note","✓ "+c+" (2 marks)")));b.appendChild(s)})();
+
+/* exam */
+let E=null,tick=null;
+function pick12(){const out=[];for(let c=1;c<=8;c++)out.push(shuffle(BANK.filter(q=>q.ch===c))[0]);const used=new Set(out.map(q=>q.id));shuffle(BANK.filter(q=>!used.has(q.id))).slice(0,4).forEach(q=>out.push(q));return shuffle(out)}
+function startScreen(){clearInterval(tick);const p=$("p-exam");p.innerHTML="";
+  p.append(el("div","eyebrow","Naya exam"),el("h2",null,"Trainee ka naam"));
+  const r=el("div","rules");[["12 sawaal","Har chapter se kam se kam 1"],["1 role-play","Aap customer bano · 6 marks"],["25 minute","Overall ghadi + har sawaal ki stopwatch"],["Pass 22/30","Safety pe 0 = Independent nahi"]].forEach(([b,s])=>{const d=el("div");d.append(el("b",null,b),el("span",null,s));r.appendChild(d)});p.appendChild(r);
+  const l=el("label","f","Trainee ka naam");const inp=el("input");inp.type="text";inp.id="tName";inp.maxLength=60;inp.placeholder="Jaise: Priya";l.appendChild(inp);p.appendChild(l);
+  if(!db)p.appendChild(el("p","note","Note: page claude.ai par owner ke roop mein nahi khula, isliye result save nahi hoga. Exam phir bhi chala sakte hain."));
+  const g=el("button","go acc","Exam shuru");g.type="button";g.addEventListener("click",()=>{const n=inp.value.trim();if(!n){inp.focus();inp.setAttribute("aria-invalid","true");return}E={name:n,qs:pick12(),i:0,res:[],t0:Date.now(),role:[false,false,false],roleDone:false};run()});p.appendChild(g);inp.addEventListener("keydown",e=>{if(e.key==="Enter")g.click()})}
+function run(){const p=$("p-exam");p.innerHTML="";const cl=el("div","clocks");const a=el("div","clk");const ab=el("b");ab.id="cAll";a.append(ab,el("span",null,"Exam baaki"));const b=el("div","clk");const bb=el("b");bb.id="cQ";b.append(bb,el("span",null,"Is sawaal pe"));const nm=el("div","clk");nm.append(el("b",null,E.name),el("span",null,"Trainee"));nm.firstChild.style.fontSize="26px";cl.append(a,b,nm);p.appendChild(cl);
+  const tk=el("div","ticks");tk.id="tk";p.appendChild(tk);const box=el("div","qcard");box.id="qb";p.appendChild(box);
+  clearInterval(tick);tick=setInterval(upd,250);show()}
+function upd(){if(!E)return;const left=LIMIT-(Date.now()-E.t0)/1000;const a=$("cAll"),q=$("cQ");if(!a){clearInterval(tick);return}a.textContent=mmss(left);a.classList.toggle("low",left<180);if(E.qt0)q.textContent=mmss((Date.now()-E.qt0)/1000)}
+function ticks(){const tk=$("tk");tk.innerHTML="";E.qs.forEach((_,j)=>{const r=E.res[j];tk.appendChild(el("i",(r?"m"+r.mark:"")+(j===E.i?" now":"")))});tk.appendChild(el("i",E.roleDone?"m2":E.i>=E.qs.length?"now":""))}
+function show(){ticks();E.qt0=Date.now();const box=$("qb");box.innerHTML="";if(E.i>=E.qs.length){roleCard(box);return}
+  const q=E.qs[E.i];const pr=E.res[E.i]||{mark:null,note:""};
+  const top=el("div","row");top.append(el("span","eyebrow","Sawaal "+(E.i+1)+" / "+E.qs.length));const cp=el("span","chpill","Ch "+q.ch+" · "+CH[q.ch]);top.appendChild(cp);if(q.safe)top.appendChild(el("span","safe","safety"));box.appendChild(top);
+  box.appendChild(el("div","qtext",q.q));
+  const mod=el("div","model");mod.hidden=true;mod.append(el("b",null,"Model answer"),el("span",null,q.a));const rv=el("button",null,"Model answer dikhao");rv.type="button";rv.addEventListener("click",()=>{mod.hidden=!mod.hidden;rv.textContent=mod.hidden?"Model answer dikhao":"Chhupao"});box.append(rv,mod);
+  const mk=el("div","marks");let mark=pr.mark;[[2,"Poora sahi"],[1,"Aadha"],[0,"Galat / vaada"]].forEach(([m,s])=>{const b=el("button");b.type="button";b.dataset.m=m;b.setAttribute("aria-pressed",String(mark===m));b.append(document.createTextNode(String(m)),el("small",null,s));b.addEventListener("click",()=>{mark=m;[...mk.children].forEach(x=>x.setAttribute("aria-pressed",String(+x.dataset.m===m)));nx.disabled=false});mk.appendChild(b)});box.appendChild(mk);
+  const l=el("label","f","Note (optional)");const ta=el("textarea");ta.id="qNote";ta.value=pr.note||"";l.appendChild(ta);box.appendChild(l);
+  const r=el("div","row");const bk=el("button",null,"← Pichla");bk.type="button";bk.disabled=E.i===0;bk.addEventListener("click",()=>{E.i--;show()});const nx=el("button","go acc",E.i<E.qs.length-1?"Agla sawaal →":"Role-play →");nx.type="button";nx.disabled=mark==null;
+  nx.addEventListener("click",()=>{const prev=E.res[E.i];E.res[E.i]={ch:q.ch,q:q.q,safe:q.safe,mark,note:ta.value.trim(),secs:Math.round((prev?prev.secs:0)+(Date.now()-E.qt0)/1000)};E.i++;show()});r.append(bk,nx);box.appendChild(r);window.scrollTo({top:0})}
+function roleCard(box){box.append(el("div","eyebrow","Role-play · 6 marks"),el("h2",null,"Aap customer bano"),el("div","scene",ROLE.scene));const c=el("div","chk");ROLE.checks.forEach((t,j)=>{const l=el("label");const cb=el("input");cb.type="checkbox";cb.checked=E.role[j];cb.addEventListener("change",()=>{E.role[j]=cb.checked});l.append(cb,el("span",null,t+" · 2 marks"));c.appendChild(l)});box.appendChild(c);
+  const l=el("label","f","Role-play note (optional)");const ta=el("textarea");ta.id="roleNote";ta.value=E.roleNote||"";l.appendChild(ta);box.appendChild(l);
+  const r=el("div","row");const bk=el("button",null,"← Pichla sawaal");bk.type="button";bk.addEventListener("click",()=>{E.roleNote=ta.value;E.i--;show()});const fin=el("button","go acc","Result dekho");fin.type="button";fin.addEventListener("click",()=>{E.roleNote=ta.value.trim();E.roleDone=true;E.roleSecs=Math.round((Date.now()-E.qt0)/1000);result()});r.append(bk,fin);box.appendChild(r)}
+function decide(total,res){const safe0=res.some(r=>r.safe&&r.mark===0);if(total>=PASS&&!safe0)return "Independent";if(total>=18)return "Supervised";if(total>=15)return "Extra practice";return "Retrain"}
+async function result(){clearInterval(tick);const qs=E.res.reduce((a,r)=>a+r.mark,0);const role=E.role.filter(Boolean).length*2;const total=qs+role;const dec=decide(total,E.res);const secs=Math.round((Date.now()-E.t0)/1000);
+  const p=$("p-exam");p.innerHTML="";p.append(el("div","eyebrow",E.name+" · result · "+mmss(secs)),el("div","total",total+" / 30"),el("div","stamp "+dec.split(" ")[0],dec));
+  p.appendChild(el("p",null,"Sawaal "+qs+"/24 · Role-play "+role+"/6 · Pass "+PASS+(E.res.some(r=>r.safe&&r.mark===0)?" · Safety sawaal pe 0 mila, isliye Independent nahi.":"")));
+  const by={};E.res.forEach(r=>{by[r.ch]=by[r.ch]||{g:0,m:0};by[r.ch].g+=r.mark;by[r.ch].m+=2});const ch=el("div","chs");Object.keys(by).sort((a,b)=>a-b).forEach(c=>{const v=by[c];const d=el("div",v.g/v.m<0.6?"weak":"");d.append(el("b",null,v.g+"/"+v.m),el("span",null,"Ch "+c+" · "+CH[c]));ch.appendChild(d)});p.append(el("h3",null,"Chapter-wise"),ch);
+  const weak=Object.keys(by).filter(c=>by[c].g/by[c].m<0.6).map(c=>"Ch "+c+" · "+CH[c]);p.appendChild(el("p",null,weak.length?"Kamzor: "+weak.join(", ")+". Week 2 mein inpe retake.":"Koi chapter kamzor nahi."));
+  const sv=el("p","note","Save ho raha hai…");p.appendChild(sv);const n=el("button","go","Agla trainee");n.type="button";n.addEventListener("click",()=>{E=null;startScreen()});p.appendChild(n);window.scrollTo({top:0});
+  const rec={name:E.name,total,qs,role,roleChecks:E.role,roleNote:E.roleNote||"",decision:dec,secs,perQ:E.res.map(r=>({ch:r.ch,q:r.q,mark:r.mark,secs:r.secs,note:r.note,safe:r.safe})),at:Date.now()};
+  if(!db){sv.textContent="Save nahi hua: page claude.ai par owner ke roop mein kholo. Result yahin screen pe hai.";return}
+  try{const c=db.collection("exams");if(c&&typeof c.add==="function")await c.add(rec);else await db.doc("exams/"+Date.now()).set(rec);sv.textContent="Save ho gaya ✓ History tab mein dikhega."}
+  catch(e){sv.textContent="Save nahi hua ("+((e&&e.code)||"error")+"). Screenshot le lijiye."}}
+
+/* history */
+let hist=[],openH=null;
+function renderHist(){const tb=$("hRows");tb.innerHTML="";if(!hist.length){const tr=el("tr");const td=el("td","note","Abhi koi exam save nahi hua.");td.colSpan=5;tr.appendChild(td);tb.appendChild(tr)}
+  hist.slice().sort((a,b)=>(b.data().at||0)-(a.data().at||0)).forEach(d=>{const v=d.data();const tr=el("tr");tr.append(el("td",null,v.name||"—"),el("td","num",(v.total!=null?v.total:"—")+"/30"),el("td",null,v.decision||"—"),el("td",null,v.at?new Date(v.at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"—"));const td=el("td");const b=el("button",null,openH===d.id?"Band":"Details");b.type="button";b.addEventListener("click",()=>{openH=openH===d.id?null:d.id;renderHist()});td.appendChild(b);tr.appendChild(td);tb.appendChild(tr)});
+  const det=$("hDetail");det.innerHTML="";const d=hist.find(x=>x.id===openH);if(!d)return;const v=d.data();const s=el("div","sheet");s.appendChild(el("h3",null,(v.name||"")+" · "+v.total+"/30 · "+(v.decision||"")));const tw=el("div","tw");const t=el("table");t.innerHTML="<thead><tr><th>Ch</th><th>Sawaal</th><th>Marks</th><th>Sec</th><th>Note</th></tr></thead>";const bd=el("tbody");(v.perQ||[]).forEach(r=>{const tr=el("tr");tr.append(el("td",null,String(r.ch)),el("td",null,r.q+(r.safe?" (safety)":"")),el("td","num",String(r.mark)),el("td","num",String(r.secs||0)),el("td",null,r.note||""));bd.appendChild(tr)});t.appendChild(bd);tw.appendChild(t);s.appendChild(tw);s.appendChild(el("p",null,"Role-play: "+(v.role||0)+"/6"+(v.roleNote?" · "+v.roleNote:"")));det.appendChild(s)}
+
+/* boot */
+let db=null,user=null;
+function setWho(t,c){const w=$("whoBox");w.textContent=t;w.className="who "+c}
+startScreen();
+(async()=>{try{for(let k=0;k<30&&!(window.claude&&window.claude.use);k++)await new Promise(r=>setTimeout(r,100));
+  if(!window.claude||!window.claude.use)throw 0;const [d,u]=await Promise.all([claude.use("db"),claude.use("user")]);user=u;
+  const own=u?await u.isOwner():false;
+  if(!own){setWho("Ye page sirf Darshan ke liye hai.","warn");$("p-bank").innerHTML="";$("p-bank").appendChild(el("p","note","Ye page sirf Darshan ke liye hai."));$("t-bank").hidden=true;$("t-hist").hidden=true;$("p-exam").innerHTML="";$("p-exam").appendChild(el("p",null,"Ye page sirf Darshan ke liye hai."));return}
+  db=d;setWho("Aap owner ho. Har exam History mein save hoga.","owner");if(!E)startScreen();
+  if(db)db.collection("exams").onSnapshot(s=>{hist=s.docs;renderHist()},()=>{})}
+ catch(e){setWho("Claude.ai ke bahar khula hai: exam chala sakte ho, par save nahi hoga.","warn")}})();
+})();
+</script>
+</body>
+</html>

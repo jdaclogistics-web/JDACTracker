@@ -103,7 +103,7 @@ A.grpSave2=()=>{const n=val('gn2');if(!n)return toast('Name the group');const id
 
 /* ---------- Dashboard: Milestones panel ---------- */
 if(!D.coPct)D.coPct={gb:0,log:0,hr:0,jup:0,studios:0};
-const MSCO=[['gb','GovaaBazaar'],['log','Logistics'],['hr','HR Consultancy'],['jup','Jupiter'],['studios','JDAC Studios']];
+const MSCO=[['log','Logistics'],['hr','HR Consultancy'],['gb','GovaaBazaar'],['jup','Jupiter'],['studios','JDAC Studios']];
 milestone=function(){const left=daysTo('2026-11-30'),can=isAdm(),T=D.targets,hits=T.filter(t=>pct(t.v,t.goal)>=100).length,overall=T.length?Math.round(T.reduce((a,t)=>a+Math.min(100,pct(t.v,t.goal)),0)/T.length):0;
  return `<div class="mspanel"><div class="msl"><div class="row nw"><h2 style="flex:1">Milestones</h2><span class="pill">Milestone 1 · ${left>=0?left+' days left':'ended'}</span>${can?`<button class="lnk" data-a="tEdit">Edit</button>`:''}</div>
  <div class="msscore"><div><b>${hits}<small>/${T.length}</small></b><span>targets hit today</span></div><div><b>${overall}%</b><span>of today's milestone overall</span></div></div>
@@ -124,7 +124,7 @@ const _pm=pMaster;pMaster=function(){const o=_pm();return (S.mf||'Active')==='Ac
 const _ch2=chatHead;chatHead=function(){let o=_ch2();if(!myWaTeams().length)o=o.replace(/<button class="[^"]*" data-a="chm" data-t="wa">[\s\S]*?<\/button>/,'');return o};
 const _vchat2=V.chat;V.chat=()=>{if(S.chm==='wa'&&!myWaTeams().length)S.chm='team';let o=_vchat2();if(S.chm==='email')o=o.replace('Your company mailbox opens here once the mail server is connected.','Your own work mailbox — only you can see it. It opens here once the mail server is connected.');return o};
 /* sidebar: Companies dropdown */
-function coDrop(){const L=(isAdm()?['gb','log','jup','hr','studios']:(K()==='acc'?['gb','log','jup','hr','studios']:[])).filter(k=>CO[k]);if(!L.length)return '';const open=S.sbco==null?S.v==='co':S.sbco;
+function coDrop(){const L=(isAdm()?['log','hr','gb','jup','studios']:(K()==='acc'?['log','hr','gb','jup','studios']:[])).filter(k=>CO[k]);if(!L.length)return '';const open=S.sbco==null?S.v==='co':S.sbco;
  return `<button class="sb-more ${open?'op':''}" data-a="sbCo" aria-expanded="${open}" title="Companies">${ic('work')}<span>Companies</span><i class="chev">${ic('right')}</i></button>${open?`<div class="sb-sub">${L.map(k=>`<button data-a="co" data-k="${k}" class="${S.v==='co'&&S.co===k?'on':''}" title="${h(CO[k].n)}"><span class="cdot" style="background:${CO[k].c};width:10px;height:10px;border-radius:50%;display:inline-block;flex:none"></span><span>${h({gb:'GovaaBazaar',log:'Logistics',jup:'Jupiter',hr:'HR Consultancy',studios:'Studios'}[k])}</span></button>`).join('')}</div>`:''}`}
 A.sbCo=e=>{S.sbco=!(e.getAttribute&&e.getAttribute('aria-expanded')==='true');render()};
 /* ===== HR Consultancy: group companies as employer clients, employer panel view, MIS billing ===== */

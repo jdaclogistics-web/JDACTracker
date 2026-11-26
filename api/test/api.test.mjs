@@ -84,6 +84,8 @@ ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234'
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'dev-phone-B' })).status === 403, 'developer blocked on another phone')
 ok((await call('POST', '/api/login', { username: 'darshan', password: 'JDAC1234', device_id: 'web' })).status === 200, 'developer web panel still works')
 { const c = await call('POST', '/api/admin/employees', { name: 'Ashish Kumar', password: 'abcdef' }, HR); ok(c.data.username === 'JD1003', 'Employee IDs keep counting up') }
+{ const L = await call('GET', '/api/training/files', null, HR); ok(L.status === 200 && Array.isArray(L.data.files), 'training file list opens')
+  ok((await call('GET', '/api/training/files', null)).status === 401, 'training files need login') }
 ok((await call('GET', '/api/dev/system', null, HR)).status === 403, 'HR cannot open developer system')
 const sys = await call('GET', '/api/dev/system', null, DEV)
 ok(sys.status === 200 && sys.data.employees === 6, 'developer system panel works')

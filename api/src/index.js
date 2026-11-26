@@ -5,7 +5,7 @@ import { loadAll, dropCache, homeSummary, companyPage, myHome, cargoDesk, COMPAN
 import { DESK_TABLES, migrateDesks, registerDesks } from './desks.js'
 import { registerIt } from './it.js'
 import { registerTeamTasks } from './teamtasks.js'
-import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64 } from './photos.js'
+import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64, saveFile, readFile, deleteFile } from './photos.js'
 
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
 const NO_SIGNAL_MIN = 10
@@ -499,6 +499,45 @@ on('POST', '/api/admin/payroll', async (env, req) => {
 })
 
 // ── Staff / logins ─────────────────────────────────────────────────────────
+// ── Training library: Day 1–6 induction files (PDF, mock tests…). HR / Boss upload, every logged-in user opens ──
+const TR_KEY = 'training_files'
+const trList = async (env) => { const r = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(TR_KEY).first(); return r ? JSON.parse(r.value) : [] }
+const trSave = (env, L) => env.DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(TR_KEY, JSON.stringify(L)).run()
+on('GET', '/api/training/files', async (env, req) => { await authUser(env, req); return json({ files: await trList(env) }) })
+on('POST', '/api/admin/training/files', async (env, req, url) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const day = Math.max(1, Math.min(6, Number(url.searchParams.get('day')) || 1))
+  const name = String(url.searchParams.get('name') || 'file').replace(/[^\w .()\-]/g, '_').slice(0, 120)
+  const mime = (req.headers.get('content-type') || 'application/octet-stream').slice(0, 100)
+  const bytes = new Uint8Array(await req.arrayBuffer())
+  if (!bytes.length) throw bad('Empty file')
+  if (bytes.length > 25 * 1024 * 1024) throw bad('File too large (max 25 MB)')
+  const id = 't' + Date.now() + Math.floor(Math.random() * 1000)
+  const key = `training/day${day}/${id}-${name.replace(/\s+/g, '_')}`
+  try { await saveFile(env, key, bytes, mime) } catch (e) { throw new HttpError(503, 'File storage: ' + e.message) }
+  const L = await trList(env)
+  const f = { id, day, name, size: bytes.length, mime, key, at: nowIso(), by: me.name }
+  L.push(f); await trSave(env, L)
+  await audit(env, me.id, 'training_upload', 'training', id, null, { day, name })
+  return json({ ok: true, file: f })
+})
+on('GET', '/api/training/files/:id', async (env, req, url, p) => {
+  await authUser(env, req)
+  const f = (await trList(env)).find((x) => x.id === p.id)
+  if (!f) throw new HttpError(404, 'File not found')
+  const o = await readFile(env, f.key)
+  if (!o) throw new HttpError(404, 'File not found in storage')
+  return new Response(o.body, { headers: { 'Content-Type': f.mime || o.mime, 'Content-Disposition': `inline; filename="${f.name.replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' } })
+})
+on('POST', '/api/admin/training/files/:id/delete', async (env, req, url, p) => {
+  const me = await authUser(env, req); needAdmin(me)
+  const L = await trList(env), f = L.find((x) => x.id === p.id)
+  if (!f) throw new HttpError(404, 'File not found')
+  try { await deleteFile(env, f.key) } catch {}
+  await trSave(env, L.filter((x) => x.id !== p.id))
+  await audit(env, me.id, 'training_delete', 'training', p.id, null, { name: f.name })
+  return json({ ok: true })
+})
 on('GET', '/api/admin/employees', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
   return json({ employees: (await env.DB.prepare('SELECT * FROM employees ORDER BY active DESC, team, name').all()).results.map(pub) })
