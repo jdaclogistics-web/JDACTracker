@@ -852,6 +852,8 @@ html.v-tasks *{scrollbar-width:none}html.v-tasks *::-webkit-scrollbar{display:no
 
 .trwa{background:#25D366!important;border-color:#25D366!important;color:#fff!important}
 #devfr{position:fixed;inset:0;z-index:9000;background:radial-gradient(circle at 50% 30%,#1B2E4F,#0B1F3A);display:flex;flex-direction:column;align-items:center;padding:14px}.devbar{display:flex;gap:14px;align-items:center;color:#fff;margin-bottom:12px}.devphone{width:400px;flex:1;max-height:860px;border-radius:38px;border:10px solid #111;background:#000;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}.devphone iframe{width:100%;height:100%;border:0;background:#fff}
+
+.rdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#E11D2E;margin-left:6px;vertical-align:middle;box-shadow:0 0 0 2px rgba(225,29,46,.18)}.hrg button.on .rdot{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
 </style>
 </head>
 <body>
@@ -4271,8 +4273,10 @@ const _peopleHG=V.people;V.people=()=>{if(S.ptab==='rules')S.ptab='today';let ou
  const m=out.match(/<div class="chips" role="tablist">((?:(?!<\/div>)[\s\S])*?data-a="ptab"[\s\S]*?)<\/div>/);if(!m)return out;
  const B={};(m[1].match(/<button role="tab"[\s\S]*?<\/button>/g)||[]).forEach(b=>{const k=(b.match(/data-t="([^"]+)"/)||[])[1];if(k)B[k]=b});
  const g=HRG.find(x=>x[2].includes(S.ptab))||HRG[0],cnt=G=>G[2].reduce((a,k)=>a+(+((B[k]||'').match(/<span class="n">(\d+)/)||[0,0])[1]),0);
- const top=`<div class="hrg" role="tablist">${HRG.map(G=>{const n=cnt(G);return `<button role="tab" aria-selected="${G===g}" class="${G===g?'on':''}" data-a="hrG" data-t="${G[0]}">${G[1]}${n?` <span class="n">${n}</span>`:''}</button>`}).join('')}</div>`;
- const sub=`<div class="chips hrsub" role="tablist">${g[2].filter(k=>B[k]).map(k=>B[k].replace(/class="[^"]*"/,`class="${S.ptab===k?'on':''}"`).replace(/aria-selected="[^"]*"/,`aria-selected="${S.ptab===k}"`)).join('')}</div>`;
+ const SN=S.hrSeen=S.hrSeen||{},sc=k=>+((B[k]||'').match(/<span class="n">(\d+)/)||[0,0])[1];SN[g[0]]=Math.max(SN[g[0]]||0,cnt(g));SN[S.ptab]=Math.max(SN[S.ptab]||0,sc(S.ptab));
+ const dot='<i class="rdot" aria-label="Needs attention"></i>';
+ const top=`<div class="hrg" role="tablist">${HRG.map(G=>{const n=cnt(G);return `<button role="tab" aria-selected="${G===g}" class="${G===g?'on':''}" data-a="hrG" data-t="${G[0]}">${G[1]}${n>(SN[G[0]]||0)?dot:''}</button>`}).join('')}</div>`;
+ const sub=`<div class="chips hrsub" role="tablist">${g[2].filter(k=>B[k]).map(k=>B[k].replace(/class="[^"]*"/,`class="${S.ptab===k?'on':''}"`).replace(/aria-selected="[^"]*"/,`aria-selected="${S.ptab===k}"`).replace(/\s*<span class="n">\d+<\/span>/,sc(k)>(SN[k]||0)?dot:'')).join('')}</div>`;saveS&&saveS();
  return out.replace(m[0],top+sub)};
 A.hrG=e=>{const G=HRG.find(x=>x[0]===e.dataset.t);S.ptab=G[2][0];render()};
 
