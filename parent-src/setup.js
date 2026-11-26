@@ -285,7 +285,9 @@ A.trSend=()=>{let n=telOf(val('trsN')).replace(/^\+/,'');if(n.length===10)n='91'
 const _moreNoMe=V.more;V.more=()=>{let o=_moreNoMe();if(isBoss())o=o.replace(/<button[^>]*data-v="me"[\s\S]*?<\/button>/g,'').replace(/<a[^>]*data-v="me"[\s\S]*?<\/a>/g,'');return o};
 // Settings: Mobile / Desktop view
 const IN_FRAME=/[?&]frame=1/.test(location.search);
-function devApply(){try{const d=UIP.get().dev||'auto',vp=document.querySelector('meta[name=viewport]');if(vp&&!IN_FRAME)vp.setAttribute('content',d==='desktop'?'width=1280':'width=device-width, initial-scale=1');const ov=document.getElementById('devfr');if(ov)ov.remove();if(d==='mobile'&&!IN_FRAME&&window.innerWidth>700){const u=location.href.replace(/#.*$/,''),w=document.createElement('div');w.id='devfr';w.innerHTML=`<div class="devbar"><b>📱 Mobile view</b><button class="btn sm sec" data-a="devSet" data-t="desktop">🖥 Back to desktop view</button></div><div class="devphone"><iframe title="Mobile view" src="${u}${u.includes('?')?'&':'?'}frame=1"></iframe></div>`;document.body.appendChild(w)}}catch(e){}}
+function devApply(){try{const d=UIP.get().dev||'auto',vp=document.querySelector('meta[name=viewport]');if(vp&&!IN_FRAME)vp.setAttribute('content',d==='desktop'?'width=1280':'width=device-width, initial-scale=1');const ov=document.getElementById('devfr');if(ov)ov.remove();if(d==='mobile'&&!IN_FRAME&&window.innerWidth>700){const u=location.href.replace(/#.*$/,'').replace(/[?&](frame|as)=[^&]*/g,''),as=devAs(),w=document.createElement('div');w.id='devfr';
+ const opts=devStaff().map(k=>`<option value="${k}" ${k===as?'selected':''}>${h(P[k].n||k)}${P[k].r?' · '+h(P[k].r):''}</option>`).join('');
+ w.innerHTML=`<div class="devbar"><b>📱 Employee view</b><label class="xs" style="color:#cbd5e1">See it as <select id="devAs" data-ch="devAs" style="width:auto;margin:0 0 0 6px">${opts}</select></label><button class="btn sm sec" data-a="devSet" data-t="desktop">🖥 Back to desktop view</button></div><div class="devphone"><iframe title="Employee mobile view" src="${u}${u.includes('?')?'&':'?'}frame=1&as=${encodeURIComponent(as)}"></iframe></div>`;document.body.appendChild(w)}}catch(e){}}
 A.devSet=e=>{UIP.set({dev:e.dataset.t});devApply();render()};
 setTimeout(devApply,50);
 const _stDev=V.settings;V.settings=()=>{let o=_stDev();const d=UIP.get().dev||'auto',b=(k,t,s,i)=>`<button class="uio ${d===k?'on':''}" data-a="devSet" data-t="${k}" aria-pressed="${d===k}"><span class="uii">${i}</span><b>${t}</b><span>${s}</span></button>`;
@@ -297,3 +299,8 @@ const _stDD=V.settings;V.settings=()=>{let o=_stDD();const IC={Screen:'📱',Lig
  o=o.replace(/<div class="stgrp"><div class="stlab">([^<]+)<\/div><div class="uiopts">([\s\S]*?)<\/div><\/div>(?=\s*(<div class="stgrp">|<details|$))/g,(m,lab,body)=>{const k='u'+lab.replace(/\W/g,''),cur=(body.match(/class="uio on"[^>]*>[\s\S]*?<b>([^<]*)<\/b>/)||[])[1]||'';
   return `<details class="bpsec bpdd" ${(S.stO||{})[k]?'open':''}><summary class="bph" data-a="stO" data-k="${k}"><span class="bpsi">${IC[lab]||'⚙'}</span>${lab}${cur?` <span class="bpcount">${h(cur)}</span>`:''}</summary><div class="uiopts" style="padding:12px 14px">${body}</div></details>`});
  return o};
+
+function devStaff(){return Object.keys(P).filter(k=>!['darshan','nameera','developer'].includes(k)&&!/^h[cp]_/.test(k)&&P[k]&&P[k].n)}
+function devAs(){const a=UIP.get().devAs,L=devStaff();return L.includes(a)?a:(L.includes('neetu')?'neetu':L[0])}
+document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.ch==='devAs'){UIP.set({devAs:t.value});devApply()}});
+if(IN_FRAME){try{saveS=function(){};const as=(location.search.match(/[?&]as=([^&]+)/)||[])[1];const k=as&&decodeURIComponent(as);if(k&&P[k]){setTimeout(()=>{S.viewer=null;S.split=false;A.whoSet({dataset:{k}})},80)}document.documentElement.classList.add('in-frame')}catch(e){}}
