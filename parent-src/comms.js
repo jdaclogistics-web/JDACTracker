@@ -247,5 +247,15 @@ CTABS.studios=[['clients','Clients'],['ads','Ad accounts'],['camp','Campaigns']]
 const _tabsCampX=tabsFor;tabsFor=function(who){const T=_tabsCampX(who),k=(P[who||S.me]||{}).kind;return (k==='boss'||k==='hr')?T.filter(x=>x[0]!=='camp'):T};
 CP['studios:camp']=()=>{const o=V.camp();return o.replace(/<h1>Campaigns<\/h1>(<p class="mut sm"[^>]*>[\s\S]*?<\/p>)?/,'')};
 if(S.v==='camp'&&isAdm()){S.v='co';S.co='studios';S.tab='camp'}
+
+/* ===== Who sees what (26 Nov): App blueprint, Training, KPIs, Contacts only for Darshan sir & Nameera.
+   Content only for admins and the marketing team (it is their daily work). Settings for everyone,
+   but "Who sees what" and "Connections" inside Settings only for Darshan sir & Nameera. ===== */
+const ADM_ONLY=['blueprint','training','kpi','contacts'];
+const _allowedWS=allowed;allowed=function(v){if(isAdm())return _allowedWS(v);if(ADM_ONLY.includes(v))return false;if(v==='settings')return K()!=='partner';if(v==='content')return ['swapnil','omparvate','himanshu'].includes(S.me)&&_allowedWS(v);return _allowedWS(v)};
+const _tabsWS=tabsFor;tabsFor=function(who){const T=_tabsWS(who),k=(P[who||S.me]||{}).kind;if(k==='boss'||k==='hr')return T;return T.filter(x=>!ADM_ONLY.includes(x[0]))};
+const _stWS=V.settings;V.settings=()=>{let o=_stWS();if(isAdm())return o;
+ return o.replace(/<details class="bpsec bpdd"[^>]*><summary class="bph" data-a="stO" data-k="[wc]">[\s\S]*?<\/details>/g,'')};
+if(!isAdm()&&!allowed(S.v))S.v=tabsFor()[0][0];
 render();
 
