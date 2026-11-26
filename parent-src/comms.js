@@ -41,8 +41,7 @@ function crmView(){const co=cmCo(),T=myWaTeams();if(!T.length)return `<div class
   return `<div class="cmcol" style="--c:${col}"><div class="cmh"><i></i><b>${l}</b><span>${C.length}</span></div>${C.map(card).join('')||'<div class="t4none">—</div>'}</div>`}).join('')}</div>`}
 A.cmOpen=e=>{S.chm='wa';S.wac=e.dataset.id;const c=D.wa.find(x=>x.id===e.dataset.id);if(c)S.wat='';render();const t=document.getElementById('thr');if(t)t.scrollTop=1e6};
 A.cmCall=e=>{const c=D.wa.find(x=>x.id===e.dataset.id);if(!c)return;const co=WACO[c.team]||cmCo(),n=cmNum(co);
- D.callLog.push({id:nid('cl'),k:S.me,co,to:c.n,ph:c.ph,dir:'out',at:nowT(),d:TODAY,dur:'—',st:'Calling'});waLog(c,'Call to customer from '+(n.n||'company number'));save();render();
- toast(`Calling ${c.n} from ${n.n||'company'}${n.vn?' ('+n.vn+')':''} — the call connects once the calling service is linked`)};
+ D.callLog.push({id:nid('cl'),k:S.me,co,to:c.n,ph:c.ph,dir:'out',at:nowT(),d:TODAY,dur:'—',st:'Calling'});waLog(c,'Call to customer from '+(n.n||'company number'));save(); toast(`Calling ${c.n} from ${n.n||'company'}${n.vn?' ('+n.vn+')':''} — the call connects once the calling service is linked`)};
 document.addEventListener('change',e=>{const d=e.target&&e.target.dataset;if(d&&d.ch==='cmw'){S.cmw=e.target.value;render()}});
 document.addEventListener('input',e=>{if(e.target.id==='cmq'){S.cmq=e.target.value;const p=e.target.selectionStart;render();const i=document.getElementById('cmq');if(i){i.focus();i.setSelectionRange(p,p)}}});
 
@@ -88,4 +87,11 @@ body.cmmode .ctabs.cdock{display:none!important}
 .cmb.wa{color:#1F9D55}.cmb.call{color:#24408E}.cmb:hover{background:#F4F6FA}
 @media(max-width:760px){.cbl{display:none}.ctab.me{padding-left:4px}.cmcol{flex-basis:240px;max-height:none}.cnum span.mut{display:none}.ckpi{display:flex;overflow-x:auto;gap:8px}.ck{flex:0 0 120px;padding:8px 10px}.ck b{font-size:18px}.cmbar .sfq{min-width:0;flex:1 1 100%}}
 </style>`);
+
+/* ===== Campaigns live inside JDAC Studios (Clients · Ad accounts · Campaigns), not in the main menu for Darshan sir / Nameera ===== */
+CTABS.studios=[['clients','Clients'],['ads','Ad accounts'],['camp','Campaigns']];
+const _tabsCampX=tabsFor;tabsFor=function(who){const T=_tabsCampX(who),k=(P[who||S.me]||{}).kind;return (k==='boss'||k==='hr')?T.filter(x=>x[0]!=='camp'):T};
+CP['studios:camp']=()=>{const o=V.camp();return o.replace(/<h1>Campaigns<\/h1>(<p class="mut sm"[^>]*>[\s\S]*?<\/p>)?/,'')};
+if(S.v==='camp'&&isAdm()){S.v='co';S.co='studios';S.tab='camp'}
 render();
+
