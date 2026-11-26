@@ -823,6 +823,21 @@ html.v-tasks *{scrollbar-width:none}html.v-tasks *::-webkit-scrollbar{display:no
 .stconn{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}.stc{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid #E4E8F0;background:#fff;text-decoration:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.stc:hover{border-color:#C9A227;box-shadow:0 6px 16px -10px #0B1F3A}
 .stdot{width:10px;height:10px;border-radius:50%;background:#CBD2DD;flex:none}.stdot.on{background:#16A34A;box-shadow:0 0 0 3px #DCFCE7}.sttx{flex:1;display:flex;flex-direction:column}.sttx b{font-size:14px}.sttx span{font-size:12px;color:var(--mut)}
 .stst{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:#F3EBD3;color:#6B4A0C}.stgo{font-size:12px;font-weight:700;color:#0B1F3A;white-space:nowrap}
+
+.tl-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px}.tl-nav{display:flex;gap:4px;align-items:center;background:#fff;border:1px solid #E4E8F0;border-radius:12px;padding:4px}
+.tl-nav button{border:0;background:none;font:inherit;font-size:13px;font-weight:700;padding:6px 10px;border-radius:9px;cursor:pointer;color:#0B1F3A}.tl-nav button:hover{background:#F1F4F9}.tl-nav button.on{background:#0B1F3A;color:#fff}
+.tl-pick{display:flex;align-items:center;gap:4px;padding:2px 6px;border-left:1px solid #E4E8F0;margin-left:2px;cursor:pointer}.tl-pick input{border:0;font:inherit;font-size:12.5px;padding:4px;background:none;width:128px}
+.tl-rng{font-size:15px;color:#0B1F3A}.tl-flt{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}.tl-flt label{display:flex;flex-direction:column;font-size:11.5px;font-weight:700;color:#6B7385;gap:3px}.tl-flt select{min-width:180px}
+.tl-leg{display:flex;gap:10px;margin-left:auto;font-size:12px;color:#6B7385;flex-wrap:wrap}.tl-leg span{display:flex;align-items:center;gap:4px}.tl-leg i{width:10px;height:10px;border-radius:3px;display:inline-block}.tl-leg i.lt{background:#fff;border:2px solid #E03A3E}
+.tl-day{background:#fff;border:1px solid #E4E8F0;border-radius:14px;overflow:hidden}.tl-sec{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F7F8FB;border-top:1px solid #EEF0F4;font-size:13.5px}.tl-sec:first-child{border-top:0}.tl-sec.r b{color:#C62828}.tl-sec.g b{color:#1F7A45}
+.tl-li{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #F1F3F7}.tl-li.late{background:#FFF6F6}.tl-pc{width:4px;align-self:stretch;border-radius:3px}
+.tl-nm{flex:1;min-width:0;border:0;background:none;text-align:left;font:inherit;cursor:pointer;display:flex;flex-direction:column;padding:0}.tl-nm b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tl-nm span{font-size:12px;color:#6B7385}
+.tl-st{font-size:11px;font-weight:800;border-radius:999px;padding:2px 9px;color:#fff;background:var(--bc);white-space:nowrap}.tl-ed{border:1px solid #E4E8F0;background:#fff;border-radius:9px;padding:4px 7px;cursor:pointer;font-size:14px}.tl-ed:hover{border-color:#C9A227}
+.tlx .tl-grp .gx-l{display:flex;align-items:center;gap:8px;font-size:13px}.tlx .tl-grp .gx-l i{width:10px;height:10px;border-radius:3px}.tlx .tl-grp{background:#F7F8FB}
+.tlx .tl-tl{display:flex;align-items:center;gap:8px;padding-right:6px}.tl-empty{padding:24px}
+
+.gmpts{border:1px solid #E6D3A0;background:linear-gradient(180deg,#FFFDF7,#fff)}.gmpg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.gmpg ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.5}.gmpg em{color:#6B7385;font-style:normal;font-size:12px}
+.gmph{font-size:12px;font-weight:800;border-radius:999px;padding:2px 10px;display:inline-block}.gmph.d{background:#E7F5EE;color:#0E4D3F}.gmph.a{background:#EEF2FA;color:#1E3A6E}.gmph.n{background:#F3EBD3;color:#6B4A0C}.gmdel{color:var(--r)!important}
 </style>
 </head>
 <body>
@@ -4140,7 +4155,14 @@ A.gmGen=()=>{const M=D.meet||[],m=gmActive()||(S.gmN&&M.find(x=>x.id===S.gmN))||
  toast(r.n?`Notes ready · ${r.d} decisions, ${r.a} action points from ${r.n} lines`:'Notes ready · turn on the mic in the meeting to capture what is said')};
 const _meetViewX=meetView;meetView=function(){const m=gmActive();return `<div class="card gmgen"><div style="flex:1"><b>📝 JDAC Notetaker</b><div class="xs mut">${m?`Meeting on: <b>${h(m.t)}</b> · ${(m.tr||[]).length} lines heard`:'Start or join a meeting below — the notetaker writes what is said.'}</div></div><button class="btn" data-a="gmGen">Generate notes</button><button class="btn sec" data-a="gmNotesAll">All notes</button></div>`+_meetViewX()};
 A.gmNotesAll=()=>{S.chm='notes';S.gmN=null;render()};
-const _noteViewX=noteView;noteView=function(){const m=gmM(),o=_noteViewX();if(!m)return o;const bar=`<div class="card gmgen"><div style="flex:1"><b>📝 Notes for ${h(m.t)}</b><div class="xs mut">${m.gen?'Generated '+new Date(m.gen).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · ':''}${(m.tr||[]).length} lines heard · ${(m.log||[]).length} notes</div></div><button class="btn" data-a="gmGen">${m.gen?'Update notes':'Generate notes'}</button><button class="btn sec" data-a="chm" data-t="meet">← Google Meet</button></div>${m.gen&&!m.end?`<div class="card"><b class="mh">Summary so far</b><pre class="ntpre">${h(gmSummary(m))}</pre><button class="btn sm sec" data-a="gmCopySum">Copy</button></div>`:''}`;return bar+o};
+const shortP=t=>{t=String(t||'').replace(/\s+/g,' ').trim();return t.length>90?t.slice(0,87).replace(/\s\S*$/,'')+'…':t};
+function gmPointsCard(m){const L=m.log||[],dec=L.filter(x=>x.k==='dec'),act=L.filter(x=>x.k==='act'),nt=L.filter(x=>x.k==='note'||!x.k).slice(0,4);
+ const li=(a,f)=>a.length?a.slice(0,6).map(f).join(''):'<li class="mut">—</li>';
+ return `<div class="card gmpts"><div class="row nw" style="margin-bottom:8px"><b style="flex:1">📋 Summary · short points</b><span class="xs mut">${h(m.t)} · ${fmt(m.dt||TODAY)}${m.dur?' · '+m.dur+' min':''}</span><button class="btn sm sec" data-a="gmCopySum">Copy</button></div>
+ <div class="gmpg"><div><div class="gmph d">✔ Decisions</div><ul>${li(dec,x=>`<li>${h(shortP(x.t))}</li>`)}</ul></div><div><div class="gmph a">➜ Action points</div><ul>${li(act,x=>`<li>${h(shortP(x.t))}${x.o?` <em>· ${h(nmF(x.o))}${x.due?', '+fmt(x.due):''}</em>`:''}</li>`)}</ul></div>${nt.length?`<div><div class="gmph n">• Key notes</div><ul>${li(nt,x=>`<li>${h(shortP(x.t))}</li>`)}</ul></div>`:''}</div></div>`}
+A.gmDel=e=>{const m=(D.meet||[]).find(x=>x.id===e.dataset.id);if(!m)return;sheet(`<h2>Delete this meeting?</h2><p class="sm"><b>${h(m.t)}</b> · ${fmt(m.dt||TODAY)} · ${(m.log||[]).length} notes, ${(m.tr||[]).length} transcript lines.</p><p class="xs mut">Tasks already created from it stay.</p><button class="btn w" style="background:var(--r);border-color:var(--r)" data-a="gmDelGo" data-id="${m.id}">Delete meeting</button>`)};
+A.gmDelGo=e=>{D.meet=(D.meet||[]).filter(x=>x.id!==e.dataset.id);if(S.gmN===e.dataset.id)S.gmN=null;save();closeM();render();toast('Meeting deleted')};
+const _noteViewX=noteView;noteView=function(){const m=gmM(),o=_noteViewX();if(!m)return o;const bar=`<div class="card gmgen"><div style="flex:1"><b>📝 Notes for ${h(m.t)}</b><div class="xs mut">${m.gen?'Generated '+new Date(m.gen).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · ':''}${(m.tr||[]).length} lines heard · ${(m.log||[]).length} notes</div></div><button class="btn" data-a="gmGen">${m.gen?'Update notes':'Generate notes'}</button><button class="btn sec" data-a="chm" data-t="meet">← Google Meet</button><button class="btn sec gmdel" data-a="gmDel" data-id="${m.id}">🗑 Delete</button></div>${(m.gen||m.end)?gmPointsCard(m):''}`;return bar+o.replace(/<div class="card" style="margin-top:12px"><b class="mh">Summary<\/b><pre class="ntpre">[\s\S]*?<\/pre>/,'<div class="card" style="margin-top:12px"><b class="mh">Share summary</b>')};
 
 /* ---- Staff (e.g. Neetu): clean top bar — no Split view, Contacts or Live/Prototype label ---- */
 const _rStaffX=render;render=function(){_rStaffX.apply(this,arguments);try{document.documentElement.classList.toggle('staffmode',!isAdm())}catch(e){}};
@@ -4174,5 +4196,57 @@ const _homeGX=V.home;V.home=()=>{const o=_homeGX(),sl=SLOGANS[dayIdx()%SLOGANS.l
  return o.replace(/<div class="greet"><h1>[^<]*<\/h1><p>[\s\S]*?<\/p><\/div>/,`<div class="greet greetR"><div class="gdt">${dt}</div><h1>“${h(sl)}”</h1></div>`)};
 /* ---- Tasks: no visible scrollbars ---- */
 const _rTasksX=render;render=function(){_rTasksX.apply(this,arguments);try{document.documentElement.classList.toggle('v-tasks',S.v==='tasks')}catch(e){}};
+/* ---- Tasks → Meetings: no second "Tasks" heading, no dead List/Board/Calendar buttons ---- */
+const _vtMeetX=V.tasks;V.tasks=()=>{let o=_vtMeetX();if(S.ttab==='meet'){o=o.replace(/<div class="row nw" style="margin-bottom:14px"><div style="flex:1"><h1>Tasks<\/h1>[\s\S]*?<\/div>(<[^>]*>)?<\/div>/,'').replace(/<div class="chips" role="tablist">(?:<button[^>]*data-a="tv"[\s\S]*?<\/button>)+<\/div>/,'')}
+ if(S.ttab==='time')o=o.replace(/<div class="tppl">[\s\S]*?<\/div><\/div><\/div>/,'');return o};
+
+/* ---- Tasks → Timeline v3: date bar, Day list, Project / Person filters, edit dates ---- */
+const TLV={d:1,'1w':7,'2w':14,m:31};
+const tlFrom=()=>{const v=S.tlv||'2w';if(v==='d')return S.tld||TODAY;return S.tls||wkStart(TODAY)};
+taskGantt=function(){S.tlv=S.tlv||'2w';const v=S.tlv,pj=S.tlp||'all',pe=S.tlo||'all';
+ const all=myTasks(),T=all.filter(t=>(pj==='all'||t.proj===pj)&&(pe==='all'||t.o===pe));
+ const people=[...new Set(all.filter(t=>pj==='all'||t.proj===pj).map(t=>t.o))].filter(Boolean).sort((a,b)=>nmF(a).localeCompare(nmF(b)));
+ const projs=D.projects.filter(p=>all.some(t=>t.proj===p.id));
+ const s=tlFrom(),N=TLV[v],days=Array.from({length:N},(_,i)=>addD(s,i)),e=days[N-1];
+ const lab=v==='d'?(s===TODAY?'Today':s===addD(TODAY,1)?'Tomorrow':s===addD(TODAY,-1)?'Yesterday':'')+' · '+new Date(s+'T12:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'}):`${fmt(s)} – ${fmtY(e)}`;
+ const tools=`<div class="tl-bar"><div class="tl-nav"><button data-a="tlNav" data-n="-1" aria-label="Earlier">‹</button><button class="${v==='d'&&s===TODAY?'on':''}" data-a="tlGo" data-d="0">Today</button><button class="${v==='d'&&s===addD(TODAY,1)?'on':''}" data-a="tlGo" data-d="1">Tomorrow</button><button data-a="tlWeek">This week</button><button data-a="tlNav" data-n="1" aria-label="Later">›</button><label class="tl-pick">📅<input type="date" value="${s}" data-ch="tlPick" aria-label="Go to date"></label></div>
+ <b class="tl-rng">${lab}</b><span class="tsp"></span>
+ <div class="vsw">${[['d','Day'],['1w','1 week'],['2w','2 weeks'],['m','Month']].map(([k,n])=>`<button class="${v===k?'on':''}" data-a="tlV" data-t="${k}">${n}</button>`).join('')}</div></div>
+ <div class="tl-flt"><label>Project<select data-ch="tlP"><option value="all">All projects</option>${projs.map(p=>`<option value="${p.id}" ${pj===p.id?'selected':''}>${h(p.n)}</option>`).join('')}</select></label><label>Person<select data-ch="tlO"><option value="all">Everyone (${people.length})</option>${people.map(k=>`<option value="${k}" ${pe===k?'selected':''}>${h(nmF(k))}</option>`).join('')}</select></label>
+ <span class="tl-leg">${KCOL.map(c=>`<span><i style="background:${c[2]}"></i>${c[1]}</span>`).join('')}<span><i class="lt"></i>Late</span></span></div>`;
+ const pill=t=>{const c=KCOL.find(x=>x[0]===colOf(t));return `<span class="tl-st" style="--bc:${c[2]}">${c[1]}</span>`};
+ const edit=t=>canMove(t)?`<button class="tl-ed" data-a="tlEd" data-id="${t.id}" aria-label="Change dates of ${h(t.t)}">📅</button>`:'';
+ if(v==='d'){const L=T.filter(t=>t.st!=='Done'&&tStart(t)<=s&&t.due>=s),late=s===TODAY?T.filter(tLate):[],done=T.filter(t=>t.st==='Done'&&t.due===s);
+  const grp={};L.forEach(t=>(grp[t.o]=grp[t.o]||[]).push(t));
+  const row=t=>`<div class="tl-li ${tLate(t)?'late':''}"><i class="tl-pc" style="background:${projCol(t.proj)}"></i><button class="tl-nm" data-a="tOpen" data-id="${t.id}"><b>${h(t.t)}</b><span>${h(projN(t.proj)||'No project')} · ${tStart(t)===t.due?'due '+fmt(t.due):fmt(tStart(t))+' → '+fmt(t.due)}${t.pri==='High'?' · <em class="r">High</em>':''}</span></button>${pill(t)}${edit(t)}</div>`;
+  return tools+`<div class="tl-day">${late.length?`<div class="tl-sec r"><b>Late (${late.length})</b></div>${late.map(row).join('')}`:''}
+  ${Object.keys(grp).sort((a,b)=>nmF(a).localeCompare(nmF(b))).map(k=>`<div class="tl-sec">${av(nm(k),'s')}<b>${h(nmF(k))}</b><span class="xs mut">${grp[k].length} task${grp[k].length>1?'s':''}</span></div>${grp[k].map(row).join('')}`).join('')||empty('Nothing planned for this day','Pick another day or person')}
+  ${done.length?`<div class="tl-sec g"><b>Completed (${done.length})</b></div>${done.map(row).join('')}`:''}</div>`}
+ const col=d=>dDiff(s,d);
+ const groups=(pj==='all'?D.projects.filter(p=>T.some(t=>t.proj===p.id)):D.projects.filter(p=>p.id===pj)).concat(T.some(t=>!D.projects.find(p=>p.id===t.proj))?[{id:'_none',n:'No project'}]:[]);
+ const inG=(t,g)=>g.id==='_none'?!D.projects.find(p=>p.id===t.proj):t.proj===g.id;
+ const grid=inner=>`<div class="gx-g" style="--n:${N}">${days.map((d,i)=>{const w=new Date(d+'T12:00:00').getDay();return `<i class="gx-c ${w===0?'sun':''} ${d===TODAY?'now':''}" style="grid-column:${i+1}"></i>`}).join('')}${inner}</div>`;
+ const bar=t=>{const a=col(tStart(t)),b=col(t.due);if(b<0||a>N-1)return '';const c=KCOL.find(x=>x[0]===colOf(t)),mv=canMove(t);
+  return `<div class="gx-b ${mv?'mv':''} ${tLate(t)?'late':''}" data-gid="${t.id}" data-a0="${a}" data-b0="${b}" style="grid-column:${Math.max(0,a)+1}/${Math.min(N-1,b)+2};--bc:${c[2]}" title="${h(t.t)} · ${fmt(tStart(t))} → ${fmt(t.due)}">${mv&&a>=0?'<span class="gx-h l"></span>':''}<span class="gx-bt">${a===b?fmt(t.due):fmt(tStart(t))+' – '+fmt(t.due)}</span>${mv&&b<=N-1?'<span class="gx-h r"></span>':''}</div>`};
+ let body='';
+ groups.forEach(g=>{const GT=T.filter(t=>inG(t,g)&&col(t.due)>=0&&col(tStart(t))<=N-1).sort((a,b)=>tStart(a).localeCompare(tStart(b)));if(!GT.length)return;
+  body+=`<div class="gx-r tl-grp"><div class="gx-l"><i style="background:${projCol(g.id)}"></i><b>${h(g.n)}</b><span class="gx-cnt">${GT.filter(t=>t.st!=='Done').length} open</span></div>${grid('')}</div>`;
+  GT.forEach(t=>{body+=`<div class="gx-r gx-task"><div class="gx-l tl-tl">${av(nm(t.o),'s')}<button class="tl-nm" data-a="tOpen" data-id="${t.id}"><b>${h(t.t)}</b><span>${h(nmF(t.o))}${tLate(t)?' · <em class="r">late</em>':tActive(t)?' · <em class="g">on today</em>':''}</span></button>${edit(t)}</div>${grid(bar(t))}</div>`})});
+ S.gs=s;
+ const hd=`<div class="gx-r gx-hd"><div class="gx-l">Task · owner</div><div class="gx-g" style="--n:${N}">${days.map((d,i)=>{const x=new Date(d+'T12:00:00'),wd=x.getDay();return `<div class="gx-d ${d===TODAY?'now':''} ${wd===0?'sun':''}" style="grid-column:${i+1}">${N<=14?`<small>${x.toLocaleDateString('en-IN',{weekday:'short'})}</small>`:''}${(wd===1||i===0||N<=14)?`<b>${x.getDate()}${wd===1||i===0?' '+x.toLocaleDateString('en-IN',{month:'short'}):''}</b>`:x.getDate()}</div>`}).join('')}</div></div>`;
+ return tools+`<div class="gx tlx" style="--n:${N};--cw:${N<=7?110:N<=14?60:30}px"><div class="gx-in">${hd}${body||`<div class="tl-empty">${empty('No tasks in these dates','Change the dates, project or person')}</div>`}</div></div>
+ <div class="xs mut" style="margin-top:8px">📅 changes a task's start and due date · you can also drag a bar, or drag its edges · tap a task to open it.</div>`};
+A.tlV=e=>{S.tlv=e.dataset.t;if(S.tlv==='d')S.tld=S.tld||TODAY;else S.tls=S.tlv==='m'?TODAY.slice(0,8)+'01':wkStart(S.tld||TODAY);render()};
+A.tlGo=e=>{S.tlv='d';S.tld=addD(TODAY,+e.dataset.d);render()};
+A.tlWeek=()=>{S.tlv='1w';S.tls=wkStart(TODAY);render()};
+A.tlNav=e=>{const n=+e.dataset.n,v=S.tlv||'2w';if(v==='d')S.tld=addD(S.tld||TODAY,n);else S.tls=addD(tlFrom(),n*(v==='m'?28:7));render()};
+document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.ch;if(k==='tlPick'&&e.target.value){if((S.tlv||'2w')==='d')S.tld=e.target.value;else S.tls=(S.tlv==='m'?e.target.value:wkStart(e.target.value));render()}if(k==='tlP'){S.tlp=e.target.value;S.tlo='all';render()}if(k==='tlO'){S.tlo=e.target.value;render()}});
+A.tlEd=e=>{const t=D.tasks.find(x=>x.id===e.dataset.id);if(!t)return;const q=(l,a,b)=>`<button class="btn sm sec" data-a="tlQ" data-s="${a}" data-u="${b}">${l}</button>`;
+ sheet(`<h2>Change dates</h2><p class="sm"><b>${h(t.t)}</b> · ${h(nmF(t.o))}</p><div class="row" style="gap:8px"><div style="flex:1"><label for="tl-s">Start</label><input id="tl-s" type="date" value="${tStart(t)}"></div><div style="flex:1"><label for="tl-u">Due</label><input id="tl-u" type="date" value="${t.due}"></div></div>
+ <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${q('Today',TODAY,TODAY)}${q('Tomorrow',addD(TODAY,1),addD(TODAY,1))}${q('This week',TODAY,addD(wkStart(TODAY),5))}${q('Next week',addD(wkStart(TODAY),7),addD(wkStart(TODAY),12))}${q('+1 week',addD(tStart(t),7),addD(t.due,7))}</div>
+ <button class="btn w" style="margin-top:12px" data-a="tlSave" data-id="${t.id}">Save dates</button>`)};
+A.tlQ=e=>{const a=document.getElementById('tl-s'),b=document.getElementById('tl-u');if(a)a.value=e.dataset.s;if(b)b.value=e.dataset.u};
+A.tlSave=e=>{const t=D.tasks.find(x=>x.id===e.dataset.id);if(!t)return;let s1=val('tl-s'),u1=val('tl-u');if(!s1||!u1)return toast('Pick both dates');if(u1<s1)[s1,u1]=[u1,s1];const s0=tStart(t),u0=t.due;t.start=s1;t.due=u1;(t.log=t.log||[]).push({by:S.me,at:TODAY,x:`Dates changed ${fmt(s0)}–${fmt(u0)} → ${fmt(s1)}–${fmt(u1)}`});save();closeM();render();toast('Dates saved · '+(s1===u1?fmt(u1):fmt(s1)+' → '+fmt(u1)))};
+
 render();
 </script></body></html>
