@@ -12,7 +12,8 @@ const HRLOGO=(()=>{try{return new URL('hr-logo.png',location.href).href}catch(x)
 /* JDAC HR Consultancy logo at the top of its company page */
 const LOGLOGO=(()=>{try{return new URL('log-logo.png',location.href).href}catch(x){return 'log-logo.png'}})();
 const CO_LOGO={hr:[HRLOGO,'JDAC HR Consultancy logo'],log:[LOGLOGO,'JDAC Logistics logo']};
-const _coHeadL=coHead;coHead=function(k){const o=_coHeadL(k),L=CO_LOGO[k];return L?o.replace(/<i>[\s\S]*?<\/i>/,`<span class="colog"><img src="${L[0]}" alt="${L[1]}"></span>`):o};
+const CO_THEME={hr:'linear-gradient(120deg,#062E47 0%,#0B4F6C 45%,#0E8C9A 100%)'};
+const _coHeadL=coHead;coHead=function(k){let o=_coHeadL(k),L=CO_LOGO[k];if(L)o=o.replace(/<i>[\s\S]*?<\/i>/,`<span class="colog"><img src="${L[0]}" alt="${L[1]}"></span>`);if(CO_THEME[k])o=o.replace(/style="background:linear-gradient\([^"]*\)"/,`style="background:${CO_THEME[k]}" data-theme="${k}"`);return o};
 
 /* ---------- wallet maths ---------- */
 const wKind=w=>w.kind||(w.amt<0?'fee':/cashback/i.test(w.t||'')?'rc+cb':'recharge');
@@ -123,11 +124,15 @@ const _vWal=V.wallet;V.wallet=()=>{const o=_vWal();return isAdm()?o.replace('<bu
 
 document.head.insertAdjacentHTML('beforeend',`<style>
 .colog{display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:14px;padding:6px 10px;height:62px;box-shadow:0 4px 14px rgba(0,0,0,.15);flex:none}.colog img{height:50px;width:auto;display:block}
+.cohead[data-theme="hr"]{box-shadow:inset 0 -4px 0 #6A0F7A}
+body.co-hr .hrg>span,body.co-hr .hrtabs span{color:#6A0F7A}body.co-hr .chips button.on,body.co-hr .chips button[aria-selected="true"]{background:#0B4F6C!important;border-color:#0B4F6C!important;color:#fff!important}
+body.co-hr .miskpi>div{border-top-color:#0E8C9A}body.co-hr .btn:not(.sec){background:#0B4F6C;border-color:#0B4F6C}
 .hrtabs{width:100%}.hrmis{margin-left:auto!important;order:99}
 .ivsw{display:inline-flex;background:#EEF1F6;border-radius:999px;padding:4px;gap:2px;margin-top:12px}
 .ivsw button{border:0;background:transparent;border-radius:999px;padding:8px 20px;font:800 13px Inter,sans-serif;color:#4A5468;cursor:pointer;transition:all .18s}
 .ivsw button.on.pending{background:#E8772E;color:#fff}.ivsw button.on.paid{background:#1F9D55;color:#fff}.ivsw button.on.void{background:#8A93A3;color:#fff}.ivsw button:disabled{cursor:not-allowed;opacity:.7}
 .ivwrap{max-height:62vh;overflow:auto;border-radius:12px;background:#F4F6FA;padding:10px}
 </style>`);
+const _rTheme=render;render=function(){_rTheme.apply(this,arguments);try{document.body.classList.toggle('co-hr',S.v==='co'&&S.co==='hr')}catch(x){}};
 if(!isAdm()&&K()!=='acc'&&S.v==='wallet')S.v=tabsFor()[0][0];
 render();
