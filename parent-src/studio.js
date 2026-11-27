@@ -8,7 +8,7 @@
 Object.assign(I,{code:'<path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/>',pic:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',dl:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',mega:'<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>'});
 const ST_TEAM=['swapnil','omparvate','himanshu'];
 const isStT=()=>isTop()||ST_TEAM.includes(S.me);
-const canCrl=()=>isTop()||S.me==='swapnil';
+const canCrl=()=>isTop()||ST_TEAM.includes(S.me);
 const stLive=()=>typeof LV!=='undefined'&&LV.ok&&typeof lapi==='function';
 const stBrand=k=>(D.brands||[]).find(b=>b.k===k)||{k,n:k,c:'#6B6E7A',parent:k};
 const stNm=k=>(P[k]||{}).n||nmF(k);
@@ -160,7 +160,7 @@ CTABS.studios=[['dash','Dashboard'],...ST_DEPT,['clients','Clients'],['inv','Inv
 CP['studios:pm']=()=>{stPullAll();return stBar()+pmView()};
 CP['studios:sm']=()=>stBar()+smView();
 CP['studios:it']=()=>{stPullAll();return stBar()+itView()};
-CP['studios:crl']=()=>{stPullAll();return stBar()+`<div class="note" style="margin-top:12px">Everything here shows in <b>Tool Section → Creative Library</b>: each person sees only their company's items, the ones they are in, and what you share with them. Only Swapnil (and Darshan / Nameera) can add or change items.</div>`+crlView(true)};
+CP['studios:crl']=()=>{stPullAll();return stBar()+`<div class="note" style="margin-top:12px">Everything here shows in <b>Tool Section → Creative Library</b>: each person sees only their company's items, the ones they are in, and what you share with them. The Studios team (Swapnil, Om Parvate, Himanshu) and Darshan / Nameera can add or change items.</div>`+crlView(true)};
 /* Swapnil, Om Parvate and Himanshu: their own Studios page with the four departments */
 V.studio=()=>{S.co='studios';if(!ST_DEPT.some(x=>x[0]===S.tab))S.tab=S.me==='himanshu'?'it':S.me==='omparvate'?'pm':'sm';return coHead('studios')+chips(ST_DEPT,S.tab,'tab')+`<div style="margin-top:12px">${CP['studios:'+S.tab]()}</div>`};
 /* old Tool Section → Content opens Studios → Social media */

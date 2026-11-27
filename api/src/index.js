@@ -789,7 +789,7 @@ on('POST', '/api/cm/lines', async (env, req) => {
 
 // ── JDAC Studios: creative library (crl), IT projects (itp), campaign plans (pmp) ──
 // everyone signed in reads; library = admins + Swapnil write; IT projects / campaign plans = admins + studios team write
-const ST_KINDS = { crl: /^swapnil\b/i, itp: /^(swapnil|om parvate|himanshu)\b/i, pmp: /^(swapnil|om parvate|himanshu)\b/i }
+const ST_KINDS = { wacc: /^$/, crl: /^(swapnil|om parvate|himanshu)\b/i, itp: /^(swapnil|om parvate|himanshu)\b/i, pmp: /^(swapnil|om parvate|himanshu)\b/i }
 const stCanWrite = (me, kind) => ADMIN_ROLES.includes(me.role) || ST_KINDS[kind].test(String(me.name || '').trim())
 on('GET', '/api/studio', async (env, req, url) => {
   await authUser(env, req)
