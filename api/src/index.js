@@ -1280,6 +1280,12 @@ async function runMigrations(env) {
     for (const [d, codes] of Object.entries(DEP)) for (const c of codes) await env.DB.prepare('UPDATE employees SET department = ? WHERE emp_code = ?').bind(d, c).run()
     await mark('mig_org_v2')
   }
+  if (!(await done('mig_boss_pw_v1'))) {
+    // 27 Nov 2026 (Darshan): reset the Director's password (only the hash is stored here)
+    const r = await env.DB.prepare("UPDATE employees SET pass_hash = ? WHERE role = 'boss' AND active = 1").bind('pbkdf2$100000$b0u6HNv6-_rH9l3tny2wnA$mN-ic0v16r99WTRUp2wsCnZ_cbcTWCjavVACYIxtuNA').run()
+    await audit(env, null, 'boss_password_reset', 'employees', null, null, { rows: r.meta?.changes || 0 })
+    await mark('mig_boss_pw_v1')
+  }
   if (!(await done('mig_login_v1'))) {
     // Login: User ID = Employee ID (JD1001), password = own 10-digit mobile number. Existing sessions stay logged in.
     await env.DB.prepare("UPDATE employees SET username = emp_code, pass_hash = 'phone' WHERE emp_code IS NOT NULL AND phone IS NOT NULL AND role != 'developer' AND NOT EXISTS (SELECT 1 FROM employees x WHERE x.username = employees.emp_code COLLATE NOCASE AND x.id != employees.id)").run()
