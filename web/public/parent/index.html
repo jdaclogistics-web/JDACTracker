@@ -1281,7 +1281,7 @@ function render(){
  const coL=(isAdm()||K()==='acc')&&!isExt()?(isAdm()?COK:[]):[];
  const side=`<aside class="sb ${S.sbc?'col':''}" aria-label="Navigation"><div class="sb-top"><img src="${typeof JLOGO!=='undefined'?JLOGO:''}" alt="JDAC" class="sb-logo"><div class="sb-mini">JD</div><div class="sb-name">JDAC Parent</div><button class="sb-tg" data-a="sbT" aria-label="${S.sbc?'Open':'Close'} menu">${ic(S.sbc?'right':'back')}</button></div>
  ${(()=>{const all=[...T.filter(x=>x[0]!=='more'),...extra],PIN=isExt()?all.map(x=>x[0]):['home','tasks','people','chat','money','wallet','camp'],top=PIN.map(p=>all.find(x=>x[0]===p)).filter(Boolean),rest=all.filter(x=>!PIN.includes(x[0])),open=S.sbm==null?rest.some(x=>x[0]===S.v):S.sbm,rb=rest.reduce((n,x)=>n+(+b[x[0]]||0),0);
- return `<nav class="sb-nav">${top.map(x=>sbi(x,S.v===x[0])).join('')}${coDrop()}${rest.length?`<button class="sb-more ${open?'op':''}" data-a="sbM" aria-expanded="${open}" title="Tools &amp; Settings">${ic('menu')}<span>Tools &amp; Settings</span>${!open&&rb?`<em class="bdg">${rb}</em>`:''}<i class="chev">${ic('right')}</i></button>${open?`<div class="sb-sub">${rest.map(x=>sbi(x,S.v===x[0])).join('')}</div>`:''}`:''}</nav>`})()}
+ return `<nav class="sb-nav">${top.map(x=>sbi(x,S.v===x[0])).join('')}${coDrop()}${rest.length?`<button class="sb-more ${open?'op':''}" data-a="sbM" aria-expanded="${open}" title="Tool Section">${ic('menu')}<span>Tool Section</span>${!open&&rb?`<em class="bdg">${rb}</em>`:''}<i class="chev">${ic('right')}</i></button>${open?`<div class="sb-sub">${rest.map(x=>sbi(x,S.v===x[0])).join('')}</div>`:''}`:''}</nav>`})()}
  <button class="sb-who" data-a="whoSheet" title="Switch person">${av(ME().n)}<span><b>${h(ME().n)}</b><small>${h(ME().r)}</small></span></button></aside>`;
  document.getElementById('app').innerHTML=`<div class="shell ${S.sbc?'col':''}">${side}<div class="sb-main"><header class="hd"><div class="wrap hrow"><button class="sb-open" data-a="sbT" aria-label="Menu">${ic(S.sbc?'right':'back')}</button><div class="logo m-only" aria-hidden="true">JD</div>
  <button class="who" data-a="whoSheet" aria-label="Switch person"><b>${h(ME().n)} ${ic('down')}</b><span>${h(ME().r)}</span></button>
@@ -1534,7 +1534,7 @@ V.chat=()=>{const G=D.groups.filter(g=>g.all||g.m.includes(S.me)||isAdm());
  (S.chm==='team'?`<div class="list">${G.map(x=>{const last=D.msgs.filter(m=>m.g===x.id).slice(-1)[0];return `<button class="li" data-a="chatOpen" data-id="${x.id}">${av(x.n)}<div class="tx"><b>${h(x.n)}</b><div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${last?h(nmF(last.f)+': '+last.t):'No messages yet'}</div></div><span class="xs mut">${last?last.at:''}</span></button>`}).join('')}</div>`
  :`<div class="list">${empty(S.chm==='email'?h(S.me)+'@jdac.in':'WhatsApp Business',S.chm==='email'?'Your company mailbox opens here once the mail server is connected.':'WhatsApp Business API + BotBees connect here. Chats are saved on the customer.')}</div>`)};
 V.more=()=>{const T=[['people','HR Desk','users','#02496A'],['money','Accounts','rupee','#139B5F'],['kpi','KPIs','star','#F26A1B'],['training','Training','book','#7A2E8E'],['content','Content','cal','#0796A6'],['chat','Chat','chat','#2563C9'],['me','Me','user','#1B1E24'],['settings','Settings','gear','#6B6E7A'],['contacts','Contacts','book','#02496A'],['blueprint','App Blueprint','map','#B86A00']].filter(x=>allowed(x[0]));
- return page('Tools & Settings')+(isAdm()?`${st('Companies')}<div class="circs" style="margin-bottom:8px">${COK.map(k=>`<button class="circ" data-a="co" data-k="${k}"><i style="background:${CO[k].c}">${ic(CO[k].ic)}</i>${coShort(k)}</button>`).join('')}</div>`:'')+`${st('Tools')}<div class="tiles">${T.map(x=>`<button class="tile" data-a="go" data-v="${x[0]}"><i style="background:${x[3]}1a;color:${x[3]}">${ic(x[2])}</i>${x[1]}</button>`).join('')}</div>`};
+ return page('Tool Section')+(isAdm()?`${st('Companies')}<div class="circs" style="margin-bottom:8px">${COK.map(k=>`<button class="circ" data-a="co" data-k="${k}"><i style="background:${CO[k].c}">${ic(CO[k].ic)}</i>${coShort(k)}</button>`).join('')}</div>`:'')+`${st('Tools')}<div class="tiles">${T.map(x=>`<button class="tile" data-a="go" data-v="${x[0]}"><i style="background:${x[3]}1a;color:${x[3]}">${ic(x[2])}</i>${x[1]}</button>`).join('')}</div>`};
 V.me=()=>{const k=S.me,a=D.att.find(x=>x.k===k),led=D.ledger.filter(l=>l.k===k);
  return `<div class="row nw" style="margin-bottom:14px">${av(ME().n,'l')}<div><h1 style="font-size:22px">${h(ME().n)}</h1><div class="mut sm">${h(ME().r)}</div></div></div>
  <div class="card"><div class="row nw"><div style="flex:1"><div class="mut sm">Today</div><b class="num" style="font-size:20px">${a&&a.in?'In at '+a.in+(a.out?' · out '+a.out:''):'Not clocked in'}</b><div class="xs mut">${a&&a.gps?h(a.gps):'Live selfie + GPS · no uploads'}</div></div><button class="btn" data-a="clock">${ic('cam')}${a&&a.in&&!a.out?'Clock out':'Clock in'}</button></div><div id="camwrap"></div></div>
@@ -4093,13 +4093,13 @@ COK.sort((a,b)=>(CORD.indexOf(a)+1||99)-(CORD.indexOf(b)+1||99));
 
 /* ---- Incentives: HR Desk → Incentives. Nameera raises / approves → Accounts pays ---- */
 const incW=l=>/wait|pending|raised/i.test(l.st),incA=l=>/approved/i.test(l.st)&&!/paid/i.test(l.st),incP=l=>/paid/i.test(l.st);
-const _peopleX9=V.people;V.people=()=>{let out=_peopleX9();const n=D.ledger.filter(incW).length;
+const _peopleX9=V.people;V.people=()=>{let out=_peopleX9();const n=D.ledger.filter(l=>incW(l)&&incOk(l.k)).length;
  out=out.replace(/(<button role="tab"[^>]*data-t="pay"[^>]*>[^<]*<\/button>)/,`$1<button role="tab" aria-selected="${S.ptab==='inc'}" class="${S.ptab==='inc'?'on':''}" data-a="ptab" data-t="inc">Incentives${n?` <span class="n">${n}</span>`:''}</button>`);
  if(S.ptab==='inc'){const i=out.indexOf('<div style="margin-top:12px"></div>');if(i>0)out=out.slice(0,i)+'<div style="margin-top:12px"></div>'+pInc()}return out};
 const incPer=()=>S.incP||'m';
 const incIn=l=>{const p=incPer(),d=String(l.at||TODAY).slice(0,10);if(p==='all')return true;if(p==='d')return d===TODAY;if(p==='w')return d>=addD(TODAY,-6)&&d<=TODAY;return d.slice(0,7)===TODAY.slice(0,7)};
 A.incP=e=>{S.incP=e.dataset.t;render()};
-function pInc(){const L=D.ledger.map((l,i)=>Object.assign({i},l)).filter(incIn),W=L.filter(incW),Ap=L.filter(incA),Pd=L.filter(incP),R=L.filter(l=>/reject/i.test(l.st));
+function pInc(){const L=D.ledger.map((l,i)=>Object.assign({i},l)).filter(incIn).filter(l=>incOk(l.k)),W=L.filter(incW),Ap=L.filter(incA),Pd=L.filter(incP),R=L.filter(l=>/reject/i.test(l.st));
  const sum=a=>inr(a.reduce((s,l)=>s+(+l.amt||0),0));const can=isAdm();
  const row=l=>`<div class="li">${av(nm(l.k))}<div class="tx"><b>${h(nm(l.k))} · ${h(l.what)}</b><div class="m">${h(l.st)}${l.at?' · '+fmt(l.at):''}</div></div><b class="amt">${inr(l.amt)}</b>${incW(l)&&can?`<button class="btn sm" data-a="incOk" data-i="${l.i}">Approve</button><button class="btn sm sec" data-a="incNo" data-i="${l.i}">Reject</button>`:''}${incA(l)&&(K()==='acc'||isBoss())?`<button class="btn sm" data-a="incPaid" data-i="${l.i}">Mark paid</button>`:''}</div>`;
  const per={};L.filter(l=>!/reject/i.test(l.st)).forEach(l=>{const o=per[l.k]=per[l.k]||{n:0,t:0,w:0,a:0,p:0};o.n++;o.t+=+l.amt||0;if(incW(l))o.w+=+l.amt||0;else if(incA(l))o.a+=+l.amt||0;else if(incP(l))o.p+=+l.amt||0});
@@ -4112,7 +4112,7 @@ function pInc(){const L=D.ledger.map((l,i)=>Object.assign({i},l)).filter(incIn),
  ${st('Waiting for approval')}<div class="list">${W.map(row).join('')||empty('Nothing waiting','New incentives appear here')}</div>
  ${st('Approved · sent to Accounts')}<div class="list">${Ap.map(row).join('')||empty('Nothing with Accounts','')}</div>
  ${Pd.length||R.length?`${st('Paid / rejected')}<div class="list">${[...Pd,...R].map(row).join('')}</div>`:''}`}
-A.incNew=()=>{const ks=Object.keys(P).filter(k=>['staff','hr','acc'].includes(P[k].kind));sheet(`<h2>Raise incentive</h2><label for="inc-k">Employee</label><select id="inc-k">${ks.map(k=>`<option value="${k}">${h(P[k].n)} · ${h(P[k].r||'')}</option>`).join('')}</select><label for="inc-w">For what</label><input id="inc-w" placeholder="e.g. Spot incentive · 5 bookings"><label for="inc-a">Amount ₹</label><input id="inc-a" type="number" min="1"><button class="btn w" style="margin-top:12px" data-a="incNewGo">${isAdm()?'Raise & approve':'Raise'}</button>`)};
+A.incNew=()=>{const ks=Object.keys(P).filter(k=>['staff','hr','acc'].includes(P[k].kind)&&incOk(k));sheet(`<h2>Raise incentive</h2><label for="inc-k">Employee</label><select id="inc-k">${ks.map(k=>`<option value="${k}">${h(P[k].n)} · ${h(P[k].r||'')}</option>`).join('')}</select><label for="inc-w">For what</label><input id="inc-w" placeholder="e.g. Spot incentive · 5 bookings"><label for="inc-a">Amount ₹</label><input id="inc-a" type="number" min="1"><button class="btn w" style="margin-top:12px" data-a="incNewGo">${isAdm()?'Raise & approve':'Raise'}</button>`)};
 A.incNewGo=()=>{const k=val('inc-k'),w=val('inc-w').trim(),a=+val('inc-a');if(!w||!(a>0))return toast('Write what it is for and the amount');D.ledger.unshift({k,what:w,amt:a,at:TODAY,st:K()==='hr'?'Approved · Nameera → Accounts':isBoss()?'Approved · Darshan → Accounts':'Waiting · Nameera',by:S.me});save();closeM();render();toast('Incentive added')};
 A.incOk=e=>{const l=D.ledger[+e.dataset.i];if(!l)return;l.st='Approved · '+nm(S.me).split(' ')[0]+' → Accounts';save();render();toast('Approved · sent to Accounts')};
 A.incNo=e=>{const l=D.ledger[+e.dataset.i];if(!l)return;l.st='Rejected · '+nm(S.me).split(' ')[0];save();render()};
@@ -4858,7 +4858,7 @@ if(!isAdm()&&K()!=='acc'&&S.v==='wallet')S.v=tabsFor()[0][0];
 render();
 /* ===================== Premium Communication header · personal daily line · date chip ===================== */
 /* ---- date chip: same look on Dashboard and Tasks ---- */
-const dateChip=()=>{const d=new Date(TODAY+'T12:00:00');return `<span class="dchip"><span class="dcd">${d.toLocaleDateString('en-IN',{weekday:'long'})}</span><span class="dcn">${d.getDate()}</span><span class="dcm">${d.toLocaleDateString('en-IN',{month:'short'})} ${d.getFullYear()}</span></span>`};
+const dateChip=()=>{const d=new Date(TODAY+'T12:00:00');return `<span class="dchip" aria-label="${d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}"><span class="dccal"><span class="dcmo">${d.toLocaleDateString('en-IN',{month:'short'}).toUpperCase()}</span><span class="dcn">${d.getDate()}</span></span><span class="dctx"><span class="dcd">${d.toLocaleDateString('en-IN',{weekday:'long'})}</span><span class="dcm">${d.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</span></span></span>`};
 /* ---- short line, different for every person every day ---- */
 const LINES=['Own today.','Small wins, every day.','Finish what you start.','Make every call count.','Customers first, always.','Done is better than perfect.','Follow up. Then follow up again.','Be the calm in the rush.','Speed with care.','Plan it. Do it. Close it.','Earn trust, one task at a time.','Fix it, don’t just flag it.','One team, one target.','Quality is our signature.','Show up. Stand out.','Today’s effort, tomorrow’s growth.','Keep promises small and sure.','Listen first, then solve.','Progress over excuses.','Every detail matters.','Make someone’s day easier.','Commit fully, deliver fully.','Clear head, clean work.','Learn one thing today.','Results speak loudest.','Respect time — always.','Lead by doing.','Simple, fast, right.','Ask, learn, grow.','Own the result.','Kind words, strong work.','Win the morning.','Make it count today.','Stay curious, stay sharp.','Better than yesterday.','Deliver what you promise.','Think customer.','Every rupee counts.','Energy is contagious.','Teamwork wins.'];
 const lineFor=k=>{const ks=Object.keys(P).sort(),i=Math.max(0,ks.indexOf(k));return LINES[(dayIdx()+i)%LINES.length]};
@@ -4884,10 +4884,15 @@ document.addEventListener('click',e=>{if(S.cmdd&&!(e.target.closest&&e.target.cl
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.cmdd){S.cmdd=false;render()}});
 
 document.head.insertAdjacentHTML('beforeend',`<style>
-.dchip{display:inline-flex;align-items:baseline;gap:7px;background:#fff;border:1px solid #E6E9EF;border-radius:999px;padding:6px 14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
-.dcd{font:700 11px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#F28C28}
-.dcn{font:600 17px 'Playfair Display',Georgia,serif;color:#0B1F3A;line-height:1}
-.dcm{font:600 12px Inter,sans-serif;color:#5B6475;letter-spacing:.02em}
+
+
+
+
+.dchip{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #E3E7EF;border-radius:14px;padding:5px 14px 5px 5px;box-shadow:0 2px 6px -2px rgba(16,24,40,.10)}
+.dccal{display:flex;flex-direction:column;align-items:center;width:40px;border-radius:9px;overflow:hidden;border:1px solid #E3E7EF;background:#fff}
+.dcmo{display:block;width:100%;text-align:center;background:#24408E;color:#fff;font:700 9.5px Outfit,Inter,sans-serif;letter-spacing:.12em;padding:2px 0}
+.dcn{font:800 18px/1.15 Outfit,Inter,sans-serif;color:#0B1F3A;padding:1px 0 3px;letter-spacing:-.02em}
+.dctx{display:flex;flex-direction:column;line-height:1.2}.dcd{font:700 13.5px Outfit,Inter,sans-serif;color:#0B1F3A;letter-spacing:.01em}.dcm{font:500 12px Inter,sans-serif;color:#667085}
 .g5{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .gline{font:italic 500 17px 'Playfair Display',Georgia,serif;color:#24408E;letter-spacing:.1px}
 @media(max-width:760px){.g5{align-items:flex-start}.gline{font-size:15px}}
@@ -5539,7 +5544,7 @@ button.ldk{text-align:left;cursor:pointer;font:inherit}button.ldk:hover{box-shad
 .gbc{border:1px solid var(--line);border-left:4px solid var(--c);background:#fff;border-radius:12px;padding:10px 12px;text-align:left;cursor:pointer;font:inherit}.gbc.on{background:color-mix(in srgb,var(--c) 9%,#fff);box-shadow:0 0 0 2px var(--c) inset}.gbc span{display:block;font-weight:800;color:var(--c);font-size:13px}.gbc b{display:block;font-size:16px;margin:2px 0}.gbc small{color:var(--mut);font-size:11.5px}
 </style>`);
 /* Birthday reminder — only for Nameera (HR): one day before, on HR Desk and as a pop-up once a day */
-const bdayTom=()=>(D.emp||[]).filter(e=>e.st==='Active'&&e.dob&&empBdayIn(e.dob)===1);
+const bdayTom=()=>D.bdayOff?[]:(D.emp||[]).filter(e=>e.st==='Active'&&e.dob&&empBdayIn(e.dob)===1);
 const _peopleBD=V.people;V.people=()=>{let out=_peopleBD();if(S.me!=='nameera')return out;const L=bdayTom();if(!L.length)return out;
  const box=`<div class="bdnote" role="status"><span class="bdi">🎂</span><div><b>Birthday tomorrow</b><div>${L.map(e=>`${h(e.n)} turns ${empAge(e.dob)+1} on ${fmtL(addD(TODAY,1))}${e.ph&&e.ph!=='—'?` · ${h(e.ph)}`:''}`).join('<br>')}</div><small>Plan a wish or a small cake for the team.</small></div></div>`;
  const i=out.indexOf('</div>',out.indexOf('HR Desk'));return i>0?out.slice(0,i+6)+box+out.slice(i+6):box+out};
@@ -5574,4 +5579,70 @@ setTimeout(()=>{try{vtAttach()}catch(x){}},1200);
 document.head.insertAdjacentHTML('beforeend',`<style>.vtbox{position:relative;display:flex;flex:1 1 auto;min-width:0;align-self:stretch}.vtbox>textarea{flex:1;width:100%}.vtw{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;gap:4px;z-index:2}.vtpad{padding-right:84px!important}
 .vtb,.vtl{border:1px solid var(--line);background:#fff;border-radius:99px;height:30px;min-width:30px;padding:0 8px;cursor:pointer;font:600 12px Inter,sans-serif;display:grid;place-items:center}.vtb{font-size:15px}
 .vtb.on{background:#C0392B;color:#fff;border-color:#C0392B;animation:vtp 1.2s infinite}@keyframes vtp{0%{box-shadow:0 0 0 0 rgba(192,57,43,.45)}100%{box-shadow:0 0 0 10px rgba(192,57,43,0)}}</style>`);
+
+/* ===== Incentives: only Balaji, Imran, Neetu (CSE) and Snehal B (HR recruiter) ===== */
+const INC_OK=['balaji','imran','neetu','snehalb'];
+let incOk=k=>INC_OK.includes(k);
+const _myIncC2=myIncCard;myIncCard=function(k){return incOk(k)?_myIncC2(k):''};
+['home','me'].forEach(v=>{const f=V[v];if(!f)return;V[v]=function(){if(incOk(S.me))return f.apply(this,arguments);const L=D.ledger;D.ledger=L.filter(l=>l.k!==S.me);try{return f.apply(this,arguments)}finally{D.ledger=L}}});
+
+/* ===== Tasks → Scoreboard: every person's task score in one place ===== */
+const _tHeadSB=taskHead;taskHead=function(me){return _tHeadSB(me).replace(/(<button[^>]*data-t="time"[\s\S]*?<\/button>)/,`$1<button class="${S.ttab==='score'?'on':''}" data-a="ttab" data-t="score" ${S.ttab==='score'?'aria-current="page"':''}>${ic('star')}<span>Scoreboard</span></button>`)};
+function sbRows(p){const m=TODAY.slice(0,7),inP=t=>!t.due?p==='all':p==='all'?true:p==='week'?t.due>=addD(TODAY,-6)&&t.due<=addD(TODAY,7):t.due.slice(0,7)===m;
+ const who=STAFF.filter(k=>k!=='darshan'&&!isZen(k)&&(P[k]||{}).kind!=='boss');
+ return who.map(k=>{const T=D.tasks.filter(t=>t.o===k&&inP(t)),done=T.filter(t=>t.st==='Done'),dueNow=T.filter(t=>t.due&&t.due<=TODAY),late=T.filter(t=>t.st!=='Done'&&t.due&&t.due<TODAY),
+  onTime=done.filter(t=>!t.doneAt||!t.due||t.doneAt.slice(0,10)<=t.due).length,base=Math.max(1,dueNow.length);
+  const s=T.length?Math.round(Math.min(100,(onTime/base)*70+(done.length/T.length)*30)):null;return {k,n:T.length,done:done.length,open:T.length-done.length,late:late.length,onTime,s}}).filter(r=>r.n).sort((a,b)=>(b.s??-1)-(a.s??-1))}
+const _vtSB=V.tasks;V.tasks=()=>{if(S.ttab!=='score')return _vtSB();const me=ME()||{n:''},p=S.sbp||'month';let R=sbRows(p);const adm=isAdm();if(!adm)R=R.filter(r=>r.k===S.me);
+ const team=k=>(P[k]||{}).r||'';
+ return taskHead(me)+`<div class="sbbar">${chips([['week','This week'],['month','This month'],['all','All time']],p,'sbP')}<span class="sp"></span><span class="xs mut">${adm?'Everyone':'Only you can see your score'} · Score = 70% tasks done by their due date + 30% tasks finished</span></div>
+ <div class="xsheet"><table><thead><tr><th>#</th><th class="stk">Person</th><th class="n">Tasks</th><th class="n">Done</th><th class="n">On time</th><th class="n">Open</th><th class="n">Overdue</th><th style="min-width:220px">Score</th></tr></thead><tbody>
+ ${R.map((r,i)=>`<tr><td>${i+1}</td><td class="stk"><div class="row nw" style="gap:8px">${av(nm(r.k))}<div><b>${h(nmF(r.k))}</b><span class="xs mut" style="display:block">${h(team(r.k))}</span></div></div></td><td class="n">${r.n}</td><td class="n">${r.done}</td><td class="n">${r.onTime}</td><td class="n">${r.open}</td><td class="n" style="color:${r.late?'#C0392B':'inherit'};font-weight:${r.late?700:400}">${r.late}</td>
+  <td><div class="sbsc"><div class="sbb"><i style="width:${r.s||0}%;background:${r.s>=75?'#1F9D55':r.s>=50?'#E8A317':'#C0392B'}"></i></div><b>${r.s??'—'}</b></div></td></tr>`).join('')||'<tr><td colspan="8" class="mut" style="text-align:center;padding:18px">No tasks in this period</td></tr>'}</tbody></table></div>`};
+A.sbP=e=>{S.sbp=e.dataset.t;render()};
+/* remember when a task is finished, so "on time" is exact */
+document.addEventListener('click',()=>setTimeout(()=>{let ch=0;(D.tasks||[]).forEach(t=>{if(t.st==='Done'&&!t.doneAt){t.doneAt=TODAY;ch=1}});if(ch)try{save()}catch(x){}},400),true);
+document.head.insertAdjacentHTML('beforeend',`<style>.sbbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}.sbsc{display:flex;align-items:center;gap:10px}.sbb{flex:1;height:9px;background:#EEF1F6;border-radius:6px;overflow:hidden}.sbb i{display:block;height:100%;border-radius:6px}.sbsc b{min-width:28px;text-align:right}</style>`);
+/* motivational line: highlighted, with a soft shine */
+document.head.insertAdjacentHTML('beforeend',`<style>.dctx{text-align:left}
+.g5 .gline{display:inline-flex!important;align-items:center;gap:8px;font:700 15px Outfit,Inter,sans-serif!important;font-style:normal!important;letter-spacing:.01em;padding:8px 16px 8px 12px;border-radius:999px;color:#7A3E00!important;
+ background:linear-gradient(100deg,#FFF3D6 0%,#FFE1A8 45%,#FFF6E2 55%,#FFE1A8 100%);background-size:220% 100%;border:1px solid #F6C46B;box-shadow:0 4px 14px -6px rgba(242,140,40,.55);animation:glshine 4.5s ease-in-out infinite}
+.g5 .gline:before{content:"✦";color:#F28C28;font-size:14px;animation:glstar 2.4s ease-in-out infinite}
+@keyframes glshine{0%,100%{background-position:100% 0}50%{background-position:0 0}}@keyframes glstar{0%,100%{transform:scale(1) rotate(0);opacity:.8}50%{transform:scale(1.25) rotate(20deg);opacity:1}}
+@media (prefers-reduced-motion:reduce){.g5 .gline,.g5 .gline:before{animation:none}}</style>`);
+
+/* ===== Settings: more options ===== */
+const ST_LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem('jdst_'+k);localStorage.setItem('jdst_'+k,v)}catch(x){}};
+const stSec=(k,ico,title,cur,body)=>`<details class="bpsec bpdd" ${(S.stO||{})[k]?'open':''}><summary class="bph" data-a="stO" data-k="${k}"><span class="bpsi">${ico}</span>${title}${cur?` <span class="bpcount">${cur}</span>`:''}</summary><div style="padding:12px 14px">${body}</div></details>`;
+const stOpt=(a,v,l,d,on,ico)=>`<button class="uio ${on?'on':''}" data-a="${a}" data-v="${v}" aria-pressed="${on}"><span class="uii">${ico||''}</span><b>${l}</b>${d?`<span>${d}</span>`:''}</button>`;
+const ST_PAGES=[['home','Dashboard','📊'],['tasks','Tasks','✅'],['chat','Communication','💬'],['people','HR Desk','🧑‍💼'],['money','Accounts','₹'],['wallet','JD Wallet','👛']];
+const _stMore=V.settings;V.settings=()=>{let o=_stMore();const me=P[S.me]||{},live=typeof LV!=='undefined'&&LV.ok,start=ST_LS('start')||'home',sb=ST_LS('sb')||'open',adm=['darshan','nameera'].includes(S.me);
+ const acct=stSec('sAcc','👤','My account',h(nmF(S.me)),`<div class="stacc">${av(nm(S.me))}<div><b>${h(nmF(S.me))}</b><div class="xs mut">${h(me.r||'')}${live&&LV.me&&LV.me.username?' · User ID '+h(LV.me.username):''}</div></div></div>
+  <div class="row" style="gap:8px;margin-top:12px">${live?`<button class="btn sm sec" data-a="stPw">Change password</button><button class="btn sm sec" data-a="lvOut">Sign out</button>`:'<span class="xs mut">Sign in with your User ID to change your password.</span>'}</div>`);
+ const startS=stSec('sStart','🏠','Start page',h((ST_PAGES.find(x=>x[0]===start)||[0,'Dashboard'])[1]),`<p class="xs mut" style="margin:0 0 10px">The page that opens first when you open the panel.</p><div class="uiopts">${ST_PAGES.filter(x=>allowed(x[0])).map(([k,l,i])=>stOpt('stStart',k,l,'',start===k,i)).join('')}</div>`);
+ const menuS=stSec('sMenu','📌','Side menu',sb==='closed'?'Small':'Full',`<div class="uiopts">${stOpt('stSb','open','Full menu','Names and icons',sb!=='closed','📖')}${stOpt('stSb','closed','Small menu','Icons only, more space',sb==='closed','📏')}</div>`);
+ const voiceS=stSec('sVoice','🎤','Voice typing',VT.lang==='hi-IN'?'Hindi':'English',`<p class="xs mut" style="margin:0 0 10px">Tap 🎤 in any chat box and speak. Works in Chrome and Edge.</p><div class="uiopts">${stOpt('stVt','en-IN','English','',VT.lang==='en-IN','🇬🇧')}${stOpt('stVt','hi-IN','हिंदी · Hindi','',VT.lang==='hi-IN','🇮🇳')}</div>`);
+ const cos=(typeof cmCos==='function'?cmCos():[]).filter(k=>k!=='all'),dco=ST_LS('cmco')||cos[0];
+ const commS=cos.length>1?stSec('sComm','💬','Communication','Opens '+h(cmInfo(dco)[1]),`<p class="xs mut" style="margin:0 0 10px">Company that opens first in Communication.</p><div class="uiopts">${cos.map(k=>stOpt('stCo',k,cmInfo(k)[1],'',dco===k,'🏢')).join('')}</div>`):'';
+ const incS=adm?stSec('sInc','🎯','Incentives · who is eligible',incList().length+' people',`<p class="xs mut" style="margin:0 0 10px">Only these people see incentives and can be given one.</p><div class="uiopts">${STAFF.filter(k=>!['darshan'].includes(k)&&!isZen(k)).map(k=>stOpt('stInc',k,nmF(k),(P[k]||{}).r||'',incOk(k),incOk(k)?'✅':'➖')).join('')}</div>`):'';
+ const bdS=adm?stSec('sBday','🎂','Birthday reminders',D.bdayOff?'Off':'On · to Nameera',`<p class="xs mut" style="margin:0 0 10px">Nameera gets a reminder one day before every employee's birthday.</p><div class="uiopts">${stOpt('stBd','on','On','',!D.bdayOff,'🔔')}${stOpt('stBd','off','Off','',!!D.bdayOff,'🔕')}</div>`):'';
+ const appS=stSec('sApp','🔄','App',`updated ${new Date(document.lastModified).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`,`<p class="xs mut" style="margin:0 0 10px">If something looks old, load the latest version.</p><button class="btn sm" data-a="stReload">Load latest version</button> <a class="btn sm sec" href="https://github.com/jdaclogistics-web/JDACTracker/releases/download/apk-latest/JDAC-Tracker.apk" target="_blank" rel="noopener">Download phone app</a>`);
+ return o+`<div class="stmore">${acct}${startS}${menuS}${voiceS}${commS}${bdS}${incS}${appS}</div>`};
+A.stStart=e=>{ST_LS('start',e.dataset.v);render();toast('Start page saved')};
+A.stSb=e=>{ST_LS('sb',e.dataset.v);S.sbc=e.dataset.v==='closed';render()};
+A.stVt=e=>{VT.lang=e.dataset.v;try{localStorage.setItem('vtLang',VT.lang)}catch(x){}render()};
+A.stCo=e=>{ST_LS('cmco',e.dataset.v);S.cmco=e.dataset.v;render();toast('Saved')};
+A.stBd=e=>{D.bdayOff=e.dataset.v==='off';save();render()};
+A.stInc=e=>{const k=e.dataset.v,L=incList();D.incOk=L.includes(k)?L.filter(x=>x!==k):[...L,k];save();render()};
+A.stReload=()=>{location.reload()};
+A.stPw=()=>sheet(`<h2>Change password</h2><label for="stp0">Current password</label><input id="stp0" type="password" autocomplete="current-password"><label for="stp1">New password</label><input id="stp1" type="password" autocomplete="new-password" placeholder="At least 6 characters"><label for="stp2">New password again</label><input id="stp2" type="password" autocomplete="new-password"><button class="btn w" style="margin-top:14px" data-a="stPwGo">Change password</button>`);
+A.stPwGo=async()=>{const a=val('stp0'),b=val('stp1'),c=val('stp2');if(!a||b.length<6)return toast('New password needs at least 6 characters');if(b!==c)return toast('The two new passwords do not match');
+ try{await lapi('POST','/api/me/password',{current:a,password:b});closeM();toast('Password changed')}catch(e){toast(e.message||'Could not change password')}};
+/* incentives list is editable in Settings */
+function incList(){return Array.isArray(D.incOk)?D.incOk:INC_OK}
+incOk=k=>incList().includes(k);
+/* apply saved start page, side menu and default company once on load */
+(()=>{const st=ST_LS('start'),sb=ST_LS('sb'),co=ST_LS('cmco');if(sb)S.sbc=sb==='closed';if(co)S.cmco=co;let first=false;try{first=!sessionStorage.getItem('jdOpened');sessionStorage.setItem('jdOpened','1')}catch(x){}if(st&&first)setTimeout(()=>{if(allowed(st)){S.v=st;render()}},300)})();
+/* birthday reminder can be turned off */
+document.head.insertAdjacentHTML('beforeend',`<style>.stmore{margin-top:2px}.stacc{display:flex;align-items:center;gap:12px}.stacc b{font-size:15px}</style>`);
 </script></body></html>

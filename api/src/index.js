@@ -263,6 +263,18 @@ on('POST', '/api/pings', async (env, req) => {
 })
 
 // ── Employee: history + leave ─────────────────────────────────────────────
+// ── Settings: change my own password (current password needed) ──
+on('POST', '/api/me/password', async (env, req) => {
+  const me = await authUser(env, req), b = await body(req)
+  const cur = String(b.current || '').trim(), nw = String(b.password || '').trim()
+  const row = await env.DB.prepare('SELECT * FROM employees WHERE id = ?').bind(me.id).first()
+  const ok = row && (row.pass_hash === 'phone' ? !!row.phone && phone10(cur) === row.phone : await verifyPassword(cur, row.pass_hash))
+  if (!ok) throw bad('Current password is wrong')
+  if (nw.length < 6) throw bad('New password needs at least 6 characters')
+  await env.DB.prepare('UPDATE employees SET pass_hash = ? WHERE id = ?').bind(await hashPassword(nw), me.id).run()
+  await audit(env, me.id, 'own_password_change', 'employees', String(me.id), null, null)
+  return json({ ok: true })
+})
 on('GET', '/api/me/month', async (env, req, url) => {
   const me = await authUser(env, req)
   const m = url.searchParams.get('month') || istDate().slice(0, 7)

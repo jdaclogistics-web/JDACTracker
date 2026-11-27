@@ -6,13 +6,13 @@ COK.sort((a,b)=>(CORD.indexOf(a)+1||99)-(CORD.indexOf(b)+1||99));
 
 /* ---- Incentives: HR Desk → Incentives. Nameera raises / approves → Accounts pays ---- */
 const incW=l=>/wait|pending|raised/i.test(l.st),incA=l=>/approved/i.test(l.st)&&!/paid/i.test(l.st),incP=l=>/paid/i.test(l.st);
-const _peopleX9=V.people;V.people=()=>{let out=_peopleX9();const n=D.ledger.filter(incW).length;
+const _peopleX9=V.people;V.people=()=>{let out=_peopleX9();const n=D.ledger.filter(l=>incW(l)&&incOk(l.k)).length;
  out=out.replace(/(<button role="tab"[^>]*data-t="pay"[^>]*>[^<]*<\/button>)/,`$1<button role="tab" aria-selected="${S.ptab==='inc'}" class="${S.ptab==='inc'?'on':''}" data-a="ptab" data-t="inc">Incentives${n?` <span class="n">${n}</span>`:''}</button>`);
  if(S.ptab==='inc'){const i=out.indexOf('<div style="margin-top:12px"></div>');if(i>0)out=out.slice(0,i)+'<div style="margin-top:12px"></div>'+pInc()}return out};
 const incPer=()=>S.incP||'m';
 const incIn=l=>{const p=incPer(),d=String(l.at||TODAY).slice(0,10);if(p==='all')return true;if(p==='d')return d===TODAY;if(p==='w')return d>=addD(TODAY,-6)&&d<=TODAY;return d.slice(0,7)===TODAY.slice(0,7)};
 A.incP=e=>{S.incP=e.dataset.t;render()};
-function pInc(){const L=D.ledger.map((l,i)=>Object.assign({i},l)).filter(incIn),W=L.filter(incW),Ap=L.filter(incA),Pd=L.filter(incP),R=L.filter(l=>/reject/i.test(l.st));
+function pInc(){const L=D.ledger.map((l,i)=>Object.assign({i},l)).filter(incIn).filter(l=>incOk(l.k)),W=L.filter(incW),Ap=L.filter(incA),Pd=L.filter(incP),R=L.filter(l=>/reject/i.test(l.st));
  const sum=a=>inr(a.reduce((s,l)=>s+(+l.amt||0),0));const can=isAdm();
  const row=l=>`<div class="li">${av(nm(l.k))}<div class="tx"><b>${h(nm(l.k))} · ${h(l.what)}</b><div class="m">${h(l.st)}${l.at?' · '+fmt(l.at):''}</div></div><b class="amt">${inr(l.amt)}</b>${incW(l)&&can?`<button class="btn sm" data-a="incOk" data-i="${l.i}">Approve</button><button class="btn sm sec" data-a="incNo" data-i="${l.i}">Reject</button>`:''}${incA(l)&&(K()==='acc'||isBoss())?`<button class="btn sm" data-a="incPaid" data-i="${l.i}">Mark paid</button>`:''}</div>`;
  const per={};L.filter(l=>!/reject/i.test(l.st)).forEach(l=>{const o=per[l.k]=per[l.k]||{n:0,t:0,w:0,a:0,p:0};o.n++;o.t+=+l.amt||0;if(incW(l))o.w+=+l.amt||0;else if(incA(l))o.a+=+l.amt||0;else if(incP(l))o.p+=+l.amt||0});
@@ -25,7 +25,7 @@ function pInc(){const L=D.ledger.map((l,i)=>Object.assign({i},l)).filter(incIn),
  ${st('Waiting for approval')}<div class="list">${W.map(row).join('')||empty('Nothing waiting','New incentives appear here')}</div>
  ${st('Approved · sent to Accounts')}<div class="list">${Ap.map(row).join('')||empty('Nothing with Accounts','')}</div>
  ${Pd.length||R.length?`${st('Paid / rejected')}<div class="list">${[...Pd,...R].map(row).join('')}</div>`:''}`}
-A.incNew=()=>{const ks=Object.keys(P).filter(k=>['staff','hr','acc'].includes(P[k].kind));sheet(`<h2>Raise incentive</h2><label for="inc-k">Employee</label><select id="inc-k">${ks.map(k=>`<option value="${k}">${h(P[k].n)} · ${h(P[k].r||'')}</option>`).join('')}</select><label for="inc-w">For what</label><input id="inc-w" placeholder="e.g. Spot incentive · 5 bookings"><label for="inc-a">Amount ₹</label><input id="inc-a" type="number" min="1"><button class="btn w" style="margin-top:12px" data-a="incNewGo">${isAdm()?'Raise & approve':'Raise'}</button>`)};
+A.incNew=()=>{const ks=Object.keys(P).filter(k=>['staff','hr','acc'].includes(P[k].kind)&&incOk(k));sheet(`<h2>Raise incentive</h2><label for="inc-k">Employee</label><select id="inc-k">${ks.map(k=>`<option value="${k}">${h(P[k].n)} · ${h(P[k].r||'')}</option>`).join('')}</select><label for="inc-w">For what</label><input id="inc-w" placeholder="e.g. Spot incentive · 5 bookings"><label for="inc-a">Amount ₹</label><input id="inc-a" type="number" min="1"><button class="btn w" style="margin-top:12px" data-a="incNewGo">${isAdm()?'Raise & approve':'Raise'}</button>`)};
 A.incNewGo=()=>{const k=val('inc-k'),w=val('inc-w').trim(),a=+val('inc-a');if(!w||!(a>0))return toast('Write what it is for and the amount');D.ledger.unshift({k,what:w,amt:a,at:TODAY,st:K()==='hr'?'Approved · Nameera → Accounts':isBoss()?'Approved · Darshan → Accounts':'Waiting · Nameera',by:S.me});save();closeM();render();toast('Incentive added')};
 A.incOk=e=>{const l=D.ledger[+e.dataset.i];if(!l)return;l.st='Approved · '+nm(S.me).split(' ')[0]+' → Accounts';save();render();toast('Approved · sent to Accounts')};
 A.incNo=e=>{const l=D.ledger[+e.dataset.i];if(!l)return;l.st='Rejected · '+nm(S.me).split(' ')[0];save();render()};

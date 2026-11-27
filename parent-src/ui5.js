@@ -1,6 +1,6 @@
 /* ===================== Premium Communication header · personal daily line · date chip ===================== */
 /* ---- date chip: same look on Dashboard and Tasks ---- */
-const dateChip=()=>{const d=new Date(TODAY+'T12:00:00');return `<span class="dchip"><span class="dcd">${d.toLocaleDateString('en-IN',{weekday:'long'})}</span><span class="dcn">${d.getDate()}</span><span class="dcm">${d.toLocaleDateString('en-IN',{month:'short'})} ${d.getFullYear()}</span></span>`};
+const dateChip=()=>{const d=new Date(TODAY+'T12:00:00');return `<span class="dchip" aria-label="${d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}"><span class="dccal"><span class="dcmo">${d.toLocaleDateString('en-IN',{month:'short'}).toUpperCase()}</span><span class="dcn">${d.getDate()}</span></span><span class="dctx"><span class="dcd">${d.toLocaleDateString('en-IN',{weekday:'long'})}</span><span class="dcm">${d.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</span></span></span>`};
 /* ---- short line, different for every person every day ---- */
 const LINES=['Own today.','Small wins, every day.','Finish what you start.','Make every call count.','Customers first, always.','Done is better than perfect.','Follow up. Then follow up again.','Be the calm in the rush.','Speed with care.','Plan it. Do it. Close it.','Earn trust, one task at a time.','Fix it, don’t just flag it.','One team, one target.','Quality is our signature.','Show up. Stand out.','Today’s effort, tomorrow’s growth.','Keep promises small and sure.','Listen first, then solve.','Progress over excuses.','Every detail matters.','Make someone’s day easier.','Commit fully, deliver fully.','Clear head, clean work.','Learn one thing today.','Results speak loudest.','Respect time — always.','Lead by doing.','Simple, fast, right.','Ask, learn, grow.','Own the result.','Kind words, strong work.','Win the morning.','Make it count today.','Stay curious, stay sharp.','Better than yesterday.','Deliver what you promise.','Think customer.','Every rupee counts.','Energy is contagious.','Teamwork wins.'];
 const lineFor=k=>{const ks=Object.keys(P).sort(),i=Math.max(0,ks.indexOf(k));return LINES[(dayIdx()+i)%LINES.length]};
@@ -26,10 +26,15 @@ document.addEventListener('click',e=>{if(S.cmdd&&!(e.target.closest&&e.target.cl
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.cmdd){S.cmdd=false;render()}});
 
 document.head.insertAdjacentHTML('beforeend',`<style>
-.dchip{display:inline-flex;align-items:baseline;gap:7px;background:#fff;border:1px solid #E6E9EF;border-radius:999px;padding:6px 14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
-.dcd{font:700 11px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#F28C28}
-.dcn{font:600 17px 'Playfair Display',Georgia,serif;color:#0B1F3A;line-height:1}
-.dcm{font:600 12px Inter,sans-serif;color:#5B6475;letter-spacing:.02em}
+
+
+
+
+.dchip{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #E3E7EF;border-radius:14px;padding:5px 14px 5px 5px;box-shadow:0 2px 6px -2px rgba(16,24,40,.10)}
+.dccal{display:flex;flex-direction:column;align-items:center;width:40px;border-radius:9px;overflow:hidden;border:1px solid #E3E7EF;background:#fff}
+.dcmo{display:block;width:100%;text-align:center;background:#24408E;color:#fff;font:700 9.5px Outfit,Inter,sans-serif;letter-spacing:.12em;padding:2px 0}
+.dcn{font:800 18px/1.15 Outfit,Inter,sans-serif;color:#0B1F3A;padding:1px 0 3px;letter-spacing:-.02em}
+.dctx{display:flex;flex-direction:column;line-height:1.2}.dcd{font:700 13.5px Outfit,Inter,sans-serif;color:#0B1F3A;letter-spacing:.01em}.dcm{font:500 12px Inter,sans-serif;color:#667085}
 .g5{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .gline{font:italic 500 17px 'Playfair Display',Georgia,serif;color:#24408E;letter-spacing:.1px}
 @media(max-width:760px){.g5{align-items:flex-start}.gline{font-size:15px}}
