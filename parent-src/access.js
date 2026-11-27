@@ -25,3 +25,12 @@ const _vtAC=V.tasks;V.tasks=()=>{if(!isTop()&&S.ttab==='time')S.ttab='proj';retu
 const _myTAC=myTasks;myTasks=function(){if(isTop()||isZen())return _myTAC();const mp=new Set(myProjects().map(p=>p.id));return D.tasks.filter(t=>t.o===S.me||t.by===S.me||(t.cc||[]).includes(S.me)||mp.has(t.proj))};
 const _tHeadAC2=taskHead;taskHead=function(me){const o=_tHeadAC2(me);return isTop()?o:o.replace(/<button[^>]*data-t="forms"[\s\S]*?<\/button>/,'')};
 const _vtAC2=V.tasks;V.tasks=()=>{if(!isTop()&&S.ttab==='forms')S.ttab='proj';return _vtAC2()};
+/* side menu never scrolls: mouse wheel over it does nothing */
+document.addEventListener('wheel',e=>{if(e.target.closest&&e.target.closest('.sb'))e.preventDefault()},{passive:false});
+/* App blueprint: one Darshan only */
+const _vbpAC=V.blueprint;V.blueprint=()=>{if(Array.isArray(BPL.list)){const ds=BPL.list.filter(e=>/^darshan/i.test(e.name||''));if(ds.length>1){const keep=ds.find(e=>e.username==='darshan'||e.role==='boss')||ds[0];BPL.list=BPL.list.filter(e=>!/^darshan/i.test(e.name||'')||e===keep);keep.name='Darshan Soni'}}return _vbpAC()};
+/* photo from the name card at the top right */
+const _whoAC=A.whoSheet;A.whoSheet=function(){_whoAC.apply(this,arguments);setTimeout(()=>{const sh=document.querySelector('.sheet');if(!sh||sh.querySelector('.phrow2'))return;const my=D.photos[S.me];sh.insertAdjacentHTML('afterbegin',`<div class="phrow2">${av(nm(S.me),'l')}<div><label class="btn sm" for="phIn" style="cursor:pointer">${my?'Change my photo':'Add my photo'}</label><input id="phIn" type="file" accept="image/*" hidden>${my?' <button class="btn sm sec" data-a="phDel">Remove</button>':''}</div></div>`)},30)};
+document.head.insertAdjacentHTML('beforeend',`<style>.phrow2{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line)}.phrow2 label.btn{color:#fff!important;margin:0;display:inline-flex;align-items:center}.phrow2 .av{width:54px!important;height:54px!important;font-size:18px!important}</style>`);
+/* people who have left (Exited in the employee master) drop off every people list: owners, assignees, scoreboard, settings */
+(()=>{const gone=(D.emp||[]).filter(e=>e.st==='Exited'&&e.k).map(e=>e.k);for(let i=STAFF.length-1;i>=0;i--)if(gone.includes(STAFF[i]))STAFF.splice(i,1)})();

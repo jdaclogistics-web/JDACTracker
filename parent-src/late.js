@@ -127,7 +127,7 @@ const _me4=V.me;V.me=()=>{let out=_me4();const e=empOf(S.me);if(!e)return out;co
  return out.replace('<div class="card"><div class="row nw"><b style="flex:1">Leave</b>',card+'<div class="card"><div class="row nw"><b style="flex:1">Leave</b>')};
 if(!D.ntcV1){D.emp.forEach(e=>{if(e.notice==null)e.notice=e.k==='nameera'?90:30});D.ntcV1=1;save()}
 /* daily target not reached: shown at the top of the employee's own page */
-const _sh3=staffHome;staffHome=function(){const out=_sh3(),T=D.targets.filter(t=>t.who===S.me&&t.v<t.goal);if(!T.length)return out;const u=(t,n)=>t.unit==='₹'?inr(n):n;
+const _sh3=staffHome;staffHome=function(){const out=_sh3(),T=[];if(!T.length)return out;const u=(t,n)=>t.unit==='₹'?inr(n):n;
  return `<div class="latenote soft" style="margin-bottom:14px"><b>⚠ Daily target not reached yet</b><div class="sm">${T.map(t=>`${h(t.l)}: ${u(t,t.v)} of ${u(t,t.goal)} · ${u(t,t.goal-t.v)} to go`).join('<br>')}</div></div>`+out};
 /* late = more than 15 minutes after the person's own shift start */
 const LATE_MIN=15;

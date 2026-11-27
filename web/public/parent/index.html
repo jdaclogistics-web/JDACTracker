@@ -2287,7 +2287,9 @@ if(D.emp&&!D.empDob1){D.empDob1=1;D.emp.forEach(e=>{if(!e.dob&&EMP_DOB[e.k])e.do
 const empAge=d=>{const a=new Date(TODAY),b=new Date(d);let y=a.getFullYear()-b.getFullYear();if(a.getMonth()<b.getMonth()||a.getMonth()===b.getMonth()&&a.getDate()<b.getDate())y--;return y};
 const empBdayIn=d=>{if(!d)return 999;const t=new Date(TODAY);let n=new Date(t.getFullYear()+d.slice(4));if(n<new Date(TODAY))n=new Date((t.getFullYear()+1)+d.slice(4));return Math.round((n-t)/864e5)};
 const dobCell=e=>e.dob?`${fmtS(e.dob)} <span class="xs mut">· ${empAge(e.dob)} yrs</span>${empBdayIn(e.dob)===0?' 🎂':''}`:'<span class="mut">—</span>';
-const empBdays=()=>{if(S.me!=='nameera')return '';const L=D.emp.filter(e=>e.st==='Active'&&e.dob&&empBdayIn(e.dob)<=30).sort((a,b)=>empBdayIn(a.dob)-empBdayIn(b.dob));return L.length?`<div class="note" style="margin:0 0 10px">🎂 <b>Birthdays in the next 30 days:</b> ${L.map(e=>{const n=empBdayIn(e.dob);return `${h(e.n)} — ${n===0?'<b>today</b>':n===1?'tomorrow':fmtS(addD(TODAY,n))} (turns ${empAge(e.dob)+(n===0?0:1)})`}).join(' · ')}</div>`:''};
+const empBdays=()=>{if(!['nameera','darshan'].includes(S.me))return '';const L=D.emp.filter(e=>e.st==='Active'&&e.dob&&empBdayIn(e.dob)<=30).sort((a,b)=>empBdayIn(a.dob)-empBdayIn(b.dob));if(!L.length)return '';
+ return `<div class="bdup"><div class="bduph">🎂 <b>Upcoming birthdays</b></div><div class="bdupl">${L.map(e=>{const n=empBdayIn(e.dob),d=new Date(addD(TODAY,n)+'T12:00:00');return `<div class="bdupi ${n<=1?'soon':''}">${av(e.n)}<div><b>${h(e.n)}</b><span>${n===0?'Today':n===1?'Tomorrow':d.toLocaleDateString('en-IN',{weekday:'long'})} · ${d.toLocaleDateString('en-IN',{day:'numeric',month:'long'})}</span><em>turns ${empAge(e.dob)+(n===0?0:1)}</em></div></div>`}).join('')}</div></div>`};
+document.head.insertAdjacentHTML('beforeend',`<style>.bdup{background:linear-gradient(90deg,#FFF4E5,#FFF9F0);border:1px solid #F5C98B;border-radius:14px;padding:12px 14px;margin:0 0 12px}.bduph{font-size:15px;color:#9A5B00;margin-bottom:8px}.bdupl{display:flex;gap:10px;flex-wrap:wrap}.bdupi{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #F3DDB5;border-radius:12px;padding:8px 12px}.bdupi.soon{border-color:#F28C28;box-shadow:0 0 0 2px #FFE0B8}.bdupi b{display:block;font-size:13.5px}.bdupi span{display:block;font-size:12px;color:#6B5A3A}.bdupi em{font-style:normal;font-size:11px;color:#9A7A4A}</style>`);
 const empByDoj=(a,b)=>(a.doj||'9999').localeCompare(b.doj||'9999')||String(a.id).localeCompare(String(b.id));
 function pMaster(){S.mf=S.mf||'Active';const q=(S.mq||'').toLowerCase();const cnt=s=>D.emp.filter(e=>s==='All'||e.st===s).length;
  const L=D.emp.filter(e=>(S.mf==='All'||e.st===S.mf)&&(!q||(e.n+' '+e.id+' '+telOf(e.ph)+' '+e.desig+' '+e.city+' '+e.unit).toLowerCase().includes(q))).sort(empByDoj);const sal=L.reduce((a,e)=>a+(e.sal||0),0);
@@ -2676,7 +2678,7 @@ const _me4=V.me;V.me=()=>{let out=_me4();const e=empOf(S.me);if(!e)return out;co
  return out.replace('<div class="card"><div class="row nw"><b style="flex:1">Leave</b>',card+'<div class="card"><div class="row nw"><b style="flex:1">Leave</b>')};
 if(!D.ntcV1){D.emp.forEach(e=>{if(e.notice==null)e.notice=e.k==='nameera'?90:30});D.ntcV1=1;save()}
 /* daily target not reached: shown at the top of the employee's own page */
-const _sh3=staffHome;staffHome=function(){const out=_sh3(),T=D.targets.filter(t=>t.who===S.me&&t.v<t.goal);if(!T.length)return out;const u=(t,n)=>t.unit==='₹'?inr(n):n;
+const _sh3=staffHome;staffHome=function(){const out=_sh3(),T=[];if(!T.length)return out;const u=(t,n)=>t.unit==='₹'?inr(n):n;
  return `<div class="latenote soft" style="margin-bottom:14px"><b>⚠ Daily target not reached yet</b><div class="sm">${T.map(t=>`${h(t.l)}: ${u(t,t.v)} of ${u(t,t.goal)} · ${u(t,t.goal-t.v)} to go`).join('<br>')}</div></div>`+out};
 /* late = more than 15 minutes after the person's own shift start */
 const LATE_MIN=15;
@@ -4876,6 +4878,7 @@ if(!isAdm()&&K()!=='acc'&&S.v==='wallet')S.v=tabsFor()[0][0];
 render();
 /* ===================== Premium Communication header · personal daily line · date chip ===================== */
 /* ---- date chip: same look on Dashboard and Tasks ---- */
+document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap">');
 const dateChip=()=>{const d=new Date(TODAY+'T12:00:00');return `<span class="dchip" aria-label="${d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}"><span class="dccal"><span class="dcmo">${d.toLocaleDateString('en-IN',{month:'short'}).toUpperCase()}</span><span class="dcn">${d.getDate()}</span></span><span class="dctx"><span class="dcd">${d.toLocaleDateString('en-IN',{weekday:'long'})}</span><span class="dcm">${d.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</span></span></span>`};
 /* ---- short line, different for every person every day ---- */
 const LINES=['Own today.','Small wins, every day.','Finish what you start.','Make every call count.','Customers first, always.','Done is better than perfect.','Follow up. Then follow up again.','Be the calm in the rush.','Speed with care.','Plan it. Do it. Close it.','Earn trust, one task at a time.','Fix it, don’t just flag it.','One team, one target.','Quality is our signature.','Show up. Stand out.','Today’s effort, tomorrow’s growth.','Keep promises small and sure.','Listen first, then solve.','Progress over excuses.','Every detail matters.','Make someone’s day easier.','Commit fully, deliver fully.','Clear head, clean work.','Learn one thing today.','Results speak loudest.','Respect time — always.','Lead by doing.','Simple, fast, right.','Ask, learn, grow.','Own the result.','Kind words, strong work.','Win the morning.','Make it count today.','Stay curious, stay sharp.','Better than yesterday.','Deliver what you promise.','Think customer.','Every rupee counts.','Energy is contagious.','Teamwork wins.'];
@@ -4910,7 +4913,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .dccal{display:flex;flex-direction:column;align-items:center;width:40px;border-radius:9px;overflow:hidden;border:1px solid #E3E7EF;background:#fff}
 .dcmo{display:block;width:100%;text-align:center;background:#24408E;color:#fff;font:700 9.5px Outfit,Inter,sans-serif;letter-spacing:.12em;padding:2px 0}
 .dcn{font:800 18px/1.15 Outfit,Inter,sans-serif;color:#0B1F3A;padding:1px 0 3px;letter-spacing:-.02em}
-.dctx{display:flex;flex-direction:column;line-height:1.2}.dcd{font:700 13.5px Outfit,Inter,sans-serif;color:#0B1F3A;letter-spacing:.01em}.dcm{font:500 12px Inter,sans-serif;color:#667085}
+.dctx{display:flex;flex-direction:column;line-height:1.1}.dcd{font:700 21px 'Dancing Script','Brush Script MT',cursive;color:#1D3378;letter-spacing:.01em}.dcm{font:italic 600 12.5px 'Playfair Display',Georgia,serif;color:#5B6475}
 .g5{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .gline{font:italic 500 17px 'Playfair Display',Georgia,serif;color:#24408E;letter-spacing:.1px}
 @media(max-width:760px){.g5{align-items:flex-start}.gline{font-size:15px}}
@@ -5738,4 +5741,13 @@ const _vtAC=V.tasks;V.tasks=()=>{if(!isTop()&&S.ttab==='time')S.ttab='proj';retu
 const _myTAC=myTasks;myTasks=function(){if(isTop()||isZen())return _myTAC();const mp=new Set(myProjects().map(p=>p.id));return D.tasks.filter(t=>t.o===S.me||t.by===S.me||(t.cc||[]).includes(S.me)||mp.has(t.proj))};
 const _tHeadAC2=taskHead;taskHead=function(me){const o=_tHeadAC2(me);return isTop()?o:o.replace(/<button[^>]*data-t="forms"[\s\S]*?<\/button>/,'')};
 const _vtAC2=V.tasks;V.tasks=()=>{if(!isTop()&&S.ttab==='forms')S.ttab='proj';return _vtAC2()};
+/* side menu never scrolls: mouse wheel over it does nothing */
+document.addEventListener('wheel',e=>{if(e.target.closest&&e.target.closest('.sb'))e.preventDefault()},{passive:false});
+/* App blueprint: one Darshan only */
+const _vbpAC=V.blueprint;V.blueprint=()=>{if(Array.isArray(BPL.list)){const ds=BPL.list.filter(e=>/^darshan/i.test(e.name||''));if(ds.length>1){const keep=ds.find(e=>e.username==='darshan'||e.role==='boss')||ds[0];BPL.list=BPL.list.filter(e=>!/^darshan/i.test(e.name||'')||e===keep);keep.name='Darshan Soni'}}return _vbpAC()};
+/* photo from the name card at the top right */
+const _whoAC=A.whoSheet;A.whoSheet=function(){_whoAC.apply(this,arguments);setTimeout(()=>{const sh=document.querySelector('.sheet');if(!sh||sh.querySelector('.phrow2'))return;const my=D.photos[S.me];sh.insertAdjacentHTML('afterbegin',`<div class="phrow2">${av(nm(S.me),'l')}<div><label class="btn sm" for="phIn" style="cursor:pointer">${my?'Change my photo':'Add my photo'}</label><input id="phIn" type="file" accept="image/*" hidden>${my?' <button class="btn sm sec" data-a="phDel">Remove</button>':''}</div></div>`)},30)};
+document.head.insertAdjacentHTML('beforeend',`<style>.phrow2{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line)}.phrow2 label.btn{color:#fff!important;margin:0;display:inline-flex;align-items:center}.phrow2 .av{width:54px!important;height:54px!important;font-size:18px!important}</style>`);
+/* people who have left (Exited in the employee master) drop off every people list: owners, assignees, scoreboard, settings */
+(()=>{const gone=(D.emp||[]).filter(e=>e.st==='Exited'&&e.k).map(e=>e.k);for(let i=STAFF.length-1;i>=0;i--)if(gone.includes(STAFF[i]))STAFF.splice(i,1)})();
 </script></body></html>
