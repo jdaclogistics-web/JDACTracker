@@ -21,3 +21,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>.sb{overflow:hidden!importa
 /* Tasks: Timeline only for Darshan and Nameera */
 const _tHeadAC=taskHead;taskHead=function(me){const o=_tHeadAC(me);return isTop()?o:o.replace(/<button[^>]*data-t="time"[\s\S]*?<\/button>/,'')};
 const _vtAC=V.tasks;V.tasks=()=>{if(!isTop()&&S.ttab==='time')S.ttab='proj';return _vtAC()};
+/* Tasks for staff: only their own tasks and tasks in projects they are a member of; no Forms tab */
+const _myTAC=myTasks;myTasks=function(){if(isTop()||isZen())return _myTAC();const mp=new Set(myProjects().map(p=>p.id));return D.tasks.filter(t=>t.o===S.me||t.by===S.me||(t.cc||[]).includes(S.me)||mp.has(t.proj))};
+const _tHeadAC2=taskHead;taskHead=function(me){const o=_tHeadAC2(me);return isTop()?o:o.replace(/<button[^>]*data-t="forms"[\s\S]*?<\/button>/,'')};
+const _vtAC2=V.tasks;V.tasks=()=>{if(!isTop()&&S.ttab==='forms')S.ttab='proj';return _vtAC2()};
