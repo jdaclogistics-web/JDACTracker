@@ -86,7 +86,7 @@ const _meStaffX=V.me;V.me=()=>{let out=_meStaffX();if(isBoss())return out;
  const ln=out.match(/<div class="latenote[^"]*"><b>([^<]*)<\/b><div class="sm">([^<]*)<\/div><\/div>/);
  if(ln){out=out.replace(ln[0],'');out=out.replace('<div class="mehead">',`<div class="mehead">`).replace(/(<div class="medate">[\s\S]*?<\/div>)/,`$1<button class="latechip" data-a="lateInfo" data-t="${h(ln[1])}" data-d="${h(ln[2])}">⚠ ${h(ln[1])}</button>`)}
  /* salary slips → request from HR (email template) */
- out=out.replace(/<div class="card"><b>My salary slips<\/b>[\s\S]*?<\/div><\/div>(?=\s*(<div class="card">|<\/div>|$))/,`<div class="card slipreq"><div class="row nw" style="gap:12px"><span style="font-size:26px">🧾</span><div style="flex:1"><b>Need your salary slip?</b><div class="xs mut">Ask HR Manager Nameera. She sends it to your email.</div></div><button class="btn" data-a="slipReq">Email HR</button></div></div>`);
+ out=out.replace(/<div class="card"><b>My salary slips<\/b>[\s\S]*?<\/div><\/div>(?=\s*(<div class="card">|<\/div>|$))/,'');
 
  if(!isWarehouse(S.me))out=out.replace(/<div class="card"><div class="row nw"><b style="flex:1">Weekly off swap<\/b>[\s\S]*?<\/div><\/div><\/div>/,'');
  return out};
