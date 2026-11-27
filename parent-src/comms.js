@@ -11,7 +11,7 @@ const cmTeams=co=>cmInfo(co)[2];
 const cmNum=co=>D.comNums[co]||{};
 const coOfTeam=t=>(CM_CO.find(x=>x[2].includes(t))||CM_CO[0]);
 /* WhatsApp inbox shows only the chosen company's number(s) */
-const _myWaCM=myWaTeams;myWaTeams=function(){const T=_myWaCM();return S.v==='chat'?T.filter(t=>cmTeams(cmCo()).includes(t)):T};
+const _myWaCM=myWaTeams;myWaTeams=function(){const T=_myWaCM();return (S.v==='chat'||S.v==='crm')?T.filter(t=>cmTeams(cmCo()).includes(t)):T};
 
 /* stages → CRM columns (Superfone flow) */
 const CM_COL=[['new','New lead',['Open'],'#2F6BE0'],['con','Contacted',['Contacted'],'#0B6E8A'],['quo','Quotation & chase',['Quotation sent','Q Chase 1','Q Chase 2'],'#B8860B'],
@@ -141,10 +141,10 @@ A.cmCallNo=e=>{const c=cmWA().find(x=>telN(x.ph)===telN(e.dataset.ph));cmDoCall(
 A.cmDial=()=>{const p=val('cmdial');if(telN(p).length<10)return toast('Enter a 10-digit number');const c=cmWA().find(x=>telN(x.ph)===telN(p)),co=cmCo()==='all'?'log':cmCo();cmDoCall(co,c?c.n:p,p,c)};
 const cmSetStg=(c,s)=>{if(!c||c.stg===s)return;c.stg=s;waLog(c,'Stage → '+s);save();render();toast(`${c.n} → ${s}`)};
 /* a new chat started from "New customer" opens in the panel */
-const _waNewGoCM=A.waNewGo;A.waNewGo=()=>{_waNewGoCM();if(S.v==='chat'&&S.wac){S.cmd=S.wac;S.cmtab='chat';render();cmScroll()}};
+const _waNewGoCM=A.waNewGo;A.waNewGo=()=>{_waNewGoCM();if((S.v==='chat'||S.v==='crm')&&S.wac){S.cmd=S.wac;S.cmtab='chat';render();cmScroll()}};
 document.addEventListener('change',e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.ch==='cmw'){S.cmw=e.target.value;render()}if(d.ch==='cmStg'){cmSetStg(D.wa.find(x=>x.id===d.id),e.target.value)}});
 document.addEventListener('input',e=>{if(e.target.id==='cmq'){S.cmq=e.target.value;const p=e.target.selectionStart;render();const i=document.getElementById('cmq');if(i){i.focus();i.setSelectionRange(p,p)}}});
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&e.target&&e.target.id==='msg'&&S.v==='chat'&&S.cmd){e.preventDefault();A.cmSend({dataset:{id:S.cmd}})}if(e.key==='Escape'&&S.v==='chat'&&S.cmd){S.cmd=null;render()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&e.target&&e.target.id==='msg'&&(S.v==='chat'||S.v==='crm')&&S.cmd){e.preventDefault();A.cmSend({dataset:{id:S.cmd}})}if(e.key==='Escape'&&(S.v==='chat'||S.v==='crm')&&S.cmd){S.cmd=null;render()}});
 document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('.cmc');if(c){e.dataTransfer.setData('text/plain',c.dataset.cid);c.classList.add('drag')}});
 document.addEventListener('dragend',e=>{const c=e.target.closest&&e.target.closest('.cmc');if(c)c.classList.remove('drag');document.querySelectorAll('.cmcol.over').forEach(x=>x.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const col=e.target.closest&&e.target.closest('.cmcol');if(col){e.preventDefault();document.querySelectorAll('.cmcol.over').forEach(x=>x!==col&&x.classList.remove('over'));col.classList.add('over')}});
@@ -154,7 +154,7 @@ const _vChatCM=V.chat;V.chat=()=>{if(['meet','notes'].includes(S.chm)||!S.chm)S.
  S.cco=cmCo()==='all'?'log':cmCo();
  if(S.chm==='crm')return `<div class="cmwrap">${chatHead()}${crmView()}</div>`;
  return _vChatCM()};
-const _rCM=render;render=function(){_rCM.apply(this,arguments);try{document.body.classList.toggle('cmmode',S.v==='chat')}catch(x){}};
+const _rCM=render;render=function(){_rCM.apply(this,arguments);try{document.body.classList.toggle('cmmode',(S.v==='chat'||S.v==='crm'))}catch(x){}};
 
 document.head.insertAdjacentHTML('beforeend',`<style>
 @media(min-width:761px){body.cmmode header.hd{display:none!important}}

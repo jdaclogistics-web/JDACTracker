@@ -126,8 +126,8 @@ crmView=function(){const T=myWaTeams();let v=S.cmv||'board';if(v==='inbox')v=S.c
 
 /* funnel follows the selected company; new HR contacts land in the CRM you are on */
 const _vChatV3=V.chat;V.chat=()=>{if(!S.cmco||S.cmco==='all')S.cmco=cmCos().find(k=>k!=='all')||'log';cmFunApply(cmFk());return _vChatV3()};
-const _rV3=render;render=function(){if(S.v!=='chat')cmFunApply('log');return _rV3.apply(this,arguments)};
-const _waNewV3=A.waNewGo;A.waNewGo=()=>{const n=D.wa.length;_waNewV3();if(S.v==='chat'&&D.wa.length>n&&cmSegs(cmCo())){D.wa[D.wa.length-1].seg=cmSeg();save()}};
+const _rV3=render;render=function(){if((S.v!=='chat'&&S.v!=='crm'))cmFunApply('log');return _rV3.apply(this,arguments)};
+const _waNewV3=A.waNewGo;A.waNewGo=()=>{const n=D.wa.length;_waNewV3();if((S.v==='chat'||S.v==='crm')&&D.wa.length>n&&cmSegs(cmCo())){D.wa[D.wa.length-1].seg=cmSeg();save()}};
 const _cmCoV3=A.cmCo;A.cmCo=e=>{_cmCoV3(e);if(S.cmv==='inbox')S.cmv='wa'};
 
 document.head.insertAdjacentHTML('beforeend',`<style>

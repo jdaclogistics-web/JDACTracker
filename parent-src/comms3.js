@@ -12,13 +12,13 @@ function cmLinesLoad(){(D.cmLines||[]).forEach(l=>{if(CM_CO.some(x=>x[0]===l.k))
 cmLinesLoad();
 function cmExtraCos(){return (D.cmLines||[]).filter(l=>(l.staff||[]).includes(S.me)).map(l=>l.k)}
 /* staff on an added company get its chats */
-const _myWaV4=myWaTeams;myWaTeams=function(){const T=_myWaV4(),M=cmExtraCos();if(!M.length)return T;if(S.v==='chat'){const co=cmCo();return M.includes(co)?[...new Set([...T,co])]:T}return [...new Set([...T,...M])]};
+const _myWaV4=myWaTeams;myWaTeams=function(){const T=_myWaV4(),M=cmExtraCos();if(!M.length)return T;if((S.v==='chat'||S.v==='crm')){const co=cmCo();return M.includes(co)?[...new Set([...T,co])]:T}return [...new Set([...T,...M])]};
 /* saved on the server so every login and device sees the same list */
 const cmLive=()=>typeof LV!=='undefined'&&LV.ok&&LV.tok;
 async function cmLinesPull(){if(!cmLive())return;try{const r=await lapi('GET','/api/cm/lines');const loc=(D.cmLines||[]).filter(l=>!l.srv&&!r.lines.some(x=>x.k===l.k));
  for(const l of loc)if(isAdm())await cmLinePush(l);
  const keep=new Set(r.lines.map(l=>l.k));for(let i=CM_CO.length-1;i>=0;i--)if(/^x/.test(CM_CO[i][0])&&!keep.has(CM_CO[i][0])&&!loc.some(l=>l.k===CM_CO[i][0]))CM_CO.splice(i,1);
- D.cmLines=[...r.lines.map(l=>({...l,srv:1})),...loc];r.lines.forEach(l=>{const i=CM_CO.findIndex(x=>x[0]===l.k);if(i>=0)CM_CO.splice(i,1)});cmLinesLoad();save();if(S.v==='chat')render()}catch(x){}}
+ D.cmLines=[...r.lines.map(l=>({...l,srv:1})),...loc];r.lines.forEach(l=>{const i=CM_CO.findIndex(x=>x[0]===l.k);if(i>=0)CM_CO.splice(i,1)});cmLinesLoad();save();if((S.v==='chat'||S.v==='crm'))render()}catch(x){}}
 async function cmLinePush(l){if(!cmLive())return;const {srv,updatedBy,updatedAt,...d}=l;try{await lapi('POST','/api/cm/lines',{line:d});l.srv=1;save()}catch(e){toast('Not saved on server: '+e.message)}}
 setTimeout(cmLinesPull,2500);setInterval(()=>{if(document.visibilityState==='visible')cmLinesPull()},300000);
 const _vChatV4=V.chat;V.chat=()=>{if(!S.cmPulled){S.cmPulled=1;setTimeout(cmLinesPull,0)}return _vChatV4()};

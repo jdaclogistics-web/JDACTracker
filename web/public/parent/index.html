@@ -4498,7 +4498,7 @@ const cmTeams=co=>cmInfo(co)[2];
 const cmNum=co=>D.comNums[co]||{};
 const coOfTeam=t=>(CM_CO.find(x=>x[2].includes(t))||CM_CO[0]);
 /* WhatsApp inbox shows only the chosen company's number(s) */
-const _myWaCM=myWaTeams;myWaTeams=function(){const T=_myWaCM();return S.v==='chat'?T.filter(t=>cmTeams(cmCo()).includes(t)):T};
+const _myWaCM=myWaTeams;myWaTeams=function(){const T=_myWaCM();return (S.v==='chat'||S.v==='crm')?T.filter(t=>cmTeams(cmCo()).includes(t)):T};
 
 /* stages → CRM columns (Superfone flow) */
 const CM_COL=[['new','New lead',['Open'],'#2F6BE0'],['con','Contacted',['Contacted'],'#0B6E8A'],['quo','Quotation & chase',['Quotation sent','Q Chase 1','Q Chase 2'],'#B8860B'],
@@ -4628,10 +4628,10 @@ A.cmCallNo=e=>{const c=cmWA().find(x=>telN(x.ph)===telN(e.dataset.ph));cmDoCall(
 A.cmDial=()=>{const p=val('cmdial');if(telN(p).length<10)return toast('Enter a 10-digit number');const c=cmWA().find(x=>telN(x.ph)===telN(p)),co=cmCo()==='all'?'log':cmCo();cmDoCall(co,c?c.n:p,p,c)};
 const cmSetStg=(c,s)=>{if(!c||c.stg===s)return;c.stg=s;waLog(c,'Stage → '+s);save();render();toast(`${c.n} → ${s}`)};
 /* a new chat started from "New customer" opens in the panel */
-const _waNewGoCM=A.waNewGo;A.waNewGo=()=>{_waNewGoCM();if(S.v==='chat'&&S.wac){S.cmd=S.wac;S.cmtab='chat';render();cmScroll()}};
+const _waNewGoCM=A.waNewGo;A.waNewGo=()=>{_waNewGoCM();if((S.v==='chat'||S.v==='crm')&&S.wac){S.cmd=S.wac;S.cmtab='chat';render();cmScroll()}};
 document.addEventListener('change',e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.ch==='cmw'){S.cmw=e.target.value;render()}if(d.ch==='cmStg'){cmSetStg(D.wa.find(x=>x.id===d.id),e.target.value)}});
 document.addEventListener('input',e=>{if(e.target.id==='cmq'){S.cmq=e.target.value;const p=e.target.selectionStart;render();const i=document.getElementById('cmq');if(i){i.focus();i.setSelectionRange(p,p)}}});
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&e.target&&e.target.id==='msg'&&S.v==='chat'&&S.cmd){e.preventDefault();A.cmSend({dataset:{id:S.cmd}})}if(e.key==='Escape'&&S.v==='chat'&&S.cmd){S.cmd=null;render()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&e.target&&e.target.id==='msg'&&(S.v==='chat'||S.v==='crm')&&S.cmd){e.preventDefault();A.cmSend({dataset:{id:S.cmd}})}if(e.key==='Escape'&&(S.v==='chat'||S.v==='crm')&&S.cmd){S.cmd=null;render()}});
 document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('.cmc');if(c){e.dataTransfer.setData('text/plain',c.dataset.cid);c.classList.add('drag')}});
 document.addEventListener('dragend',e=>{const c=e.target.closest&&e.target.closest('.cmc');if(c)c.classList.remove('drag');document.querySelectorAll('.cmcol.over').forEach(x=>x.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const col=e.target.closest&&e.target.closest('.cmcol');if(col){e.preventDefault();document.querySelectorAll('.cmcol.over').forEach(x=>x!==col&&x.classList.remove('over'));col.classList.add('over')}});
@@ -4641,7 +4641,7 @@ const _vChatCM=V.chat;V.chat=()=>{if(['meet','notes'].includes(S.chm)||!S.chm)S.
  S.cco=cmCo()==='all'?'log':cmCo();
  if(S.chm==='crm')return `<div class="cmwrap">${chatHead()}${crmView()}</div>`;
  return _vChatCM()};
-const _rCM=render;render=function(){_rCM.apply(this,arguments);try{document.body.classList.toggle('cmmode',S.v==='chat')}catch(x){}};
+const _rCM=render;render=function(){_rCM.apply(this,arguments);try{document.body.classList.toggle('cmmode',(S.v==='chat'||S.v==='crm'))}catch(x){}};
 
 document.head.insertAdjacentHTML('beforeend',`<style>
 @media(min-width:761px){body.cmmode header.hd{display:none!important}}
@@ -5256,8 +5256,8 @@ crmView=function(){const T=myWaTeams();let v=S.cmv||'board';if(v==='inbox')v=S.c
 
 /* funnel follows the selected company; new HR contacts land in the CRM you are on */
 const _vChatV3=V.chat;V.chat=()=>{if(!S.cmco||S.cmco==='all')S.cmco=cmCos().find(k=>k!=='all')||'log';cmFunApply(cmFk());return _vChatV3()};
-const _rV3=render;render=function(){if(S.v!=='chat')cmFunApply('log');return _rV3.apply(this,arguments)};
-const _waNewV3=A.waNewGo;A.waNewGo=()=>{const n=D.wa.length;_waNewV3();if(S.v==='chat'&&D.wa.length>n&&cmSegs(cmCo())){D.wa[D.wa.length-1].seg=cmSeg();save()}};
+const _rV3=render;render=function(){if((S.v!=='chat'&&S.v!=='crm'))cmFunApply('log');return _rV3.apply(this,arguments)};
+const _waNewV3=A.waNewGo;A.waNewGo=()=>{const n=D.wa.length;_waNewV3();if((S.v==='chat'||S.v==='crm')&&D.wa.length>n&&cmSegs(cmCo())){D.wa[D.wa.length-1].seg=cmSeg();save()}};
 const _cmCoV3=A.cmCo;A.cmCo=e=>{_cmCoV3(e);if(S.cmv==='inbox')S.cmv='wa'};
 
 document.head.insertAdjacentHTML('beforeend',`<style>
@@ -5305,13 +5305,13 @@ function cmLinesLoad(){(D.cmLines||[]).forEach(l=>{if(CM_CO.some(x=>x[0]===l.k))
 cmLinesLoad();
 function cmExtraCos(){return (D.cmLines||[]).filter(l=>(l.staff||[]).includes(S.me)).map(l=>l.k)}
 /* staff on an added company get its chats */
-const _myWaV4=myWaTeams;myWaTeams=function(){const T=_myWaV4(),M=cmExtraCos();if(!M.length)return T;if(S.v==='chat'){const co=cmCo();return M.includes(co)?[...new Set([...T,co])]:T}return [...new Set([...T,...M])]};
+const _myWaV4=myWaTeams;myWaTeams=function(){const T=_myWaV4(),M=cmExtraCos();if(!M.length)return T;if((S.v==='chat'||S.v==='crm')){const co=cmCo();return M.includes(co)?[...new Set([...T,co])]:T}return [...new Set([...T,...M])]};
 /* saved on the server so every login and device sees the same list */
 const cmLive=()=>typeof LV!=='undefined'&&LV.ok&&LV.tok;
 async function cmLinesPull(){if(!cmLive())return;try{const r=await lapi('GET','/api/cm/lines');const loc=(D.cmLines||[]).filter(l=>!l.srv&&!r.lines.some(x=>x.k===l.k));
  for(const l of loc)if(isAdm())await cmLinePush(l);
  const keep=new Set(r.lines.map(l=>l.k));for(let i=CM_CO.length-1;i>=0;i--)if(/^x/.test(CM_CO[i][0])&&!keep.has(CM_CO[i][0])&&!loc.some(l=>l.k===CM_CO[i][0]))CM_CO.splice(i,1);
- D.cmLines=[...r.lines.map(l=>({...l,srv:1})),...loc];r.lines.forEach(l=>{const i=CM_CO.findIndex(x=>x[0]===l.k);if(i>=0)CM_CO.splice(i,1)});cmLinesLoad();save();if(S.v==='chat')render()}catch(x){}}
+ D.cmLines=[...r.lines.map(l=>({...l,srv:1})),...loc];r.lines.forEach(l=>{const i=CM_CO.findIndex(x=>x[0]===l.k);if(i>=0)CM_CO.splice(i,1)});cmLinesLoad();save();if((S.v==='chat'||S.v==='crm'))render()}catch(x){}}
 async function cmLinePush(l){if(!cmLive())return;const {srv,updatedBy,updatedAt,...d}=l;try{await lapi('POST','/api/cm/lines',{line:d});l.srv=1;save()}catch(e){toast('Not saved on server: '+e.message)}}
 setTimeout(cmLinesPull,2500);setInterval(()=>{if(document.visibilityState==='visible')cmLinesPull()},300000);
 const _vChatV4=V.chat;V.chat=()=>{if(!S.cmPulled){S.cmPulled=1;setTimeout(cmLinesPull,0)}return _vChatV4()};
@@ -6077,14 +6077,59 @@ V.crm=()=>{S.chm='crm';const o=_vChatNV();return o};
 V.chat=()=>{if(['crm','wa','call'].includes(S.chm)){S.v='crm';return V.crm()}if(!S.chm||!['team','email','meet','notes'].includes(S.chm))S.chm='team';return _vChatNV()};
 const _goNV=A.go;A.go=e=>{if(e.dataset.v==='chat'&&!['team','email'].includes(S.chm))S.chm='team';_goNV(e)};
 const crmCosNV=()=>(typeof cmCos==='function'?cmCos():[]).filter(k=>k!=='all');
-A.crmCo=e=>{S.v='crm';S.sbcrm=true;A.cmCo(e);scrollTo(0,0)};
-A.sbCrm=e=>{S.sbcrm=!(e.getAttribute&&e.getAttribute('aria-expanded')==='true');render()};
 const _allowedNV=allowed;allowed=function(v){if(v==='crm')return _allowedNV('chat')&&crmCosNV().length>0;return _allowedNV(v)};
 const _tabsNV=tabsFor;tabsFor=function(who){const T=_tabsNV(who);if(T.some(x=>x[0]==='chat')&&!T.some(x=>x[0]==='crm')&&(!who||who===S.me?allowed('crm'):true)){const i=T.findIndex(x=>x[0]==='chat');T.splice(i,0,['crm','CRM','users'])}return T};
-const _renderNV=render;render=function(){_renderNV.apply(this,arguments);try{document.body.classList.toggle('cmmode',S.v==='chat'||S.v==='crm');
- const nav=document.querySelector('.sb-nav');if(!nav)return;if(!allowed('crm'))return;const old=nav.querySelector('[data-v="crm"]');if(old)old.remove();
+const _renderNV=render;render=function(){_renderNV.apply(this,arguments);try{document.body.classList.toggle('cmmode',S.v==='chat'||(S.v==='crm'&&!!S.crmIn));
+ const nav=document.querySelector('.sb-nav');if(!nav||!allowed('crm'))return;const old=nav.querySelector('[data-v="crm"]');if(old)old.remove();
  const sub=nav.querySelector('.sb-sub');if(sub&&!sub.children.length)sub.remove();
- const L=crmCosNV(),open=S.sbcrm==null?S.v==='crm':S.sbcrm,co=S.cmco;
- const html=`<button class="sb-more ${open?'op':''} ${S.v==='crm'&&!open?'on':''}" data-a="sbCrm" aria-expanded="${open}" title="CRM">${ic('users')}<span>CRM</span><i class="chev">${ic('right')}</i></button>${open?`<div class="sb-sub">${L.map(k=>{const f=cmInfo(k);return `<button data-a="crmCo" data-k="${k}" class="${S.v==='crm'&&co===k?'on':''}" title="${h(f[1])} CRM"><span class="cdot" style="background:${f[4]};width:10px;height:10px;border-radius:50%;display:inline-block;flex:none"></span><span>${h(f[3]==='HR'?'HR Consultancy':f[3])}</span></button>`}).join('')}</div>`:''}`;
+ const html=`<button data-a="go" data-v="crm" class="${S.v==='crm'?'on':''}" ${S.v==='crm'?'aria-current="page"':''} title="CRM">${ic('users')}<span>CRM</span></button>`;
  const ch=nav.querySelector(':scope>[data-v="chat"]');if(ch)ch.insertAdjacentHTML('beforebegin',html);else nav.insertAdjacentHTML('afterbegin',html)}catch(x){}};
+/* CRM page: first the list of companies, then the chosen company's CRM */
+const _goNV2=A.go;A.go=e=>{if(e.dataset.v==='crm')S.crmIn=null;_goNV2(e)};
+const _vCrmNV=V.crm;V.crm=()=>{const L=crmCosNV();if(L.length===1)S.crmIn=L[0];
+ if(!S.crmIn){const cnt=k=>D.wa.filter(c=>cmTeams(k).includes(c.team)),num=k=>{const v=cmNum(k);return v.wa||v.vn||'Number to be added'},segs=k=>(typeof cmSegs==='function'&&cmSegs(k))||[];
+  return page('CRM','Pick a company to open its customers, WhatsApp and calls')+`<div class="crmgrid">${L.map(k=>{const f=cmInfo(k),C=cnt(k),un=C.filter(c=>c.unread).length;return `<button class="crmco" data-a="crmCo" data-k="${k}" style="--cc:${f[4]}"><span class="crmav">${h(f[3].slice(0,2).toUpperCase())}</span><span class="crmtx"><b>${h(f[1])}</b><small>${h(num(k))}</small>${segs(k).length?`<small class="crmseg">${segs(k).map(x=>h(x[1])).join(' · ')}</small>`:''}</span><span class="crmn"><b>${C.length}</b><small>customers</small>${un?`<em>${un} unread</em>`:''}</span></button>`}).join('')}</div>`}
+ if(S.cmco!==S.crmIn){S.cmco=S.crmIn}
+ const back=L.length>1?`<button class="crmback" data-a="crmBack">${ic('back')}All companies</button>`:'';return back+_vCrmNV()};
+A.crmCo=e=>{S.v='crm';S.crmIn=e.dataset.k;A.cmCo(e);scrollTo(0,0)};
+A.crmBack=()=>{S.crmIn=null;render()};
+const _cmCoNV=A.cmCo;A.cmCo=e=>{if(S.v==='crm'&&e.dataset.k&&e.dataset.k!=='all')S.crmIn=e.dataset.k;_cmCoNV(e)};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.crmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.crmco{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--cc);border-radius:16px;padding:16px;text-align:left;cursor:pointer;font:inherit}.crmco:hover{box-shadow:0 8px 22px rgba(0,0,0,.08)}
+.crmav{width:46px;height:46px;border-radius:14px;background:var(--cc);color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
+.crmtx{flex:1;min-width:0}.crmtx b{display:block;font-size:16px}.crmtx small{display:block;font-size:12.5px;color:var(--mut)}.crmtx .crmseg{color:var(--cc);font-weight:600;margin-top:2px}
+.crmn{text-align:right}.crmn b{display:block;font-size:22px}.crmn small{font-size:11.5px;color:var(--mut)}.crmn em{display:block;font-style:normal;font-size:11.5px;font-weight:700;color:#fff;background:var(--g,#1F9D55);border-radius:999px;padding:1px 8px;margin-top:4px}
+.crmback{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--navy);font:600 14px inherit;cursor:pointer;margin:0 0 8px;padding:4px 0}.crmback svg{width:16px;height:16px}
+</style>`);
+/* ===== Me page: salary slip opens as a pop-up · phone reset & attendance request under "More" · attendance marking last ===== */
+/* Logistics company page: no logo in the header (the JDAC logo is already in the side menu) */
+delete CO_LOGO.log;
+const _meMP=V.me;V.me=()=>{const o=_meMP();if(!empOf(S.me))return o;
+ const t=document.createElement('template');t.innerHTML=o;const C=t.content;
+ const sal=C.querySelector('.mysal');let slip='';
+ if(sal){sal.remove();const x=(D.emp||[]).find(e=>e.k===S.me),m=S.msm||monStart(TODAY),ml=new Date(m+'T12:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  slip=`<button class="card meslip" data-a="msOpen"><i>${ic('rupee')}</i><span><b>My salary slip</b><small>${h(ml)} · present, absent, half days, late marks · days and ₹</small></span><em>View ${ic('right')}</em></button>`}
+ const cards=[...C.querySelectorAll('.card')];
+ const today=cards.find(c=>/^\s*TODAY/i.test(c.innerText||c.textContent||'')||c.querySelector('[data-a="clock"],[data-a="clockGo"]'));
+ const more=cards.filter(c=>/Changed or lost your phone\?|Forgot to mark attendance\?/.test(c.textContent||''));
+ const col=(today||more[0]||{}).parentElement;
+ if(col){more.forEach(c=>c.remove());
+  if(more.length){const d=document.createElement('details');d.className='card memore';d.innerHTML=`<summary><b>More</b><span class="xs mut">Phone changed or lost · forgot to mark attendance</span><i>${ic('right')}</i></summary>`;more.forEach(c=>{c.classList.add('meinner');d.appendChild(c)});col.appendChild(d)}
+  if(today){today.remove();col.appendChild(today)}
+  if(slip)col.insertAdjacentHTML('afterbegin',slip)}
+ else if(slip)C.prepend(document.createRange().createContextualFragment(slip));
+ return t.innerHTML};
+A.msOpen=()=>{const s=mySalary();if(!s)return toast('Salary not set yet');sheet(`<div class="mspop">${s}</div>`)};
+const _msMMP=A.msM;A.msM=e=>{const inPop=!!(e.closest&&e.closest('.mspop'));_msMMP(e);if(inPop)A.msOpen()};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.meslip{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;font:inherit;border:1px solid var(--line)}.meslip:hover{border-color:var(--navy)}
+.meslip>i{width:44px;height:44px;border-radius:12px;background:#E8EEFB;color:var(--navy);display:grid;place-items:center;flex:none}.meslip>i svg{width:22px;height:22px}
+.meslip span{flex:1;min-width:0}.meslip b{display:block;font-size:16px}.meslip small{display:block;font-size:12.5px;color:var(--mut)}
+.meslip em{font-style:normal;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:2px;font-size:14px}.meslip em svg{width:16px;height:16px}
+.memore summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none}.memore summary::-webkit-details-marker{display:none}.memore summary b{font-size:16px}.memore summary span{flex:1}
+.memore summary i svg{width:18px;height:18px;transition:transform .2s}.memore[open] summary i svg{transform:rotate(90deg)}
+.memore .meinner{box-shadow:none;border:1px solid var(--line);margin:12px 0 0}
+.sheet:has(.mspop){max-width:980px;width:min(980px,96vw)}.mspop .mysal{margin:0;box-shadow:none;border:0;padding:0}
+</style>`);
 </script></body></html>
