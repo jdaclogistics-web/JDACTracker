@@ -41,7 +41,7 @@ function sbRows(p){const m=TODAY.slice(0,7),inP=t=>!t.due?p==='all':p==='all'?tr
  return who.map(k=>{const T=D.tasks.filter(t=>t.o===k&&inP(t)),done=T.filter(t=>t.st==='Done'),dueNow=T.filter(t=>t.due&&t.due<=TODAY),late=T.filter(t=>t.st!=='Done'&&t.due&&t.due<TODAY),
   onTime=done.filter(t=>!t.doneAt||!t.due||t.doneAt.slice(0,10)<=t.due).length,base=Math.max(1,dueNow.length);
   const s=T.length?Math.round(Math.min(100,(onTime/base)*70+(done.length/T.length)*30)):null;return {k,n:T.length,done:done.length,open:T.length-done.length,late:late.length,onTime,s}}).filter(r=>r.n).sort((a,b)=>(b.s??-1)-(a.s??-1))}
-const _vtSB=V.tasks;V.tasks=()=>{if(S.ttab!=='score')return _vtSB();const me=ME()||{n:''},p=S.sbp||'month';let R=sbRows(p);const adm=isAdm();if(!adm)R=R.filter(r=>r.k===S.me);
+const _vtSB=V.tasks;V.tasks=()=>{if(S.ttab!=='score')return _vtSB();const me=ME()||{n:''},p=S.sbp||'month';let R=sbRows(p);const adm=['darshan','nameera'].includes(S.me);if(!adm)R=R.filter(r=>r.k===S.me);
  const team=k=>(P[k]||{}).r||'';
  return taskHead(me)+`<div class="sbbar">${chips([['week','This week'],['month','This month'],['all','All time']],p,'sbP')}<span class="sp"></span><span class="xs mut">${adm?'Everyone':'Only you can see your score'} · Score = 70% tasks done by their due date + 30% tasks finished</span></div>
  <div class="xsheet"><table><thead><tr><th>#</th><th class="stk">Person</th><th class="n">Tasks</th><th class="n">Done</th><th class="n">On time</th><th class="n">Open</th><th class="n">Overdue</th><th style="min-width:220px">Score</th></tr></thead><tbody>

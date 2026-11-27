@@ -5594,7 +5594,7 @@ function sbRows(p){const m=TODAY.slice(0,7),inP=t=>!t.due?p==='all':p==='all'?tr
  return who.map(k=>{const T=D.tasks.filter(t=>t.o===k&&inP(t)),done=T.filter(t=>t.st==='Done'),dueNow=T.filter(t=>t.due&&t.due<=TODAY),late=T.filter(t=>t.st!=='Done'&&t.due&&t.due<TODAY),
   onTime=done.filter(t=>!t.doneAt||!t.due||t.doneAt.slice(0,10)<=t.due).length,base=Math.max(1,dueNow.length);
   const s=T.length?Math.round(Math.min(100,(onTime/base)*70+(done.length/T.length)*30)):null;return {k,n:T.length,done:done.length,open:T.length-done.length,late:late.length,onTime,s}}).filter(r=>r.n).sort((a,b)=>(b.s??-1)-(a.s??-1))}
-const _vtSB=V.tasks;V.tasks=()=>{if(S.ttab!=='score')return _vtSB();const me=ME()||{n:''},p=S.sbp||'month';let R=sbRows(p);const adm=isAdm();if(!adm)R=R.filter(r=>r.k===S.me);
+const _vtSB=V.tasks;V.tasks=()=>{if(S.ttab!=='score')return _vtSB();const me=ME()||{n:''},p=S.sbp||'month';let R=sbRows(p);const adm=['darshan','nameera'].includes(S.me);if(!adm)R=R.filter(r=>r.k===S.me);
  const team=k=>(P[k]||{}).r||'';
  return taskHead(me)+`<div class="sbbar">${chips([['week','This week'],['month','This month'],['all','All time']],p,'sbP')}<span class="sp"></span><span class="xs mut">${adm?'Everyone':'Only you can see your score'} · Score = 70% tasks done by their due date + 30% tasks finished</span></div>
  <div class="xsheet"><table><thead><tr><th>#</th><th class="stk">Person</th><th class="n">Tasks</th><th class="n">Done</th><th class="n">On time</th><th class="n">Open</th><th class="n">Overdue</th><th style="min-width:220px">Score</th></tr></thead><tbody>
@@ -5692,4 +5692,18 @@ body .cohead.cobrand .colog img{height:68px;max-width:230px;object-fit:contain}
 body .cohead.cobrand .btn{background:var(--cbS)!important;color:var(--cbT)!important;border-color:transparent!important}
 body .cohead.cobrand>div:last-child{border-left:2px solid var(--cbS);padding-left:16px}
 </style>`);
+/* ===== Who sees what: only Darshan and Nameera see everything =====
+   Everyone else: Dashboard · Tasks (only projects they are a member of) · Communication (only their company,
+   executives only their own customers) · Tool Section → Contacts (no team / HR employer / partner contacts) and Settings. */
+const TOP=['darshan','nameera'];const isTop=()=>TOP.includes(S.me);
+const STAFF_V=['home','tasks','chat','more','settings','contacts','me'];
+/* an HR or boss login that is not Darshan / Nameera is treated as staff */
+const accNorm=()=>{const p=P[S.me];if(p&&!isTop()&&['hr','boss','acc'].includes(p.kind)){p.kind0=p.kind;p.kind='staff'}};
+const _allowedAC=allowed;allowed=function(v){if(isTop()||isZen())return _allowedAC(v);return STAFF_V.includes(v)&&(['more','settings','contacts','me','home','tasks','chat'].includes(v))};
+const _tabsAC=tabsFor;tabsFor=function(who){const T=_tabsAC(who);if(TOP.includes(who||S.me)||isZen())return T;const L=T.filter(x=>STAFF_V.includes(x[0]));['home','tasks','chat'].forEach((k,i)=>{if(!L.some(x=>x[0]===k)){const n={home:['home','Dashboard','home'],tasks:['tasks','Tasks','t_tasks'],chat:['chat','Communication','chat']}[k];L.splice(i,0,n)}});return L};
+const _renderAC=render;render=function(){accNorm();if(!isTop()&&!isZen()&&S.v&&!allowed(S.v))S.v='home';return _renderAC.apply(this,arguments)};
+/* Tasks: only projects they are a member of */
+const _myPAC=myProjects;myProjects=function(){if(isTop()||isZen())return _myPAC();return D.projects.filter(p=>(p.m||[]).includes(S.me))};
+/* Contacts: no internal team, HR employers or partners */
+const _myCAC=myContacts;myContacts=function(){const L=_myCAC();if(isTop())return L;return L.filter(c=>!['Team','Employer','Partner'].includes(c.type))};
 </script></body></html>
