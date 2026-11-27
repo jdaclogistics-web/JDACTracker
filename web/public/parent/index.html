@@ -2287,7 +2287,7 @@ if(D.emp&&!D.empDob1){D.empDob1=1;D.emp.forEach(e=>{if(!e.dob&&EMP_DOB[e.k])e.do
 const empAge=d=>{const a=new Date(TODAY),b=new Date(d);let y=a.getFullYear()-b.getFullYear();if(a.getMonth()<b.getMonth()||a.getMonth()===b.getMonth()&&a.getDate()<b.getDate())y--;return y};
 const empBdayIn=d=>{if(!d)return 999;const t=new Date(TODAY);let n=new Date(t.getFullYear()+d.slice(4));if(n<new Date(TODAY))n=new Date((t.getFullYear()+1)+d.slice(4));return Math.round((n-t)/864e5)};
 const dobCell=e=>e.dob?`${fmtS(e.dob)} <span class="xs mut">· ${empAge(e.dob)} yrs</span>${empBdayIn(e.dob)===0?' 🎂':''}`:'<span class="mut">—</span>';
-const empBdays=()=>{const L=D.emp.filter(e=>e.st==='Active'&&e.dob&&empBdayIn(e.dob)<=30).sort((a,b)=>empBdayIn(a.dob)-empBdayIn(b.dob));return L.length?`<div class="note" style="margin:0 0 10px">🎂 <b>Birthdays in the next 30 days:</b> ${L.map(e=>{const n=empBdayIn(e.dob);return `${h(e.n)} — ${n===0?'<b>today</b>':n===1?'tomorrow':fmtS(addD(TODAY,n))} (turns ${empAge(e.dob)+(n===0?0:1)})`}).join(' · ')}</div>`:''};
+const empBdays=()=>{if(S.me!=='nameera')return '';const L=D.emp.filter(e=>e.st==='Active'&&e.dob&&empBdayIn(e.dob)<=30).sort((a,b)=>empBdayIn(a.dob)-empBdayIn(b.dob));return L.length?`<div class="note" style="margin:0 0 10px">🎂 <b>Birthdays in the next 30 days:</b> ${L.map(e=>{const n=empBdayIn(e.dob);return `${h(e.n)} — ${n===0?'<b>today</b>':n===1?'tomorrow':fmtS(addD(TODAY,n))} (turns ${empAge(e.dob)+(n===0?0:1)})`}).join(' · ')}</div>`:''};
 const empByDoj=(a,b)=>(a.doj||'9999').localeCompare(b.doj||'9999')||String(a.id).localeCompare(String(b.id));
 function pMaster(){S.mf=S.mf||'Active';const q=(S.mq||'').toLowerCase();const cnt=s=>D.emp.filter(e=>s==='All'||e.st===s).length;
  const L=D.emp.filter(e=>(S.mf==='All'||e.st===S.mf)&&(!q||(e.n+' '+e.id+' '+telOf(e.ph)+' '+e.desig+' '+e.city+' '+e.unit).toLowerCase().includes(q))).sort(empByDoj);const sal=L.reduce((a,e)=>a+(e.sal||0),0);
@@ -5538,4 +5538,11 @@ button.ldk{text-align:left;cursor:pointer;font:inherit}button.ldk:hover{box-shad
 .gbch{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}@media(max-width:1100px){.gbch{grid-template-columns:repeat(2,1fr)}}
 .gbc{border:1px solid var(--line);border-left:4px solid var(--c);background:#fff;border-radius:12px;padding:10px 12px;text-align:left;cursor:pointer;font:inherit}.gbc.on{background:color-mix(in srgb,var(--c) 9%,#fff);box-shadow:0 0 0 2px var(--c) inset}.gbc span{display:block;font-weight:800;color:var(--c);font-size:13px}.gbc b{display:block;font-size:16px;margin:2px 0}.gbc small{color:var(--mut);font-size:11.5px}
 </style>`);
+/* Birthday reminder — only for Nameera (HR): one day before, on HR Desk and as a pop-up once a day */
+const bdayTom=()=>(D.emp||[]).filter(e=>e.st==='Active'&&e.dob&&empBdayIn(e.dob)===1);
+const _peopleBD=V.people;V.people=()=>{let out=_peopleBD();if(S.me!=='nameera')return out;const L=bdayTom();if(!L.length)return out;
+ const box=`<div class="bdnote" role="status"><span class="bdi">🎂</span><div><b>Birthday tomorrow</b><div>${L.map(e=>`${h(e.n)} turns ${empAge(e.dob)+1} on ${fmtL(addD(TODAY,1))}${e.ph&&e.ph!=='—'?` · ${h(e.ph)}`:''}`).join('<br>')}</div><small>Plan a wish or a small cake for the team.</small></div></div>`;
+ const i=out.indexOf('</div>',out.indexOf('HR Desk'));return i>0?out.slice(0,i+6)+box+out.slice(i+6):box+out};
+setTimeout(()=>{if(S.me!=='nameera'||D.bdayToast===TODAY)return;const L=bdayTom();if(!L.length)return;D.bdayToast=TODAY;save();toast('🎂 Birthday tomorrow: '+L.map(e=>e.n).join(', '))},3500);
+document.head.insertAdjacentHTML('beforeend',`<style>.bdnote{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(90deg,#FFF4E5,#FFF9F0);border:1px solid #F5C98B;border-radius:14px;padding:12px 16px;margin:10px 0 14px}.bdnote .bdi{font-size:26px;line-height:1}.bdnote b{color:#9A5B00;font-size:15px}.bdnote small{color:#8A6A3A;font-size:12px}</style>`);
 </script></body></html>
