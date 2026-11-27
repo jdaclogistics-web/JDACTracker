@@ -1286,6 +1286,12 @@ async function runMigrations(env) {
     await audit(env, null, 'boss_password_reset', 'employees', null, null, { rows: r.meta?.changes || 0 })
     await mark('mig_boss_pw_v1')
   }
+  if (!(await done('mig_boss_uid_v1'))) {
+    // 27 Nov 2026 (Darshan): Director signs in with User ID 9823066678
+    const r = await env.DB.prepare("UPDATE employees SET username = '9823066678' WHERE role = 'boss' AND active = 1 AND NOT EXISTS (SELECT 1 FROM employees x WHERE x.username = '9823066678' COLLATE NOCASE AND x.id != employees.id)").run()
+    await audit(env, null, 'boss_userid_set', 'employees', null, null, { rows: r.meta?.changes || 0 })
+    await mark('mig_boss_uid_v1')
+  }
   if (!(await done('mig_login_v1'))) {
     // Login: User ID = Employee ID (JD1001), password = own 10-digit mobile number. Existing sessions stay logged in.
     await env.DB.prepare("UPDATE employees SET username = emp_code, pass_hash = 'phone' WHERE emp_code IS NOT NULL AND phone IS NOT NULL AND role != 'developer' AND NOT EXISTS (SELECT 1 FROM employees x WHERE x.username = employees.emp_code COLLATE NOCASE AND x.id != employees.id)").run()
