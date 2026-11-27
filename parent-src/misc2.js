@@ -93,3 +93,18 @@ incOk=k=>incList().includes(k);
 (()=>{const st=ST_LS('start'),sb=ST_LS('sb'),co=ST_LS('cmco');if(sb)S.sbc=sb==='closed';if(co)S.cmco=co;let first=false;try{first=!sessionStorage.getItem('jdOpened');sessionStorage.setItem('jdOpened','1')}catch(x){}if(st&&first)setTimeout(()=>{if(allowed(st)){S.v=st;render()}},300)})();
 /* birthday reminder can be turned off */
 document.head.insertAdjacentHTML('beforeend',`<style>.stmore{margin-top:2px}.stacc{display:flex;align-items:center;gap:12px}.stacc b{font-size:15px}</style>`);
+
+/* ===== Profile photos: everyone can add their own (Settings → My account) ===== */
+D.photos=D.photos||{};
+const phByName=()=>{const M={};Object.keys(P).forEach(k=>{[P[k].n,nm(k),nmF(k)].forEach(x=>{if(x)M[x]=k})});(D.emp||[]).forEach(e=>{if(e.k&&e.n)M[e.n]=e.k});return M};
+let PHN=null;avPhoto=function(n){if(!PHN)PHN=phByName();const k=PHN[n];return k&&D.photos[k]||null};
+async function phPull(){if(!(typeof LV!=='undefined'&&LV.ok))return;try{const r=await lapi('GET','/api/photos');let ch=0;r.photos.forEach(p=>{if(D.photos[p.key]!==p.img){D.photos[p.key]=p.img;ch=1}});if(ch){save();render()}}catch(x){}}
+setTimeout(phPull,3000);setInterval(()=>{if(document.visibilityState==='visible')phPull()},600000);
+function phShrink(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const z=192,c=document.createElement('canvas');c.width=c.height=z;const g=c.getContext('2d'),m=Math.min(im.width,im.height);g.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,z,z);ok(c.toDataURL('image/jpeg',.82))};im.onerror=no;im.src=r.result};r.onerror=no;r.readAsDataURL(file)})}
+async function phSave(img){D.photos[S.me]=img||undefined;if(!img)delete D.photos[S.me];PHN=null;save();render();
+ if(typeof LV!=='undefined'&&LV.ok){try{await lapi('POST','/api/me/photo',{key:S.me,img:img||''});toast(img?'Photo saved · everyone sees it':'Photo removed')}catch(e){toast('Saved here only: '+e.message)}}else toast(img?'Photo saved':'Photo removed')}
+document.addEventListener('change',async e=>{if(e.target&&e.target.id==='phIn'&&e.target.files[0]){const f=e.target.files[0];if(!/^image\//.test(f.type))return toast('Choose a photo');try{await phSave(await phShrink(f))}catch(x){toast('Could not read that photo')}}});
+A.phDel=()=>phSave('');
+const _stPh=V.settings;V.settings=()=>{const o=_stPh(),my=D.photos[S.me];
+ return o.replace('<div class="row" style="gap:8px;margin-top:12px">',m=>`<div class="phrow"><label class="btn sm" for="phIn" style="cursor:pointer">${ic('plus')}${my?'Change photo':'Add my photo'}</label><input id="phIn" type="file" accept="image/*" hidden>${my?'<button class="btn sm sec" data-a="phDel">Remove photo</button>':''}<span class="xs mut">Shows next to your name everywhere in the panel.</span></div>`+m)};
+document.head.insertAdjacentHTML('beforeend',`<style>.av.avp{background:#E9EDF5;padding:0;overflow:hidden}.av.avp img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}.stacc .av{width:56px!important;height:56px!important;font-size:18px!important}.phrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}</style>`);

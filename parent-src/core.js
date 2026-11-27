@@ -15,7 +15,8 @@ const pct=(a,b)=>b?Math.min(100,Math.round(a/b*100)):0;
 const COLS=['#02496A','#0796A6','#6E0F7A','#137a50','#9a5f00','#1d62c4','#8e3b46','#3d5a80'];
 const colr=s=>COLS[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0)%COLS.length];
 const ini=n=>String(n).replace(/\([^)]*\)/g,'').split(/\s+/).filter(w=>/[A-Za-z0-9]/.test(w[0]||'')).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'?';
-const av=(n,c='')=>`<div class="av ${c}" style="background:${colr(n)}" aria-hidden="true">${h(ini(n))}</div>`;
+function avPhoto(n){return null}
+const av=(n,c='')=>{const ph=avPhoto(n);return ph?`<div class="av ${c} avp" aria-hidden="true"><img src="${ph}" alt=""></div>`:`<div class="av ${c}" style="background:${colr(n)}" aria-hidden="true">${h(ini(n))}</div>`};
 const tag=(t,c='')=>`<span class="tag ${c}">${h(t)}</span>`;
 const bar=(p,c='')=>`<div class="bar ${c}" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100"><i style="width:${p}%"></i></div>`;
 const kpi=(n,l,s)=>`<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div>${s?`<div class="s">${s}</div>`:''}</div>`;

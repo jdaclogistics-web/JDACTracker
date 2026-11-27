@@ -263,6 +263,23 @@ on('POST', '/api/pings', async (env, req) => {
 })
 
 // ── Employee: history + leave ─────────────────────────────────────────────
+// ── Profile photos: everyone sets their own; everyone signed in can see them ──
+on('GET', '/api/photos', async (env, req) => {
+  await authUser(env, req)
+  const { results } = await env.DB.prepare("SELECT data FROM legacy_records WHERE tbl = 'photos'").all()
+  return json({ photos: results.map((r) => JSON.parse(r.data)).filter((p) => p.img) })
+})
+on('POST', '/api/me/photo', async (env, req) => {
+  const me = await authUser(env, req), b = await body(req)
+  const key = String(b.key || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40), img = String(b.img || '')
+  if (!key) throw bad('key?')
+  if (img && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(img) || img.length > 120000)) throw bad('Photo too large or not an image')
+  const t = JSON.stringify({ key, img, at: nowIso() }), id = String(me.id)
+  const old = await env.DB.prepare("SELECT 1 FROM legacy_records WHERE tbl = 'photos' AND legacy_id = ?").bind(id).first()
+  if (old) await env.DB.prepare("UPDATE legacy_records SET data = ? WHERE tbl = 'photos' AND legacy_id = ?").bind(t, id).run()
+  else await env.DB.prepare("INSERT INTO legacy_records (tbl, legacy_id, data) VALUES ('photos', ?, ?)").bind(id, t).run()
+  return json({ ok: true })
+})
 // ── Settings: change my own password (current password needed) ──
 on('POST', '/api/me/password', async (env, req) => {
   const me = await authUser(env, req), b = await body(req)
