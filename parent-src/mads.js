@@ -36,9 +36,8 @@ function adsView(){const co=S.adCo||(S.stC&&AD_CO[S.stC]?S.stC:'all'),p=adPer(),
  const s=adSum(L),rts=[...new Set(L.map(c=>c.rt))],cur=AD_CO[co]||['All companies','#14213D'];
  const accs=co==='all'?ADS.acc:ADS.acc.filter(a=>adCamps(co).some(c=>c.acc===a.k));
  const day=ADS.dates.map((d,i)=>accs.reduce((a,x)=>a+((x.day[i]||[])[0]||0),0)),mx=Math.max(1,...day),last7=day.slice(-7).reduce((a,b)=>a+b,0),prev7=day.slice(-14,-7).reduce((a,b)=>a+b,0);
- const head=`<div class="ad-top"><button class="ad-acc" data-a="adCoPick"><span class="ad-av" style="background:${cur[1]}">${h(ini(cur[0]))}</span><span class="ad-an"><b>${h(cur[0])}</b><small>${co==='all'?ADS.acc.length+' ad accounts · Meta':accs.map(a=>a.sub).join(' · ')}</small></span><i>▾</i></button><div class="ad-plat">${[['meta','Meta'],['google','Google'],['plan','Plan']].map(([k,l])=>`<button class="${(S.adPl||'meta')===k?'on':''}" data-a="adPl" data-t="${k}">${l}</button>`).join('')}</div></div>`;
+ const head=`<div class="ad-top"><button class="ad-acc" data-a="adCoPick"><span class="ad-av" style="background:${cur[1]}">${h(ini(cur[0]))}</span><span class="ad-an"><b>${h(cur[0])}</b><small>${co==='all'?ADS.acc.length+' ad accounts · Meta':accs.map(a=>a.sub).join(' · ')}</small></span><i>▾</i></button><div class="ad-plat">${[['meta','Meta'],['google','Google']].map(([k,l])=>`<button class="${(S.adPl||'meta')===k?'on':''}" data-a="adPl" data-t="${k}">${l}</button>`).join('')}</div></div>`;
  if((S.adPl||'meta')==='google')return head+adGoogle();
- if(S.adPl==='plan')return head+(typeof _pmViewAD==='function'?_pmViewAD():'');
  const per=`<div class="ad-per">${[['y','Yesterday'],['w','7 days'],['m','30 days']].map(([k,l])=>`<button class="${p===k?'on':''}" data-a="adP" data-t="${k}">${l}</button>`).join('')}<span>Synced ${new Date(ADS.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span></div>`;
  const one=rts.length===1,resTxt=one?AD_RT[rts[0]][0]:'Results (all types)',kpi=[[adInr(s.sp),'Amount spent',''],[adNum(s.res),resTxt,''],[s.res?adInr(s.sp/s.res):'—',one?'Cost per '+AD_RT[rts[0]][1]:'Avg cost / result',''],[adNum(s.im),'Impressions',''],[adCtr(s).toFixed(2)+'%','Link CTR',adCtr(s)>=1?'g':'r'],[adInr(adCpm(s)),'CPM','']];
  const trend=`<div class="ad-card"><div class="ad-ch"><b>Daily spend · 30 days</b><span class="${last7>=prev7?'up':'dn'}">${prev7?(last7>=prev7?'▲ ':'▼ ')+Math.abs(Math.round((last7/prev7-1)*100))+'% vs last week':''}</span></div><div class="ad-bars">${day.map((v,i)=>`<i style="height:${Math.max(2,v/mx*100)}%" title="${ADS.dates[i]} · ${adInr(v)}" class="${i>=day.length-7?'r7':''}"></i>`).join('')}</div><div class="ad-bx"><span>${fmt(ADS.dates[0])}</span><span>last 7 days ${adInr(last7)}</span><span>${fmt(ADS.dates[ADS.dates.length-1])}</span></div></div>`;
@@ -54,7 +53,7 @@ function adsView(){const co=S.adCo||(S.stC&&AD_CO[S.stC]?S.stC:'all'),p=adPer(),
  if(lvl==='ad')list=adAds(a=>L.some(c=>c.id===a.c)).map(a=>({...a,rt:(L.find(c=>c.id===a.c)||{}).rt})).filter(ok).sort(srt).map(adRowA).join('');
  if(lvl==='cr')list=`<div class="ad-grid">${adAds(a=>L.some(c=>c.id===a.c)).map(a=>({...a,rt:(L.find(c=>c.id===a.c)||{}).rt})).filter(ok).sort(srt).map(adTile).join('')}</div>`;
  const note=lvl!=='camp'&&p!=='m'?'<div class="ad-note">Ad sets, ads and creatives show the last 30 days.</div>':'';
- return head+per+`<div class="ad-kpi">${kpi.map(([v,l,c])=>`<div class="${c}"><b>${v}</b><span>${l}</span></div>`).join('')}</div>`+adFunnel(L,co)+trend+adv+`<div class="ad-sec">Ads Manager</div>`+tabs+filt+note+(list||'<div class="ad-empty">Nothing here for this period</div>')+adIdle(co)}
+ return head+per+`<div class="ad-kpi">${kpi.map(([v,l,c])=>`<div class="${c}"><b>${v}</b><span>${l}</span></div>`).join('')}</div>`+(co==='all'?adCoCards():'')+adFunnel(L,co)+trend+adv+`<div class="ad-sec">Ads Manager</div>`+tabs+filt+note+(list||'<div class="ad-empty">Nothing here for this period</div>')+adIdle(co)}
 function adFunnel(L,co){if(adPer()!=='m')return '';const G=[['Website sales',L.filter(c=>c.obj==='SALES'&&c.rt==='pur')],['Website sign-ups',L.filter(c=>c.rt==='otp')],['Chats & lead forms',L.filter(c=>c.obj!=='SALES')]].filter(g=>g[1].length);return G.map(([t,C])=>adFun1(t,C)).join('')}
 function adFun1(title,L){const m=L.reduce((a,c)=>{a.im+=c.im;a.cl+=c.cl;a.lpv+=c.lpv||0;a.atc+=c.atc||0;a.ic+=c.ic||0;a.pur+=c.pur||0;a.res+=c.res;a.msg+=c.msg||0;a.lead+=c.lead||0;a.otp+=c.rt==='otp'?c.res:0;return a},{im:0,cl:0,lpv:0,atc:0,ic:0,pur:0,res:0,msg:0,lead:0,otp:0});
  const sales=title!=='Chats & lead forms';let st;
@@ -75,9 +74,13 @@ function adRowS(x){return `<button class="ad-row" data-a="adOpen" data-id="${x.c
 function adRowA(a){const cr=ADS.CR[a.cr]||['I','Ad'];return `<button class="ad-row ad-arow" data-a="adAd" data-id="${a.id}">${adThumb(a,cr,'s')}<div style="flex:1;min-width:0"><div class="ad-r1"><b>${h(a.n)}</b>${adBadge(a.st)}</div><div class="ad-r2"><span>${h(cr[1])}</span></div>
  <div class="ad-r3 sm"><div><b>${adInr(a.sp)}</b><span>spent</span></div><div><b>${adNum(a.res)}</b><span>results</span></div><div><b>${a.res?adInr(a.sp/a.res):'—'}</b><span>each</span></div><div><b>${adCtr(a).toFixed(1)}%</b><span>CTR</span></div></div></div></button>`}
 const AD_GR=['#24408E,#5B7FE0','#7A4A26,#C2410C','#0B6E4F,#1F9D55','#6E0F7A,#B455C9','#02496A,#0796A6','#B54708,#F79009'];
-function adThumb(a,cr,sz){const g=AD_GR[(parseInt(String(a.cr).slice(-3))||0)%AD_GR.length];return `<span class="ad-th ${sz||''}" style="background:linear-gradient(140deg,${g})"><em>${cr[0]==='V'?'▶ VIDEO':'IMAGE'}</em>${sz==='s'?'':`<b>${h(cr[1])}</b>`}</span>`}
+function adThumb(a,cr,sz){const g=AD_GR[(parseInt(String(a.cr).slice(-3))||0)%AD_GR.length],u=typeof ADIMG!=='undefined'&&ADIMG[a.cr];return `<span class="ad-th ${sz||''} ${u?'img':''}" style="background:linear-gradient(140deg,${g})">${u?`<img src="${h(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.remove('img');this.remove()">`:''}<em>${cr[0]==='V'?'▶ VIDEO':'IMAGE'}</em>${sz==='s'?'':`<b>${h(cr[1])}</b>`}</span>`}
 function adTile(a){const cr=ADS.CR[a.cr]||['I','Ad'],L=adAds(x=>x.rt===a.rt||true),fq=0;const win=a.res>=10&&a.sp/a.res<=(adSum(adAds(x=>x.c===a.c)).sp/Math.max(1,adSum(adAds(x=>x.c===a.c)).res));
  return `<button class="ad-tile" data-a="adAd" data-id="${a.id}">${adThumb(a,cr)}<div class="ad-tm">${win?'<span class="win">🏆 Winner</span>':a.sp>300&&!a.res?'<span class="lose">No results</span>':''}<b>${h(a.n)}</b><div><span>${adInr(a.sp)}</span><span>${a.res?adNum(a.res)+' · '+adInr(a.sp/a.res):'0 results'}</span></div></div></button>`}
+function adCoCards(){const C=Object.keys(AD_CO).map(k=>{const L=adCamps(k),sm=adSum(L);return {k,L,sm,act:L.filter(c=>c.st==='A').length,rts:[...new Set(L.map(c=>c.rt))]}}).filter(x=>x.L.length).sort((a,b)=>b.sm.sp-a.sm.sp),tot=C.reduce((a,x)=>a+x.sm.sp,0)||1;
+ return `<div class="ad-sec">Company wise</div><div class="ad-cos">${C.map(x=>{const v=AD_CO[x.k],one=x.rts.length===1;return `<button class="ad-co" data-a="adCoGo" data-t="${x.k}" style="--c:${v[1]}"><div class="ad-co1"><span class="ad-av" style="background:${v[1]}">${h(ini(v[0]))}</span><b>${h(v[0])}</b><em>${x.act?x.act+' live':'paused'}</em></div>
+  <div class="ad-co2"><div><b>${adInr(x.sm.sp)}</b><span>spent</span></div><div><b>${adNum(x.sm.res)}</b><span>${one?AD_RT[x.rts[0]][0]:'results'}</span></div><div><b>${x.sm.res?adInr(x.sm.sp/x.sm.res):'—'}</b><span>${one?'per '+AD_RT[x.rts[0]][1]:'per result'}</span></div></div>
+  <div class="ad-co3"><i style="width:${x.sm.sp/tot*100}%"></i></div><small>${Math.round(x.sm.sp/tot*100)}% of spend · ${x.L.length} campaigns</small></button>`}).join('')}</div>`}
 function adIdle(co){const I=ADS.idle.filter(x=>co==='all'||x[2]===co);if(!I.length)return '';return `<div class="ad-sec">Other ad accounts</div><div class="ad-idle">${I.map(x=>`<div><b>${h(x[1])}</b><span>No spend in the last 30 days${x[2]&&AD_CO[x[2]]?' · '+AD_CO[x[2]][0]:''}</span></div>`).join('')}</div>`}
 
 /* campaign detail: like opening a campaign in Ads Manager */
@@ -92,6 +95,7 @@ A.adOpen=e=>{const id=e.dataset.id;let c=null;ADS.acc.forEach(a=>(ADS.C[a.k]||[]
 A.adAd=e=>{const a=adAds(x=>x.id===e.dataset.id)[0];if(!a)return;const cr=ADS.CR[a.cr]||['I','Ad'];let c=null;ADS.acc.forEach(x=>(ADS.C[x.k]||[]).forEach(r=>{if(r[0]===a.c)c=r}));
  sheet(`${adThumb(a,cr,'big')}<h2 style="margin-top:12px">${h(a.n)}</h2><div class="xs mut">${c?h(c[1]):''} · ${h((adSets(a.c).find(s=>s.id===a.s)||{}).n||'')}</div>
  <div class="ad-kpi in">${[[adInr(a.sp),'spent'],[adNum(a.res),'results'],[a.res?adInr(a.sp/a.res):'—','per result'],[adNum(a.im),'impressions'],[adCtr(a).toFixed(2)+'%','CTR'],[adNum(a.cl),'link clicks']].map(([v,l])=>`<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+ ${(typeof ADTXT!=='undefined'&&ADTXT[a.cr])?`<div class="ad-copy"><p>${h(ADTXT[a.cr][0])}</p><div><span>${h(ADTXT[a.cr][1])}</span><small>${h(ADTXT[a.cr][2])}</small></div></div>`:''}
  ${a.atc||a.ic?`<div class="ad-mini"><b>Shop funnel</b><span>${a.cl} clicks → ${a.atc} add to cart → ${a.ic} checkout → ${a.res} purchases</span></div>`:''}
  <a class="btn sec w" style="margin-top:12px" href="${adLink(a.acc,'ads',a.id)}" target="_blank" rel="noopener">See the ad in Meta Ads Manager ↗</a>`)};
 A.adCoPick=()=>{const T={};Object.keys(AD_CO).forEach(k=>{T[k]=adSum(adCamps(k).map(c=>({...c,sp:c.sp}))).sp});
@@ -109,7 +113,7 @@ A.gNew=e=>sheet(`<h2>New ${h(e.dataset.t)} campaign</h2><label for="gn">Name</la
 A.gSave=e=>{const n=val('gn').trim();if(!n)return toast('Give it a name');(D.gads=D.gads||[]).unshift({id:nid('g'),n,t:e.dataset.t,co:pick1('gco'),bud:+val('gb2')||0,kw:(document.getElementById('gk')||{}).value||'',st:'P',at:TODAY});save();closeM();render();toast('Google campaign planned')};
 
 /* hook into Performance marketing (Studios) */
-CP['studios:pm']=()=>{stPullAll();return ((S.adPl||'meta')==='plan'?stBar():'')+pmView()};
+CP['studios:pm']=()=>{stPullAll();return pmView()};
 const _pmViewAD=pmView;pmView=function(){return adsView()};
 document.head.insertAdjacentHTML('beforeend',`<style>
 .ad-top{display:flex;flex-direction:column;gap:8px;margin:4px 0 10px}
@@ -147,4 +151,11 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .ad-mini{background:#F7F8FA;border-radius:12px;padding:9px 11px;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}.ad-mini b{font-size:13px;flex:1}.ad-mini>span:last-child{width:100%;font-size:11.5px;color:#475467}
 .ad-gtypes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.ad-gtypes button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;cursor:pointer;text-align:left}.ad-gtypes span{font-size:18px}.ad-gtypes b{font-size:13.5px}.ad-gtypes small{font-size:11px;color:var(--mut)}
 @media(min-width:900px){.ad-kpi{grid-template-columns:repeat(6,1fr)}.ad-top{flex-direction:row}.ad-acc{max-width:420px}.ad-plat{flex:1;max-width:320px;margin-left:auto}}
+.ad-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.ad-th.img b{display:none}.ad-th em{z-index:1}
+.ad-cos{display:grid;gap:8px}@media(min-width:900px){.ad-cos{grid-template-columns:repeat(3,1fr)}}
+.ad-co{border:1px solid var(--line);background:#fff;border-left:4px solid var(--c);border-radius:14px;padding:11px 12px;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.ad-co1{display:flex;align-items:center;gap:8px}.ad-co1 .ad-av{width:30px;height:30px;font-size:11px;border-radius:9px}.ad-co1 b{flex:1;font-size:14.5px}.ad-co1 em{font-style:normal;font:700 11px Inter,sans-serif;color:#1F9D55}
+.ad-co2{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:9px}.ad-co2 b{display:block;font-size:14px}.ad-co2 span{font-size:10.5px;color:var(--mut)}
+.ad-co3{height:5px;background:#EEF0F4;border-radius:3px;margin-top:9px;overflow:hidden}.ad-co3 i{display:block;height:100%;background:var(--c)}.ad-co small{font-size:11px;color:var(--mut)}
+.ad-copy{background:#F7F8FA;border-radius:12px;padding:10px 12px;margin-top:10px}.ad-copy p{margin:0;font-size:13px;line-height:1.45}.ad-copy div{display:flex;align-items:center;gap:8px;margin-top:8px}.ad-copy span{background:#14213D;color:#fff;border-radius:8px;padding:4px 10px;font:700 12px Inter,sans-serif}.ad-copy small{font-size:11.5px;color:var(--mut)}
 </style>`);
