@@ -5195,7 +5195,7 @@ cmTimeline=function(c){const f=S.cmtf||'all',E=[];
  const L=E.filter(e=>f==='all'||e.k===f||(f==='log'&&e.k==='stage')).sort((a,b)=>(b.d||'').localeCompare(a.d||'')||(b.tm||'').localeCompare(a.tm||'')||(a.first?1:0)-(b.first?1:0));let last='';
  const cnt=k=>E.filter(e=>e.k===k).length;
  return `<div class="cmtf">${[['all','All',E.length],['wa','WhatsApp',cnt('wa')],['call','Calls',cnt('call')],['stage','Stage',cnt('stage')],['note','Notes',cnt('note')]].map(([k,l,n])=>`<button class="${f===k?'on':''}" data-a="cmTf" data-t="${k}">${l} <span>${n}</span></button>`).join('')}</div>
- <div class="cmtl2">${L.map(e=>{const day=e.d===TODAY?'Today':e.d===addD(TODAY,-1)?'Yesterday':fmt(e.d);const sep=day!==last?`<div class="cmtd">${day}</div>`:'';last=day;
+ <div class="cmtl2">${L.map(e=>{const day=e.d===TODAY?'Today':e.d===addD(TODAY,-1)?'Yesterday':fmt(e.d);const sep=day!==last?`<div class="cmtd">${day} · ${L.filter(x=>x.d===e.d).length}</div>`:'';last=day;
   return sep+`<div class="cmte2 ${e.k}"><i>${{wa:ic('chat'),note:'📝',call:ic('phone'),stage:'➜',log:'•'}[e.k]}</i><div class="b"><div class="row nw"><b>${e.sub}</b><span class="sp"></span><span class="xs mut">${h(e.tm)}</span></div><div class="t">${e.k==='stage'?`<span class="stgp" style="--c:${(CM_COL.find(x=>x[2].includes(e.t))||[0,0,0,'#667'])[3]}">${h(e.t)}</span>`:h(e.t)}</div>${e.who?`<div class="xs mut">${e.k==='wa'&&e.sub==='WhatsApp received'?'':'by '}${h(e.who)}</div>`:''}${e.k==='call'?(e.rec?`<audio controls src="${h(e.rec)}" style="height:30px;margin-top:4px"></audio>`:''):''}</div></div>`}).join('')||'<div class="xs mut">Nothing here</div>'}</div>`};
 A.cmTf=e=>{S.cmtf=e.dataset.t;render()};
 
@@ -7440,6 +7440,16 @@ document.head.insertAdjacentHTML('beforeend',`<style>.wa4s{display:flex;gap:8px;
  html.mob .wa4 .wa3lock>div:first-child{min-width:0}html.mob .wa4 .wa3lock .btn{white-space:nowrap}
  html.mob .wa4 .wa3m{flex:1;min-height:0;overflow-y:auto}
 }</style>`);
+/* lead panel: tabs and history filters each stay on one scrolling row; history grouped by date */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.cmdt,.cmtf{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.cmdt::-webkit-scrollbar,.cmtf::-webkit-scrollbar{display:none}
+.cmdt button,.cmtf button{flex:none;white-space:nowrap}
+.cmtf{margin:8px 0 4px!important;padding-bottom:2px}.cmtf button{padding:5px 11px!important}
+.cmtl2 .cmtd{position:sticky;top:0;z-index:2;background:linear-gradient(#fff 75%,rgba(255,255,255,0));padding:6px 0 4px;margin:6px 0 2px!important}
+.cmte2{padding-bottom:8px!important}.cmte2 .b{padding:7px 10px!important}.cmte2 .t{font-size:13px!important}
+.cmdh .ib[data-a="cmX"]{border:0!important;background:#F2F4F7!important;border-radius:50%;width:36px;height:36px}
+@media(max-width:820px){.cmd .cmdh .sfav.big{width:44px;height:44px;font-size:15px}.cmd .cmdh{margin-bottom:8px}.cmd .cmda .btn{min-height:42px}.cmd .cmdg{gap:8px}.cmd .cmdg select{min-height:42px}}
+</style>`);
 /* ===== Team chat attachments, WhatsApp style: the file itself is kept (IndexedDB on this device),
    tap opens a full-screen viewer with Forward · Save · Share · Delete; long-press menu gets the same ===== */
 const FDB={db:null,open(){return this.db||(this.db=new Promise((ok,no)=>{try{const r=indexedDB.open('jdac_files',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}))},

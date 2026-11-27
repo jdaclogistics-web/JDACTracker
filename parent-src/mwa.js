@@ -108,3 +108,13 @@ document.head.insertAdjacentHTML('beforeend',`<style>.wa4s{display:flex;gap:8px;
  html.mob .wa4 .wa3lock>div:first-child{min-width:0}html.mob .wa4 .wa3lock .btn{white-space:nowrap}
  html.mob .wa4 .wa3m{flex:1;min-height:0;overflow-y:auto}
 }</style>`);
+/* lead panel: tabs and history filters each stay on one scrolling row; history grouped by date */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.cmdt,.cmtf{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.cmdt::-webkit-scrollbar,.cmtf::-webkit-scrollbar{display:none}
+.cmdt button,.cmtf button{flex:none;white-space:nowrap}
+.cmtf{margin:8px 0 4px!important;padding-bottom:2px}.cmtf button{padding:5px 11px!important}
+.cmtl2 .cmtd{position:sticky;top:0;z-index:2;background:linear-gradient(#fff 75%,rgba(255,255,255,0));padding:6px 0 4px;margin:6px 0 2px!important}
+.cmte2{padding-bottom:8px!important}.cmte2 .b{padding:7px 10px!important}.cmte2 .t{font-size:13px!important}
+.cmdh .ib[data-a="cmX"]{border:0!important;background:#F2F4F7!important;border-radius:50%;width:36px;height:36px}
+@media(max-width:820px){.cmd .cmdh .sfav.big{width:44px;height:44px;font-size:15px}.cmd .cmdh{margin-bottom:8px}.cmd .cmda .btn{min-height:42px}.cmd .cmdg{gap:8px}.cmd .cmdg select{min-height:42px}}
+</style>`);

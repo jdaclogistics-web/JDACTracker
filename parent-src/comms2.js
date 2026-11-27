@@ -65,7 +65,7 @@ cmTimeline=function(c){const f=S.cmtf||'all',E=[];
  const L=E.filter(e=>f==='all'||e.k===f||(f==='log'&&e.k==='stage')).sort((a,b)=>(b.d||'').localeCompare(a.d||'')||(b.tm||'').localeCompare(a.tm||'')||(a.first?1:0)-(b.first?1:0));let last='';
  const cnt=k=>E.filter(e=>e.k===k).length;
  return `<div class="cmtf">${[['all','All',E.length],['wa','WhatsApp',cnt('wa')],['call','Calls',cnt('call')],['stage','Stage',cnt('stage')],['note','Notes',cnt('note')]].map(([k,l,n])=>`<button class="${f===k?'on':''}" data-a="cmTf" data-t="${k}">${l} <span>${n}</span></button>`).join('')}</div>
- <div class="cmtl2">${L.map(e=>{const day=e.d===TODAY?'Today':e.d===addD(TODAY,-1)?'Yesterday':fmt(e.d);const sep=day!==last?`<div class="cmtd">${day}</div>`:'';last=day;
+ <div class="cmtl2">${L.map(e=>{const day=e.d===TODAY?'Today':e.d===addD(TODAY,-1)?'Yesterday':fmt(e.d);const sep=day!==last?`<div class="cmtd">${day} · ${L.filter(x=>x.d===e.d).length}</div>`:'';last=day;
   return sep+`<div class="cmte2 ${e.k}"><i>${{wa:ic('chat'),note:'📝',call:ic('phone'),stage:'➜',log:'•'}[e.k]}</i><div class="b"><div class="row nw"><b>${e.sub}</b><span class="sp"></span><span class="xs mut">${h(e.tm)}</span></div><div class="t">${e.k==='stage'?`<span class="stgp" style="--c:${(CM_COL.find(x=>x[2].includes(e.t))||[0,0,0,'#667'])[3]}">${h(e.t)}</span>`:h(e.t)}</div>${e.who?`<div class="xs mut">${e.k==='wa'&&e.sub==='WhatsApp received'?'':'by '}${h(e.who)}</div>`:''}${e.k==='call'?(e.rec?`<audio controls src="${h(e.rec)}" style="height:30px;margin-top:4px"></audio>`:''):''}</div></div>`}).join('')||'<div class="xs mut">Nothing here</div>'}</div>`};
 A.cmTf=e=>{S.cmtf=e.dataset.t;render()};
 
