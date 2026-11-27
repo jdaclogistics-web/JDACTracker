@@ -787,6 +787,47 @@ on('POST', '/api/cm/lines', async (env, req) => {
   return json({ ok: true })
 })
 
+// ── JDAC Studios: creative library (crl), IT projects (itp), campaign plans (pmp) ──
+// everyone signed in reads; library = admins + Swapnil write; IT projects / campaign plans = admins + studios team write
+const ST_KINDS = { crl: /^swapnil\b/i, itp: /^(swapnil|om parvate|himanshu)\b/i, pmp: /^(swapnil|om parvate|himanshu)\b/i }
+const stCanWrite = (me, kind) => ADMIN_ROLES.includes(me.role) || ST_KINDS[kind].test(String(me.name || '').trim())
+on('GET', '/api/studio', async (env, req, url) => {
+  await authUser(env, req)
+  const kind = url.searchParams.get('kind') || ''
+  if (!ST_KINDS[kind]) throw bad('kind?')
+  const { results } = await env.DB.prepare('SELECT data FROM legacy_records WHERE tbl = ?').bind('st_' + kind).all()
+  return json({ rows: results.map((r) => JSON.parse(r.data)).filter((r) => !r.deleted) })
+})
+on('POST', '/api/studio', async (env, req) => {
+  const me = await authUser(env, req), b = await body(req), kind = String(b.kind || ''), r = b.row || {}
+  if (!ST_KINDS[kind]) throw bad('kind?')
+  if (!stCanWrite(me, kind)) throw new HttpError(403, 'Not allowed')
+  if (!/^[a-z0-9]{4,24}$/i.test(r.id || '')) throw bad('id?')
+  if (r.thumb && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(r.thumb)) throw bad('thumb?')
+  const t = JSON.stringify({ ...r, updatedBy: me.name, updatedAt: nowIso() }); if (t.length > 90000) throw bad('Too large')
+  const tbl = 'st_' + kind, old = await env.DB.prepare('SELECT data FROM legacy_records WHERE tbl = ? AND legacy_id = ?').bind(tbl, r.id).first()
+  if (old) await env.DB.prepare('UPDATE legacy_records SET data = ? WHERE tbl = ? AND legacy_id = ?').bind(t, tbl, r.id).run()
+  else await env.DB.prepare('INSERT INTO legacy_records (tbl, legacy_id, data) VALUES (?, ?, ?)').bind(tbl, r.id, t).run()
+  if (r.deleted && kind === 'crl') await env.DB.prepare("DELETE FROM legacy_records WHERE tbl = 'st_img' AND legacy_id = ?").bind(r.id).run()
+  await audit(env, me.id, r.deleted ? 'studio_remove' : 'studio_save', tbl, r.id, null, null)
+  return json({ ok: true })
+})
+on('GET', '/api/studio/img', async (env, req, url) => {
+  await authUser(env, req)
+  const row = await env.DB.prepare("SELECT data FROM legacy_records WHERE tbl = 'st_img' AND legacy_id = ?").bind(url.searchParams.get('id') || '').first()
+  return json({ img: row ? JSON.parse(row.data).img : '' })
+})
+on('POST', '/api/studio/img', async (env, req) => {
+  const me = await authUser(env, req), b = await body(req), id = String(b.id || ''), img = String(b.img || '')
+  if (!stCanWrite(me, 'crl')) throw new HttpError(403, 'Not allowed')
+  if (!/^[a-z0-9]{4,24}$/i.test(id)) throw bad('id?')
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(img) || img.length > 900000) throw bad('Image too large or not an image')
+  const t = JSON.stringify({ img }), old = await env.DB.prepare("SELECT 1 FROM legacy_records WHERE tbl = 'st_img' AND legacy_id = ?").bind(id).first()
+  if (old) await env.DB.prepare("UPDATE legacy_records SET data = ? WHERE tbl = 'st_img' AND legacy_id = ?").bind(t, id).run()
+  else await env.DB.prepare("INSERT INTO legacy_records (tbl, legacy_id, data) VALUES ('st_img', ?, ?)").bind(id, t).run()
+  return json({ ok: true })
+})
+
 // ── Command Centre (Boss / Developer) + company pages ─────────────────────────
 const cargoCses = async (env) => (await env.DB.prepare("SELECT e.id, e.name, e.legacy_id, e.team FROM desk_access a JOIN desks d ON d.id = a.desk_id JOIN employees e ON e.id = a.emp_id WHERE d.module = 'cargo' AND a.enabled = 1 AND e.active = 1 ORDER BY e.name").all()).results
 const myDesks = async (env, id) => (await env.DB.prepare('SELECT d.* FROM desk_access a JOIN desks d ON d.id = a.desk_id WHERE a.emp_id = ? AND a.enabled = 1 AND d.active = 1 ORDER BY d.company, d.id').bind(id).all()).results
