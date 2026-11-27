@@ -581,7 +581,7 @@ on('POST', '/api/admin/training/files/:id/delete', async (env, req, url, p) => {
 })
 on('GET', '/api/admin/employees', async (env, req) => {
   const me = await authUser(env, req); needAdmin(me)
-  return json({ employees: (await env.DB.prepare('SELECT * FROM employees ORDER BY active DESC, team, name').all()).results.map(pub) })
+  return json({ employees: (await env.DB.prepare('SELECT * FROM employees ORDER BY active DESC, team, name').all()).results.map((e) => ({ ...pub(e), pw_phone: e.pass_hash === 'phone' })) })
 })
 function roleAllowed(me, role) {
   if (role === 'developer') return me.role === 'developer'
