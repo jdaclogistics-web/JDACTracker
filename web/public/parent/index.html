@@ -1234,8 +1234,8 @@ const isMkt=()=>['swapnil','omparvate','himanshu'].includes(S.me);
 function tabsFor(who){const me0=who||S.me,k=P[me0].kind;
  if(k==='employer')return [['ehome','Home','home'],['ejobs','Jobs','work'],['ecand','Candidates','users'],['eme','Company','user']];
  if(k==='candidate')return [['shome','Home','home'],['sjobs','Jobs','work'],['sme','Profile','user']];
- if(k==='boss')return [['home','Home','home'],['tasks','Tasks','task'],['money','Accounts','rupee'],['content','Content','cal'],['more','More','more']];
- if(k==='hr')return [['home','Home','home'],['tasks','Tasks','task'],['money','Accounts','rupee'],['content','Content','cal'],['more','More','more']]; // same menu as Darshan
+ if(k==='boss')return [['home','Home','home'],['tasks','Tasks','task'],['money','Accounts','rupee'],['content','Content','cal'],['more','Tools','more']];
+ if(k==='hr')return [['home','Home','home'],['tasks','Tasks','task'],['money','Accounts','rupee'],['content','Content','cal'],['more','Tools','more']]; // same menu as Darshan
  if(k==='acc')return [['home','Home','home'],['money','Accounts','rupee'],['tasks','Tasks','task'],['chat','Communication','chat'],['me','Me','user']];
  if(me0==='nayan')return [['tasks','Meetings','meet'],['me','Me','user']];
  if(k==='partner')return [['work','Orders','box'],['me','Me','user']];
@@ -1281,7 +1281,7 @@ function render(){
  const coL=(isAdm()||K()==='acc')&&!isExt()?(isAdm()?COK:[]):[];
  const side=`<aside class="sb ${S.sbc?'col':''}" aria-label="Navigation"><div class="sb-top"><img src="${typeof JLOGO!=='undefined'?JLOGO:''}" alt="JDAC" class="sb-logo"><div class="sb-mini">JD</div><div class="sb-name">JDAC Parent</div><button class="sb-tg" data-a="sbT" aria-label="${S.sbc?'Open':'Close'} menu">${ic(S.sbc?'right':'back')}</button></div>
  ${(()=>{const all=[...T.filter(x=>x[0]!=='more'),...extra],PIN=isExt()?all.map(x=>x[0]):['home','tasks','people','chat','money','wallet','camp'],top=PIN.map(p=>all.find(x=>x[0]===p)).filter(Boolean),rest=all.filter(x=>!PIN.includes(x[0])),open=S.sbm==null?rest.some(x=>x[0]===S.v):S.sbm,rb=rest.reduce((n,x)=>n+(+b[x[0]]||0),0);
- return `<nav class="sb-nav">${top.map(x=>sbi(x,S.v===x[0])).join('')}${coDrop()}${rest.length?`<button class="sb-more ${open?'op':''}" data-a="sbM" aria-expanded="${open}" title="More">${ic('menu')}<span>More</span>${!open&&rb?`<em class="bdg">${rb}</em>`:''}<i class="chev">${ic('right')}</i></button>${open?`<div class="sb-sub">${rest.map(x=>sbi(x,S.v===x[0])).join('')}</div>`:''}`:''}</nav>`})()}
+ return `<nav class="sb-nav">${top.map(x=>sbi(x,S.v===x[0])).join('')}${coDrop()}${rest.length?`<button class="sb-more ${open?'op':''}" data-a="sbM" aria-expanded="${open}" title="Tools &amp; Settings">${ic('menu')}<span>Tools &amp; Settings</span>${!open&&rb?`<em class="bdg">${rb}</em>`:''}<i class="chev">${ic('right')}</i></button>${open?`<div class="sb-sub">${rest.map(x=>sbi(x,S.v===x[0])).join('')}</div>`:''}`:''}</nav>`})()}
  <button class="sb-who" data-a="whoSheet" title="Switch person">${av(ME().n)}<span><b>${h(ME().n)}</b><small>${h(ME().r)}</small></span></button></aside>`;
  document.getElementById('app').innerHTML=`<div class="shell ${S.sbc?'col':''}">${side}<div class="sb-main"><header class="hd"><div class="wrap hrow"><button class="sb-open" data-a="sbT" aria-label="Menu">${ic(S.sbc?'right':'back')}</button><div class="logo m-only" aria-hidden="true">JD</div>
  <button class="who" data-a="whoSheet" aria-label="Switch person"><b>${h(ME().n)} ${ic('down')}</b><span>${h(ME().r)}</span></button>
@@ -1534,7 +1534,7 @@ V.chat=()=>{const G=D.groups.filter(g=>g.all||g.m.includes(S.me)||isAdm());
  (S.chm==='team'?`<div class="list">${G.map(x=>{const last=D.msgs.filter(m=>m.g===x.id).slice(-1)[0];return `<button class="li" data-a="chatOpen" data-id="${x.id}">${av(x.n)}<div class="tx"><b>${h(x.n)}</b><div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${last?h(nmF(last.f)+': '+last.t):'No messages yet'}</div></div><span class="xs mut">${last?last.at:''}</span></button>`}).join('')}</div>`
  :`<div class="list">${empty(S.chm==='email'?h(S.me)+'@jdac.in':'WhatsApp Business',S.chm==='email'?'Your company mailbox opens here once the mail server is connected.':'WhatsApp Business API + BotBees connect here. Chats are saved on the customer.')}</div>`)};
 V.more=()=>{const T=[['people','HR Desk','users','#02496A'],['money','Accounts','rupee','#139B5F'],['kpi','KPIs','star','#F26A1B'],['training','Training','book','#7A2E8E'],['content','Content','cal','#0796A6'],['chat','Chat','chat','#2563C9'],['me','Me','user','#1B1E24'],['settings','Settings','gear','#6B6E7A'],['contacts','Contacts','book','#02496A'],['blueprint','App Blueprint','map','#B86A00']].filter(x=>allowed(x[0]));
- return page('More')+(isAdm()?`${st('Companies')}<div class="circs" style="margin-bottom:8px">${COK.map(k=>`<button class="circ" data-a="co" data-k="${k}"><i style="background:${CO[k].c}">${ic(CO[k].ic)}</i>${coShort(k)}</button>`).join('')}</div>`:'')+`${st('Tools')}<div class="tiles">${T.map(x=>`<button class="tile" data-a="go" data-v="${x[0]}"><i style="background:${x[3]}1a;color:${x[3]}">${ic(x[2])}</i>${x[1]}</button>`).join('')}</div>`};
+ return page('Tools & Settings')+(isAdm()?`${st('Companies')}<div class="circs" style="margin-bottom:8px">${COK.map(k=>`<button class="circ" data-a="co" data-k="${k}"><i style="background:${CO[k].c}">${ic(CO[k].ic)}</i>${coShort(k)}</button>`).join('')}</div>`:'')+`${st('Tools')}<div class="tiles">${T.map(x=>`<button class="tile" data-a="go" data-v="${x[0]}"><i style="background:${x[3]}1a;color:${x[3]}">${ic(x[2])}</i>${x[1]}</button>`).join('')}</div>`};
 V.me=()=>{const k=S.me,a=D.att.find(x=>x.k===k),led=D.ledger.filter(l=>l.k===k);
  return `<div class="row nw" style="margin-bottom:14px">${av(ME().n,'l')}<div><h1 style="font-size:22px">${h(ME().n)}</h1><div class="mut sm">${h(ME().r)}</div></div></div>
  <div class="card"><div class="row nw"><div style="flex:1"><div class="mut sm">Today</div><b class="num" style="font-size:20px">${a&&a.in?'In at '+a.in+(a.out?' · out '+a.out:''):'Not clocked in'}</b><div class="xs mut">${a&&a.gps?h(a.gps):'Live selfie + GPS · no uploads'}</div></div><button class="btn" data-a="clock">${ic('cam')}${a&&a.in&&!a.out?'Clock out':'Clock in'}</button></div><div id="camwrap"></div></div>
@@ -5545,4 +5545,33 @@ const _peopleBD=V.people;V.people=()=>{let out=_peopleBD();if(S.me!=='nameera')r
  const i=out.indexOf('</div>',out.indexOf('HR Desk'));return i>0?out.slice(0,i+6)+box+out.slice(i+6):box+out};
 setTimeout(()=>{if(S.me!=='nameera'||D.bdayToast===TODAY)return;const L=bdayTom();if(!L.length)return;D.bdayToast=TODAY;save();toast('🎂 Birthday tomorrow: '+L.map(e=>e.n).join(', '))},3500);
 document.head.insertAdjacentHTML('beforeend',`<style>.bdnote{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(90deg,#FFF4E5,#FFF9F0);border:1px solid #F5C98B;border-radius:14px;padding:12px 16px;margin:10px 0 14px}.bdnote .bdi{font-size:26px;line-height:1}.bdnote b{color:#9A5B00;font-size:15px}.bdnote small{color:#8A6A3A;font-size:12px}</style>`);
+/* ===== Menu clean-up =====
+   · KPIs removed: each person's task score lives in Tasks.
+   · App blueprint only for Darshan and Nameera. */
+const _allowedM2=allowed;allowed=function(v){if(v==='kpi')return false;if(v==='blueprint')return ['darshan','nameera'].includes(S.me);return _allowedM2(v)};
+const _tabsM2=tabsFor;tabsFor=function(who){return _tabsM2(who).filter(x=>x[0]!=='kpi'&&(x[0]!=='blueprint'||['darshan','nameera'].includes(who||S.me)))};
+const _renderM2=render;render=function(){if(S.v==='kpi')S.v='tasks';if(S.v==='blueprint'&&!['darshan','nameera'].includes(S.me))S.v='home';const r=_renderM2.apply(this,arguments);try{vtAttach()}catch(x){}return r};
+
+/* ===== Voice typing in every chat box (Team chat, announcements, WhatsApp, notes) =====
+   Uses the browser's speech recognition (Chrome / Edge / Android Chrome). English or Hindi. */
+const VT={rec:null,on:false,base:'',lang:(()=>{try{return localStorage.getItem('vtLang')||'en-IN'}catch(x){return 'en-IN'}})()};
+const vtSupported=()=>!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+function vtBoxes(){return [...document.querySelectorAll('textarea#msg, textarea#gmTx, #tcMsg, textarea[data-vt-ok]')]}
+function vtAttach(){vtBoxes().forEach(ta=>{if(ta.dataset.vt)return;ta.dataset.vt='1';const w=document.createElement('span');w.className='vtw';
+ w.innerHTML=`<button type="button" class="vtl" title="Voice typing language">${VT.lang==='hi-IN'?'हिं':'EN'}</button><button type="button" class="vtb ${VT.on?'on':''}" title="Voice typing — tap and speak" aria-label="Voice typing">${VT.on?'■':'🎤'}</button>`;
+ const box=document.createElement('span');box.className='vtbox';ta.parentNode.insertBefore(box,ta);box.appendChild(ta);ta.classList.add('vtpad');box.appendChild(w);
+ w.querySelector('.vtb').onclick=()=>vtToggle();w.querySelector('.vtl').onclick=()=>{VT.lang=VT.lang==='hi-IN'?'en-IN':'hi-IN';try{localStorage.setItem('vtLang',VT.lang)}catch(x){}document.querySelectorAll('.vtl').forEach(b=>b.textContent=VT.lang==='hi-IN'?'हिं':'EN');toast(VT.lang==='hi-IN'?'Voice typing: Hindi':'Voice typing: English');if(VT.on){vtStop();vtToggle()}}})}
+const vtBox=()=>vtBoxes()[0];
+function vtUi(){document.querySelectorAll('.vtb').forEach(b=>{b.classList.toggle('on',VT.on);b.textContent=VT.on?'■':'🎤'})}
+function vtStop(){VT.on=false;try{VT.rec&&VT.rec.stop()}catch(x){}VT.rec=null;vtUi()}
+function vtToggle(){if(VT.on)return vtStop();if(!vtSupported())return toast('Voice typing works in Chrome or Edge');const ta=vtBox();if(!ta)return;
+ const R=new (window.SpeechRecognition||window.webkitSpeechRecognition)();R.lang=VT.lang;R.continuous=true;R.interimResults=true;VT.base=ta.value?ta.value.replace(/\s*$/,' '):'';let fin='';
+ R.onresult=ev=>{let tmp='';for(let i=ev.resultIndex;i<ev.results.length;i++){const t=ev.results[i][0].transcript;if(ev.results[i].isFinal)fin+=t+' ';else tmp+=t}const b=vtBox();if(b){b.value=VT.base+fin+tmp;b.dispatchEvent(new Event('input',{bubbles:true}))}};
+ R.onerror=e=>{if(e.error==='not-allowed')toast('Allow the microphone for this site to use voice typing');vtStop()};R.onend=()=>{if(VT.on){vtStop()}};
+ try{R.start();VT.rec=R;VT.on=true;vtUi();toast('Listening… tap ■ to stop')}catch(x){toast('Could not start the microphone')}}
+document.addEventListener('click',e=>{if(VT.on&&e.target.closest&&e.target.closest('[data-a="cmSend"],[data-a="send"],[data-a="tcSend"],[data-a="gSend"]'))vtStop()},true);
+setTimeout(()=>{try{vtAttach()}catch(x){}},1200);
+document.head.insertAdjacentHTML('beforeend',`<style>.vtbox{position:relative;display:flex;flex:1 1 auto;min-width:0;align-self:stretch}.vtbox>textarea{flex:1;width:100%}.vtw{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;gap:4px;z-index:2}.vtpad{padding-right:84px!important}
+.vtb,.vtl{border:1px solid var(--line);background:#fff;border-radius:99px;height:30px;min-width:30px;padding:0 8px;cursor:pointer;font:600 12px Inter,sans-serif;display:grid;place-items:center}.vtb{font-size:15px}
+.vtb.on{background:#C0392B;color:#fff;border-color:#C0392B;animation:vtp 1.2s infinite}@keyframes vtp{0%{box-shadow:0 0 0 0 rgba(192,57,43,.45)}100%{box-shadow:0 0 0 10px rgba(192,57,43,0)}}</style>`);
 </script></body></html>
