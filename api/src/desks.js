@@ -293,25 +293,39 @@ export function registerDesks(on, X) {
   const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'form'
   on('GET', '/api/forms', async (env, req) => {
     const me = await authUser(env, req); needAdmin(me)
-    const { results } = await env.DB.prepare('SELECT f.*, (SELECT COUNT(*) FROM form_answers a WHERE a.form_id = f.id) answers FROM public_forms f ORDER BY f.id DESC').all()
-    return json({ forms: results.map((f) => ({ ...f, fields: JSON.parse(f.fields) })) })
+    await fmEnsure(env)
+    const { results } = await env.DB.prepare("SELECT f.*, (SELECT COUNT(*) FROM form_answers a WHERE a.form_id = f.id) answers, (SELECT MAX(created_at) FROM form_answers a WHERE a.form_id = f.id) last_at FROM public_forms f WHERE f.status != 'closed' ORDER BY f.id DESC").all()
+    return json({ forms: results.map((f) => ({ ...f, fields: JSON.parse(f.fields), meta: f.meta ? JSON.parse(f.meta) : {} })) })
   })
+  const FT = ['text', 'long', 'phone', 'email', 'number', 'date', 'choice', 'radio', 'check', 'rating', 'yesno', 'section']
+  let fmCols = false
+  const fmEnsure = async (env) => { if (fmCols) return; try { await env.DB.prepare('ALTER TABLE public_forms ADD COLUMN meta TEXT').run() } catch (e) {} fmCols = true }
+  const fmFields = (b) => (Array.isArray(b.fields) ? b.fields : []).slice(0, 60).map((f, i) => {
+    const type = FT.includes(f.type) ? f.type : 'text', ops = Array.isArray(f.options) ? f.options : String(f.options || '').split(/\n|\//)
+    return { key: /^q[0-9a-z]{1,12}$/.test(f.key || '') ? f.key : 'q' + (i + 1) + Math.random().toString(36).slice(2, 5), label: String(f.label || '').trim().slice(0, 120), type, required: type !== 'section' && !!f.required,
+      help: String(f.help || '').slice(0, 200) || undefined, options: ['choice', 'radio', 'check'].includes(type) ? ops.map((x) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 40) : undefined }
+  }).filter((f) => f.label)
+  const fmMeta = (b) => JSON.stringify({ desc: String(b.desc || '').slice(0, 600), thanks: String(b.thanks || '').slice(0, 300), color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#24408E' })
   on('POST', '/api/forms', async (env, req) => {
-    const me = await authUser(env, req); needAdmin(me); const b = await body(req)
-    const title = String(b.title || '').trim().slice(0, 60); if (!title) throw bad('Form name')
-    const fields = (Array.isArray(b.fields) ? b.fields : []).map((f, i) => ({ key: 'q' + (i + 1), label: String(f.label || '').trim().slice(0, 80), type: ['text', 'phone', 'number', 'date', 'choice', 'long'].includes(f.type) ? f.type : 'text', required: !!f.required,
-      options: f.type === 'choice' ? String(f.options || '').split('/').map((x) => x.trim()).filter(Boolean) : undefined })).filter((f) => f.label)
-    if (!fields.length) throw bad('At least one question')
+    const me = await authUser(env, req); needAdmin(me); const b = await body(req); await fmEnsure(env)
+    const title = String(b.title || '').trim().slice(0, 80); if (!title) throw bad('Form name')
+    const fields = fmFields(b)
+    if (!fields.some((f) => f.type !== 'section')) throw bad('At least one question')
     const becomes = ['lead', 'task', 'entry'].includes(b.becomes) ? b.becomes : 'entry'
     let slug = slugify(b.slug || title)
     while (await env.DB.prepare('SELECT 1 x FROM public_forms WHERE slug = ?').bind(slug).first()) slug = slug.replace(/-\d+$/, '') + '-' + Math.floor(Math.random() * 90 + 10)
-    await env.DB.prepare('INSERT INTO public_forms (slug, title, icon, fields, project_id, project_name, becomes, status, created_by) VALUES (?,?,?,?,?,?,?,?,?)')
-      .bind(slug, title, String(b.icon || '📝'), JSON.stringify(fields), b.project_id ? String(b.project_id) : null, String(b.project_name || ''), becomes, b.status === 'draft' ? 'draft' : 'live', me.id).run()
+    await env.DB.prepare('INSERT INTO public_forms (slug, title, icon, fields, project_id, project_name, becomes, status, created_by, meta) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .bind(slug, title, String(b.icon || '📝').slice(0, 8), JSON.stringify(fields), b.project_id ? String(b.project_id) : null, String(b.project_name || ''), becomes, b.status === 'draft' ? 'draft' : 'live', me.id, fmMeta(b)).run()
     return json({ ok: true, slug })
   })
   on('PATCH', '/api/forms/:id', async (env, req, url, p) => {
-    const me = await authUser(env, req); needAdmin(me); const b = await body(req)
-    await env.DB.prepare('UPDATE public_forms SET status = ? WHERE id = ?').bind(b.status === 'draft' ? 'draft' : 'live', Number(p.id)).run()
+    const me = await authUser(env, req); needAdmin(me); const b = await body(req); await fmEnsure(env)
+    if (b.fields) {
+      const fields = fmFields(b); if (!fields.some((f) => f.type !== 'section')) throw bad('At least one question')
+      await env.DB.prepare('UPDATE public_forms SET title = ?, icon = ?, fields = ?, project_id = ?, project_name = ?, becomes = ?, meta = ? WHERE id = ?')
+        .bind(String(b.title || 'Form').trim().slice(0, 80), String(b.icon || '📝').slice(0, 8), JSON.stringify(fields), b.project_id ? String(b.project_id) : null, String(b.project_name || ''), ['lead', 'task', 'entry'].includes(b.becomes) ? b.becomes : 'entry', fmMeta(b), Number(p.id)).run()
+    }
+    if (b.status) await env.DB.prepare('UPDATE public_forms SET status = ? WHERE id = ?').bind(['draft', 'live', 'closed'].includes(b.status) ? b.status : 'live', Number(p.id)).run()
     return json({ ok: true })
   })
   on('GET', '/api/forms/:id/answers', async (env, req, url, p) => {
@@ -321,17 +335,23 @@ export function registerDesks(on, X) {
   })
   // बिना login — public
   on('GET', '/api/public/form/:slug', async (env, req, url, p) => {
-    const f = await env.DB.prepare("SELECT slug, title, icon, fields FROM public_forms WHERE slug = ? AND status = 'live'").bind(p.slug).first()
+    await fmEnsure(env)
+    const f = await env.DB.prepare("SELECT slug, title, icon, fields, meta FROM public_forms WHERE slug = ? AND status = 'live'").bind(p.slug).first()
     if (!f) throw new HttpError(404, 'This form is closed or does not exist')
-    return json({ ...f, fields: JSON.parse(f.fields) })
+    return json({ ...f, fields: JSON.parse(f.fields), meta: f.meta ? JSON.parse(f.meta) : {} })
   })
   on('POST', '/api/public/form/:slug', async (env, req, url, p) => {
     const f = await env.DB.prepare("SELECT * FROM public_forms WHERE slug = ? AND status = 'live'").bind(p.slug).first()
     if (!f) throw new HttpError(404, 'This form is closed or does not exist')
     const b = await body(req), fields = JSON.parse(f.fields), data = {}
     for (const q of fields) {
-      const v = String(b[q.key] ?? '').trim().slice(0, q.type === 'long' ? 2000 : 300)
+      if (q.type === 'section') continue
+      let raw = b[q.key]; if (Array.isArray(raw)) raw = raw.map(String).filter((x) => (q.options || []).includes(x)).join(', ')
+      const v = String(raw ?? '').trim().slice(0, q.type === 'long' ? 3000 : 300)
       if (q.required && !v) throw bad(`Fill ${q.label}`)
+      if (v && q.type === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) throw bad(`${q.label}: enter a valid email`)
+      if (v && (q.type === 'choice' || q.type === 'radio') && !(q.options || []).includes(v)) throw bad(`${q.label}: pick an option`)
+      if (v && q.type === 'rating' && !/^[1-5]$/.test(v)) throw bad(`${q.label}: 1 to 5`)
       data[q.label] = v
     }
     const recent = await env.DB.prepare("SELECT COUNT(*) n FROM form_answers WHERE form_id = ? AND created_at > strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 minute')").bind(f.id).first()

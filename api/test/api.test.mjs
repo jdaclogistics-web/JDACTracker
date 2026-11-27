@@ -229,4 +229,17 @@ console.log('Studios')
   ok((await call('GET', '/api/studio/img?id=c1abcd', null, T)).data.img === img, 'everyone opens the full image')
   ok((await call('POST', '/api/studio', { kind: 'nope', row: { id: 'c1abcd' } }, DEV)).status === 400, 'unknown kind rejected')
   ok((await call('POST', '/api/studio', { kind: 'crl', row: { id: 'c1abcd', deleted: 1 } }, DEV)).status === 200 && (await call('GET', '/api/studio?kind=crl', null, T)).data.rows.length === 0, 'deleted item disappears') }
+console.log('Forms v2')
+{ const c = await call('POST', '/api/forms', { title: 'Joining form', desc: 'Welcome', fields: [{ label: 'About you', type: 'section' }, { label: 'Full name', type: 'text', required: true }, { label: 'Email', type: 'email' }, { label: 'Department', type: 'radio', options: ['Ops', 'CSE'], required: true }, { label: 'Skills', type: 'check', options: ['Excel', 'Tally'] }, { label: 'Rate us', type: 'rating' }] }, HR)
+  ok(c.status === 200 && c.data.slug, 'form with new field types created')
+  const g = await call('GET', '/api/public/form/' + c.data.slug); ok(g.status === 200 && g.data.meta.desc === 'Welcome' && g.data.fields.length === 6, 'public form has description and all fields')
+  const F = Object.fromEntries(g.data.fields.map((f) => [f.label, f.key]))
+  ok((await call('POST', '/api/public/form/' + c.data.slug, { [F['Full name']]: 'Ravi', [F.Department]: 'Nope' })).status === 400, 'bad option rejected')
+  ok((await call('POST', '/api/public/form/' + c.data.slug, { [F['Full name']]: 'Ravi', [F.Email]: 'x' , [F.Department]: 'Ops' })).status === 400, 'bad email rejected')
+  ok((await call('POST', '/api/public/form/' + c.data.slug, { [F['Full name']]: 'Ravi', [F.Department]: 'Ops', [F.Skills]: ['Excel', 'Tally', 'Hack'], [F['Rate us']]: '5' })).status === 200, 'answer accepted')
+  const L = (await call('GET', '/api/forms', null, HR)).data.forms.find((f) => f.slug === c.data.slug)
+  const A = (await call('GET', '/api/forms/' + L.id + '/answers', null, HR)).data.answers
+  ok(L.answers === 1 && A[0].data.Skills === 'Excel, Tally', 'answer stored, checkboxes joined, unknown option dropped')
+  ok((await call('PATCH', '/api/forms/' + L.id, { title: 'Joining form v2', fields: [{ label: 'Name', type: 'text' }] }, HR)).status === 200 && (await call('GET', '/api/public/form/' + c.data.slug)).data.title === 'Joining form v2', 'form edited')
+  ok((await call('PATCH', '/api/forms/' + L.id, { status: 'closed' }, HR)).status === 200 && (await call('GET', '/api/public/form/' + c.data.slug)).status === 404, 'closed form is gone') }
 console.log(`\nALL ${pass} CHECKS PASSED`)
