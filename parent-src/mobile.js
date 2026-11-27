@@ -139,10 +139,10 @@ function mTasks(){const all=myTasks(),who=S.mtw||'all',L0=who==='all'?all:who===
  const lateNote=day==='today'&&late.length?`<button class="mlate" data-a="mtD" data-t="late">${ic('clock')}<span><b>${late.length} task${late.length===1?'':'s'} overdue</b><small>Tap to see and clear them</small></span>${ic('right')}</button>`:'';
  setTimeout(()=>{const s=document.getElementById('mdsel'),w=document.getElementById('mds');if(s&&w)w.scrollLeft=s.offsetLeft-w.clientWidth/2+s.clientWidth/2},0);
  const whoL=who==='all'?'Everyone':who==='me'?'Me':nmF(who).split(' ')[0];
- return `${mtTabs()}${strip}
+ return `${mtTabs()}${S.mtMode==='cal'?strip:mtFunnel(L1)}
  <div class="mfl">${isAdm()?`<button class="mpill ${who!=='all'?'on':''}" data-a="mtWho">${who==='all'?ic('users'):av(nm(who==='me'?S.me:who))}${h(whoL)}${ic('down')}</button>`:''}<button class="mpill ${pj?'on':''}" data-a="mtPj">${ic('grid')}${h(pj?((pjL.find(p=>p.id===pj)||{}).n||'Project'):'All projects')}${ic('down')}</button>${isAdm()?`<button class="mpill ic" data-a="projNew" aria-label="New project">${ic('plus')}</button>`:''}</div>
- ${lateNote}${chipsSt}<div class="msec">${h(title)} · ${list.length}</div>
- <button class="mcompose mtfab" data-a="tNew" aria-label="Add task">${ic('plus')}Task</button><div class="mtl">${list.map(mtCard).join('')||`<div class="mempty">${ic('check')}<b>${day==='late'?'Nothing overdue':'No tasks here'}</b><small>${day==='late'?'Great — everything is on time':'Pick another day or tap + to add one'}</small></div>`}</div>`}
+ ${S.mtMode==='cal'?lateNote+chipsSt:''}<div class="msec">${h(title)} · ${list.length}</div>
+ <button class="mcompose mtfab" data-a="tNew" aria-label="Add task">${ic('plus')}Task</button><div class="mtl">${(S.mtMode!=='cal'&&day==='all'?mtGrouped(list):list.map(mtCard).join(''))||`<div class="mempty">${ic('check')}<b>${day==='late'?'Nothing overdue':'No tasks here'}</b><small>${day==='late'?'Great — everything is on time':'Pick another day or tap + to add one'}</small></div>`}</div>`}
 A.mtW=e=>{S.mtw=e.dataset.t;closeM();render()};
 A.mtWho=()=>{const all=myTasks(),ppl=[...new Set(all.map(t=>t.o).filter(Boolean))].sort((a,b)=>all.filter(t=>t.o===b&&t.st!=='Done').length-all.filter(t=>t.o===a&&t.st!=='Done').length);
  const row=(k,l,a)=>{const o=all.filter(t=>(k==='all'||t.o===(k==='me'?S.me:k))&&t.st!=='Done'),lt=o.filter(t=>mtDue(t)&&mtDue(t)<TODAY).length;return `<button class="li" data-a="mtW" data-t="${k}">${a}<div class="tx"><b>${h(l)}</b><div class="m">${o.length} open${lt?` · <span style="color:#D92D20">${lt} late</span>`:''}</div></div>${(S.mtw||'all')===k?ic('check'):''}</button>`};
@@ -151,8 +151,12 @@ A.mtPj=()=>{const all=myTasks(),P=(D.projects||[]).filter(p=>all.some(t=>t.proj=
 A.mtPjGo=e=>{S.mtp=e.dataset.t;closeM();render()};
 const mtTabs=()=>{const T=[['proj','Tasks','task'],['forms','Forms','doc'],['cal','Calendar','cal'],['meet','Meetings','meet'],['time','Timeline','t_time'],['score','Scoreboard','star']].filter(([k])=>{const o=taskHead(P[S.me]||{n:nmF(S.me)});return k==='proj'||new RegExp('data-t="'+k+'"').test(o)});
  return `<div class="mtt">${T.map(([k,l,i])=>`<button class="${(S.ttab||'proj')===k?'on':''}" data-a="ttab" data-t="${k}">${l}</button>`).join('')}</div>`};
-const _vTasksMob2=V.tasks;V.tasks=()=>{if(!isMob())return _vTasksMob2();if((S.ttab||'proj')==='proj')return mTasks();
- const o=_vTasksMob2();return mtTabs()+o.replace(/<div class="tcrumb">[\s\S]*?<\/nav>/,'').replace(/<div class="thd">[\s\S]*?<\/div>/,'').replace(/<nav class="tsec"[\s\S]*?<\/nav>/,'')};
+const _vTasksMob2=V.tasks;V.tasks=()=>{if(!isMob())return _vTasksMob2();const tt=S.ttab||'proj';
+ if(tt==='proj'){S.mtMode='list';if(!['all','late'].includes(S.mtd))S.mtd='all';return mTasks()}
+ if(tt==='cal'){S.mtMode='cal';if(!S.mtd||['all','late'].includes(S.mtd))S.mtd='today';return mTasks()}
+ if(tt==='meet'&&!S.gmN)return mtTabs()+mMeet();
+ if(tt==='time')return mtTabs()+mTimeline();
+ {const o=_vTasksMob2(),t=document.createElement('template');t.innerHTML=o;t.content.querySelectorAll('.tcrumb,.thd,nav.tsec').forEach(x=>x.remove());return mtTabs()+t.innerHTML}};
 document.head.insertAdjacentHTML('beforeend',`<style>
 @media(max-width:820px){
  .mth{display:flex;align-items:center;justify-content:space-between;margin:2px 0 12px}.mth h1{margin:0;font-size:26px}.mth small{color:var(--mut);font-size:12.5px}
