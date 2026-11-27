@@ -5648,7 +5648,7 @@ const _stMore=V.settings;V.settings=()=>{let o=_stMore();const me=P[S.me]||{},li
  const incS=adm?stSec('sInc','🎯','Incentives · who is eligible',incList().length+' people',`<p class="xs mut" style="margin:0 0 10px">Only these people see incentives and can be given one.</p><div class="uiopts">${STAFF.filter(k=>!['darshan'].includes(k)&&!isZen(k)).map(k=>stOpt('stInc',k,nmF(k),(P[k]||{}).r||'',incOk(k),incOk(k)?'✅':'➖')).join('')}</div>`):'';
  const bdS=adm?stSec('sBday','🎂','Birthday reminders',D.bdayOff?'Off':'On · to Nameera',`<p class="xs mut" style="margin:0 0 10px">Nameera gets a reminder one day before every employee's birthday.</p><div class="uiopts">${stOpt('stBd','on','On','',!D.bdayOff,'🔔')}${stOpt('stBd','off','Off','',!!D.bdayOff,'🔕')}</div>`):'';
  const appS=stSec('sApp','🔄','App',`updated ${new Date(document.lastModified).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`,`<p class="xs mut" style="margin:0 0 10px">If something looks old, load the latest version.</p><button class="btn sm" data-a="stReload">Load latest version</button> <a class="btn sm sec" href="https://github.com/jdaclogistics-web/JDACTracker/releases/download/apk-latest/JDAC-Tracker.apk" target="_blank" rel="noopener">Download phone app</a>`);
- return o+`<div class="stmore">${acct}${startS}${menuS}${voiceS}${commS}${bdS}${incS}${appS}</div>`};
+ return o+`<div class="stmore">${acct}${bdS}${incS}${appS}</div>`};
 A.stStart=e=>{ST_LS('start',e.dataset.v);render();toast('Start page saved')};
 A.stSb=e=>{ST_LS('sb',e.dataset.v);S.sbc=e.dataset.v==='closed';render()};
 A.stVt=e=>{VT.lang=e.dataset.v;try{localStorage.setItem('vtLang',VT.lang)}catch(x){}render()};
