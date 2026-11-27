@@ -34,3 +34,6 @@ const _whoAC=A.whoSheet;A.whoSheet=function(){_whoAC.apply(this,arguments);setTi
 document.head.insertAdjacentHTML('beforeend',`<style>.phrow2{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line)}.phrow2 label.btn{color:#fff!important;margin:0;display:inline-flex;align-items:center}.phrow2 .av{width:54px!important;height:54px!important;font-size:18px!important}</style>`);
 /* people who have left (Exited in the employee master) drop off every people list: owners, assignees, scoreboard, settings */
 (()=>{const gone=(D.emp||[]).filter(e=>e.st==='Exited'&&e.k).map(e=>e.k);for(let i=STAFF.length-1;i>=0;i--)if(gone.includes(STAFF[i]))STAFF.splice(i,1)})();
+/* Settings for staff: only Light (day / night / eye), View (fit / centre / split) and My account */
+const _stAC=V.settings;V.settings=()=>{const o=_stAC();if(isTop())return o;
+ return o.replace(/<details class="bpsec bpdd"[\s\S]*?<\/details>/g,m=>{const k=(m.match(/data-k="([^"]+)"/)||[])[1]||'';return ['uLight','uView','sAcc'].includes(k)?m:''})};
