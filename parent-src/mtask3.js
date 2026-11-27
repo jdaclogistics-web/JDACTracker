@@ -19,10 +19,15 @@ if(S.ttab==='meet')S.ttab='proj';
 const _vTasksMt=V.tasks;V.tasks=()=>{if(S.ttab==='meet'){S.v='chat';S.chm='meet';return V.chat()}return _vTasksMt()};
 /* web: Meet button in the Communication switch */
 const _chHeadMT=chatHead;chatHead=function(){const o=_chHeadMT.apply(this,arguments);if(S.v!=='chat'||/data-t="meet"/.test(o))return o;
- return o.replace(/(<nav class="c5nav"[^>]*>)/,`$1<button class="c5n ${S.chm==='meet'||S.chm==='notes'?'on':''}" data-a="chm" data-t="meet">${ic('video')}<span>Meet</span></button>`)};
+ return o.replace(/(<nav class="c5nav"[^>]*>)([\s\S]*?)(<\/nav>)/,(m,a,b,c)=>{const B={},rest=b.replace(/<button[^>]*data-t="(\w+)"[\s\S]*?<\/button>/g,(x,k)=>{B[k]=x;return ''});
+  B.meet=`<button class="c5n ${S.chm==='meet'||S.chm==='notes'?'on':''}" data-a="chm" data-t="meet">${ic('video')}<span>Meet</span></button>`;
+  return a+['team','email','meet'].map(k=>B[k]||'').join('')+Object.keys(B).filter(k=>!['team','email','meet'].includes(k)).map(k=>B[k]).join('')+rest+c})};
+/* Communication always opens on Chats, for every login */
+const _goChat=A.go;A.go=e=>{if(e&&e.dataset&&e.dataset.v==='chat'&&S.v!=='chat'){S.chm='team';S.mid=null}_goChat(e)};
+S.chm='team';
 /* phone: Meet · Chats · Mail */
 mTabs=()=>{const un=(D.groups||[]).reduce((a,g)=>a+unreadG(g),0),mu=mUnread(S.me),cur=S.chm==='email'?'email':['meet','notes'].includes(S.chm)?'meet':'team';
- return `<div class="mctop3">${[['meet','Meet','video',0],['team','Chats','chat',un],['email','Mail','mail',mu]].map(([k,l,i,n])=>`<button class="${cur===k?'on':''}" data-a="mcTab" data-t="${k}">${ic(i)}<span>${l}</span>${n?`<em>${n}</em>`:''}</button>`).join('')}</div>`};
+ return `<div class="mctop3">${[['team','Chats','chat',un],['email','Mail','mail',mu],['meet','Meet','video',0]].map(([k,l,i,n])=>`<button class="${cur===k?'on':''}" data-a="mcTab" data-t="${k}">${ic(i)}<span>${l}</span>${n?`<em>${n}</em>`:''}</button>`).join('')}</div>`};
 function mMeetHome(){const M=(D.meet||[]).slice().sort((a,b)=>String(b.dt||'').localeCompare(String(a.dt||'')));
  const card=m=>{const acts=(m.acts||[]).length,tk=(m.acts||[]).filter(a=>a.k).length;return `<button class="mmh" data-a="gmOpenN" data-id="${m.id}"><div class="mmh1"><i>${ic('video')}</i><div><b>${h(m.t)}</b><small>${h(m.when||'')}${m.dt?' · '+fmt(m.dt):''}${(m.with||[]).length?' · '+m.with.length+' people':''}</small></div></div>${m.notes?`<p>${h(String(m.notes).slice(0,140))}${String(m.notes).length>140?'…':''}</p>`:'<p class="mut">No notes yet · tap to take notes</p>'}${acts?`<div class="mmh2"><span>✓ ${acts} action item${acts===1?'':'s'}</span>${tk?`<span class="ok">${tk} added as tasks</span>`:acts?'<span class="todo">tap to turn into tasks</span>':''}</div>`:''}</button>`};
  return mMeet().replace('<div class="msec">Meetings','<div class="msec" hidden>Meetings').replace(/<div class="mtl">[\s\S]*$/,'')+`<div class="msec">History · notes & action items</div><div class="mtl">${M.map(card).join('')||'<div class="mempty"><b>No meetings yet</b></div>'}</div>`}
