@@ -37,3 +37,6 @@ document.head.insertAdjacentHTML('beforeend',`<style>.phrow2{display:flex;align-
 /* Settings for staff: only Light (day / night / eye), View (fit / centre / split) and My account */
 const _stAC=V.settings;V.settings=()=>{const o=_stAC();if(isTop())return o;
  return o.replace(/<details class="bpsec bpdd"[\s\S]*?<\/details>/g,m=>{const k=(m.match(/data-k="([^"]+)"/)||[])[1]||'';return ['uLight','uView','sAcc'].includes(k)?m:''})};
+/* people no longer with us: off every people list (pickers, owners, Scoreboard, incentives, chat members) */
+const GONE=['tejas','raihan','priyanka','ashish','zaman','sushil','jayashree','catherine','atul'];
+(()=>{const act=new Set((D.emp||[]).filter(e=>e.st==='Active').map(e=>e.k));for(let i=STAFF.length-1;i>=0;i--){const k=STAFF[i],f=String((P[k]||{}).n||k).trim().split(/\s+/)[0].toLowerCase();if(!act.has(k)&&!TOP.includes(k)&&GONE.includes(f))STAFF.splice(i,1)}})();

@@ -258,7 +258,7 @@ render();
 
 A.tdO=e=>{const k=e.dataset.k;S.tdO=S.tdO||{};S.tdO[k]=!S.tdO[k];render()};
 // HR Desk: 3 grouped tabs, Rules removed
-const HRG=[['ga','Attendance & Leave',['today','att','leave','hol']],['ge','Employee Master',['master','org']],['gp','Payroll & Rewards',['pay','inc','appr']]];
+const HRG=[['ga','Attendance & Leave',['today','att','leave','hol']],['ge','Employee Master',['master','org','login']],['gp','Payroll & Rewards',['pay','inc','appr']]];
 const _peopleHG=V.people;V.people=()=>{if(S.ptab==='rules')S.ptab='today';let out=_peopleHG();if(['onb','exit'].includes(S.ptab))return out;
  const m=out.match(/<div class="chips" role="tablist">((?:(?!<\/div>)[\s\S])*?data-a="ptab"[\s\S]*?)<\/div>/);if(!m)return out;
  const B={};(m[1].match(/<button role="tab"[\s\S]*?<\/button>/g)||[]).forEach(b=>{const k=(b.match(/data-t="([^"]+)"/)||[])[1];if(k)B[k]=b});
