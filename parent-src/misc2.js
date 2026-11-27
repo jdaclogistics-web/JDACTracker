@@ -53,9 +53,9 @@ document.addEventListener('click',()=>setTimeout(()=>{let ch=0;(D.tasks||[]).for
 document.head.insertAdjacentHTML('beforeend',`<style>.sbbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}.sbsc{display:flex;align-items:center;gap:10px}.sbb{flex:1;height:9px;background:#EEF1F6;border-radius:6px;overflow:hidden}.sbb i{display:block;height:100%;border-radius:6px}.sbsc b{min-width:28px;text-align:right}</style>`);
 /* motivational line: highlighted, with a soft shine */
 document.head.insertAdjacentHTML('beforeend',`<style>.dctx{text-align:left}
-.g5 .gline{display:inline-flex!important;align-items:center;gap:8px;font:700 15px Outfit,Inter,sans-serif!important;font-style:normal!important;letter-spacing:.01em;padding:8px 16px 8px 12px;border-radius:999px;color:#7A3E00!important;
- background:linear-gradient(100deg,#FFF3D6 0%,#FFE1A8 45%,#FFF6E2 55%,#FFE1A8 100%);background-size:220% 100%;border:1px solid #F6C46B;box-shadow:0 4px 14px -6px rgba(242,140,40,.55);animation:glshine 4.5s ease-in-out infinite}
-.g5 .gline:before{content:"✦";color:#F28C28;font-size:14px;animation:glstar 2.4s ease-in-out infinite}
+.g5 .gline{display:inline-flex!important;align-items:center;gap:8px;font:700 15px Outfit,Inter,sans-serif!important;font-style:normal!important;letter-spacing:.01em;padding:8px 16px 8px 12px;border-radius:999px;color:#fff!important;
+ background:linear-gradient(100deg,#1D3378 0%,#2F4FB8 45%,#5B78E0 52%,#2F4FB8 60%,#1D3378 100%);background-size:240% 100%;border:1px solid #1D3378;box-shadow:0 6px 16px -6px rgba(36,64,142,.55);animation:glshine 4.5s ease-in-out infinite}
+.g5 .gline:before{content:"✦";color:#FFB547;font-size:14px;animation:glstar 2.4s ease-in-out infinite}
 @keyframes glshine{0%,100%{background-position:100% 0}50%{background-position:0 0}}@keyframes glstar{0%,100%{transform:scale(1) rotate(0);opacity:.8}50%{transform:scale(1.25) rotate(20deg);opacity:1}}
 @media (prefers-reduced-motion:reduce){.g5 .gline,.g5 .gline:before{animation:none}}</style>`);
 

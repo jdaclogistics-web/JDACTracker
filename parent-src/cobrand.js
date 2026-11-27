@@ -18,3 +18,14 @@ body.co-jup .ldbarx i{background:#E31E24!important}body.co-jup .lnk{color:#C8161
 body.co-gb .cpcb i:first-child,body.co-gb .cplg i:first-child{background:#E0306A!important}body.co-gb .cpcb i:last-child,body.co-gb .cplg i:last-child{background:#A7D99B!important}
 body.co-jup .cpcb i:first-child,body.co-jup .cplg i:first-child{background:#1C1C1C!important}body.co-jup .cpcb i:last-child,body.co-jup .cplg i:last-child{background:#F4A3A5!important}
 </style>`);
+/* one-colour headers: white like the logos, with the brand colour as accent (no logo box on a coloured band) */
+const CB={hr:['#0B4F6C','#0E8C9A','#E6F4F6'],log:['#0B2A6B','#F28C28','#EEF2FB'],gb:['#C2185B','#E0306A','#FDEBF1'],jup:['#141414','#E31E24','#F4F4F4']};
+const _coHeadCB=coHead;coHead=function(k){const o=_coHeadCB(k),c=CB[k];if(!c||!CO_LOGO[k])return o;return o.replace('<div class="cohead"',`<div class="cohead cobrand" style="--cbT:${c[0]};--cbA:${c[1]};--cbS:${c[2]}"`)};
+document.head.insertAdjacentHTML('beforeend',`<style>
+body .cohead.cobrand,body .cohead.cobrand[data-theme]{background:#fff!important;color:#1C2433;border:1px solid #E6E9EF;box-shadow:inset 0 -4px 0 var(--cbA),0 8px 20px -14px rgba(16,24,40,.35)!important;padding:16px 20px 20px}
+body .cohead.cobrand h1{color:var(--cbT)!important}body .cohead.cobrand p{color:#5B6475;opacity:1}
+body .cohead.cobrand .colog{background:transparent!important;box-shadow:none!important;padding:0!important;min-width:0;height:auto;border-radius:0}
+body .cohead.cobrand .colog img{height:68px;max-width:230px;object-fit:contain}
+body .cohead.cobrand .btn{background:var(--cbS)!important;color:var(--cbT)!important;border-color:transparent!important}
+body .cohead.cobrand>div:last-child{border-left:2px solid var(--cbS);padding-left:16px}
+</style>`);
