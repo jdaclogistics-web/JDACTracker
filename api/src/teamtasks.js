@@ -149,3 +149,21 @@ export async function seedGoaRecon(env, legacyPut, nowIso) {
   }
   return true
 }
+
+// CSE team = Neetu, Balaji and Imran (plus Darshan / Nameera if they were already in it)
+export async function setCseMembers(env, legacyPut, nowIso) {
+  const all = async (tbl) => (await env.DB.prepare('SELECT legacy_id, data FROM legacy_records WHERE tbl = ?').bind(tbl).all()).results.map((r) => ({ lid: r.legacy_id, ...JSON.parse(r.data) }))
+  const pr = (await all('projects')).find((p) => /\bcse\b/i.test(String(p.name || '')))
+  if (!pr) return false
+  const pid = String(pr.id ?? pr.lid)
+  const emps = (await env.DB.prepare('SELECT id, legacy_id, name, username FROM employees').all()).results
+  const find = (n) => emps.find((e) => new RegExp('^' + n, 'i').test(String(e.name || '')) || String(e.username || '').toLowerCase() === n.toLowerCase())
+  const want = ['Neetu', 'Balaji', 'Imran'].map(find).filter(Boolean)
+  const keepTop = ['Darshan', 'Nameera'].map(find).filter(Boolean).map((e) => e.id)
+  const mem = (await all('project_members')).filter((m) => String(m.projectId) === pid)
+  for (const m of mem) if (m.emp_id != null && !want.some((e) => e.id === Number(m.emp_id)) && !keepTop.includes(Number(m.emp_id)))
+    await env.DB.prepare("DELETE FROM legacy_records WHERE tbl = 'project_members' AND legacy_id = ?").bind(m.lid).run()
+  for (const e of want) if (!mem.some((m) => Number(m.emp_id) === e.id))
+    await legacyPut(env, 'project_members', { projectId: pid, personId: e.legacy_id ?? null, emp_id: e.id, role: 'Member', createdAt: nowIso() })
+  return want.length > 0
+}

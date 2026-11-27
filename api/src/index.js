@@ -4,7 +4,7 @@ import { istDate, istMinutes, nowIso, hashPassword, verifyPassword, signToken, v
 import { loadAll, dropCache, homeSummary, companyPage, myHome, cargoDesk, COMPANIES, journeyOf } from './cc.js'
 import { DESK_TABLES, migrateDesks, registerDesks } from './desks.js'
 import { registerIt } from './it.js'
-import { registerTeamTasks, seedGoaRecon } from './teamtasks.js'
+import { registerTeamTasks, seedGoaRecon, setCseMembers } from './teamtasks.js'
 import { savePhoto, readPhoto, flushPendingPhotos, bytesToB64, saveFile, readFile, deleteFile } from './photos.js'
 
 const ADMIN_ROLES = ['hr', 'boss', 'developer']
@@ -1261,6 +1261,7 @@ async function runMigrations(env) {
     }
     await mark('mig_org_v3')
   }
+  if (!(await done('mig_cse_members_v1'))) { try { if (await setCseMembers(env, legacyPut, nowIso)) { await mark('mig_cse_members_v1'); dropCache() } } catch (e) { console.error('cse members', e?.message) } }
   if (!(await done('mig_goa_recon_v1'))) { try { if (await seedGoaRecon(env, legacyPut, nowIso)) { await mark('mig_goa_recon_v1'); dropCache() } } catch (e) { console.error('goa recon tasks', e?.message) } }
   if (!(await done('mig_desks_v1'))) { try { await migrateDesks(env, (await env.DB.prepare('SELECT id, legacy_id FROM employees').all()).results); await mark('mig_desks_v1') } catch (e) { console.error('desk migration', e?.message) } }
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage_daily (day TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0)').run()
