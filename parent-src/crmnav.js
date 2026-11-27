@@ -19,12 +19,12 @@ const _renderNV=render;render=function(){_renderNV.apply(this,arguments);try{doc
  const html=`<button data-a="go" data-v="crm" class="${S.v==='crm'?'on':''}" ${S.v==='crm'?'aria-current="page"':''} title="CRM">${ic('users')}<span>CRM</span></button>`;
  const ch=nav.querySelector(':scope>[data-v="chat"]');if(ch)ch.insertAdjacentHTML('beforebegin',html);else nav.insertAdjacentHTML('afterbegin',html)}catch(x){}};
 /* CRM page: first the list of companies, then the chosen company's CRM */
-const _goNV2=A.go;A.go=e=>{if(e.dataset.v==='crm')S.crmIn=null;_goNV2(e)};
-const _vCrmNV=V.crm;V.crm=()=>{const L=crmCosNV();if(L.length===1)S.crmIn=L[0];
+
+const _vCrmNV=V.crm;V.crm=()=>{const L=crmCosNV();/* opens straight on the CRM board; switch company from the picker at the top */if(!S.crmIn||!L.includes(S.crmIn))S.crmIn=L.includes(S.cmco)?S.cmco:L[0];
  if(!S.crmIn){const cnt=k=>D.wa.filter(c=>cmTeams(k).includes(c.team)),num=k=>{const v=cmNum(k);return v.wa||v.vn||'Number to be added'},segs=k=>(typeof cmSegs==='function'&&cmSegs(k))||[];
   return page('CRM','Pick a company to open its customers, WhatsApp and calls')+`<div class="crmgrid">${L.map(k=>{const f=cmInfo(k),C=cnt(k),un=C.filter(c=>c.unread).length;return `<button class="crmco" data-a="crmCo" data-k="${k}" style="--cc:${f[4]}"><span class="crmav">${h(f[3].slice(0,2).toUpperCase())}</span><span class="crmtx"><b>${h(f[1])}</b><small>${h(num(k))}</small>${segs(k).length?`<small class="crmseg">${segs(k).map(x=>h(x[1])).join(' · ')}</small>`:''}</span><span class="crmn"><b>${C.length}</b><small>customers</small>${un?`<em>${un} unread</em>`:''}</span></button>`}).join('')}</div>`}
  if(S.cmco!==S.crmIn){S.cmco=S.crmIn}
- const back=L.length>1?`<button class="crmback" data-a="crmBack">${ic('back')}All companies</button>`:'';return back+_vCrmNV()};
+ return _vCrmNV()};
 A.crmCo=e=>{S.v='crm';S.crmIn=e.dataset.k;A.cmCo(e);scrollTo(0,0)};
 A.crmBack=()=>{S.crmIn=null;render()};
 const _cmCoNV=A.cmCo;A.cmCo=e=>{if(S.v==='crm'&&e.dataset.k&&e.dataset.k!=='all')S.crmIn=e.dataset.k;_cmCoNV(e)};
