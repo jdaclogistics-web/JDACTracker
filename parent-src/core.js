@@ -53,7 +53,7 @@ const ic=(k,c='')=>`<svg class="ico ${c}" viewBox="0 0 24 24" aria-hidden="true"
 
 /* =================== people & roles =================== */
 const P={
- darshan:{n:'Darshan Soni',r:'Boss · Admin',team:'Admin',kind:'boss'},
+ darshan:{n:'Darshan Soni',r:'Director',team:'Admin',kind:'boss'},
  nameera:{n:'Nameera Shaikh',r:'HR Manager',team:'HR',kind:'hr'},
  snehalz:{n:'Snehal Z',r:'Accountant',team:'Accounts',kind:'acc'},
  snehalb:{n:'Snehal B',r:'HR · Recruitment',team:'HR',kind:'staff',work:['hr','hire']},
