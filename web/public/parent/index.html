@@ -7016,24 +7016,48 @@ const mCrmLeads=(co,sg)=>D.wa.filter(c=>cmTeams(co).includes(c.team)&&(!sg||cmSe
 const mCrmName=(co,sg)=>sg&&SEG_NM[co]?SEG_NM[co][sg][0].replace('JDAC ',''):(cmInfo(co)[1]||'').replace('JDAC ','');
 const _vCrmMob=V.crm;V.crm=()=>{const o=_vCrmMob();if(!isMob())return o;
  const t=document.createElement('template');t.innerHTML=o;const hd=t.content.querySelector('.c5h');
- const q=hd&&hd.querySelector('#cmq');
- const chips=mCrmList().map(([co,sg])=>{const L=mCrmLeads(co,sg),un=L.reduce((a,c)=>a+(c.unread||0),0),on=S.cmco===co&&(!sg||S.cmseg===sg),f=cmInfo(co);
-  return `<button class="mcr ${on?'on':''}" data-a="cmCo" data-k="${co}" ${sg?`data-seg="${sg}"`:''} style="--cc:${f[4]}"><b>${h(mCrmName(co,sg))}</b><span>${L.length} leads${un?` · <em>${un} new</em>`:''}</span></button>`}).join('');
- const bar=`<div class="mcrh"><div class="mcrs">${chips}</div><div class="mcrq">${ic('search')}${q?q.outerHTML.replace(/placeholder="[^"]*"/,'placeholder="Search name, number, chat…"'):''}<button data-a="cmPad" aria-label="Dialer">${ic('phone')}</button></div></div>`;
+ const dd=hd&&hd.querySelector('.ccdd'),q=hd&&hd.querySelector('#cmq');
+ const bar=`<div class="mcrh">${dd?dd.outerHTML:''}<div class="mcrq">${ic('search')}${q?q.outerHTML.replace(/placeholder="[^"]*"/,'placeholder="Search name, number, chat…"'):''}<button data-a="cmPad" aria-label="Dialer">${ic('phone')}</button></div></div>`;
  if(hd)hd.outerHTML=bar;else t.content.prepend(document.createRange().createContextualFragment(bar));
- const b=t.content.querySelector('.cmbar');if(b){b.querySelectorAll('[data-a="cmPad"]').forEach(x=>x.remove());const lead=b.querySelector('[data-t="board"] span');if(lead)lead.textContent='Leads'}
+ const b=t.content.querySelector('.cmbar');
+ if(b){b.querySelectorAll('[data-a="cmPad"]').forEach(x=>x.remove());const v=S.cmv||'board';
+  const L=D.wa.filter(c=>cmTeams(cmCo()).includes(c.team)&&(!cmSegs(cmCo())||cmSegOf(c)===cmSeg())),un=L.reduce((a,c)=>a+(c.unread||0),0);
+  const seg=b.querySelector('.cseg');if(seg)seg.outerHTML=`<div class="mtabs">${[['board','Leads','grid',L.length],['wa','WhatsApp','chat',un],['calls','Calls','phone',0]].map(([k,l,i,n])=>`<button class="${v===k?'on':''}" data-a="cmV" data-t="${k}">${ic(i)}<span>${l}</span>${n?`<em>${n}</em>`:''}</button>`).join('')}</div>`;
+  const sel=b.querySelector('.t4sel');if(sel){sel.remove();b.insertAdjacentHTML('afterend',`<div class="mown">${ic('user')}${sel.outerHTML}</div>`)}}
  const nw=t.content.querySelector('[data-a="waNew"]');if(nw){nw.setAttribute('aria-label',nw.textContent.trim());nw.classList.add('mcrfab')}
- setTimeout(()=>{const a=document.querySelector('.mcr.on'),w=document.querySelector('.mcrs');if(a&&w)w.scrollLeft=a.offsetLeft-16},0);
  return t.innerHTML};
-/* stage funnel bar above the stage chips */
-const _boardMcrm=boardView;boardView=function(L){const o=_boardMcrm(L);if(!isMob())return o;const tot=L.length||1;
- const seg=CM_COL.map(([k,l,,c])=>{const n=L.filter(x=>cmColOf(x)===k).length;return n?`<i style="flex:${n};background:${c}" title="${h(l)} ${n}"></i>`:''}).join('');
- const hot=L.filter(c=>(c.tags||[]).some(t=>/hot/i.test(t))).length,un=L.filter(c=>!c.to).length,today=L.filter(c=>c.at===TODAY).length;
- return `<div class="mfun"><div class="mfunb">${seg}</div><div class="mfuns"><span><b>${L.length}</b> leads</span><span><b>${today}</b> today</span><span class="hot"><b>${hot}</b> 🔥 hot</span><span class="${un?'bad':''}"><b>${un}</b> unassigned</span></div></div>`+o};
+/* pipeline card: stage bar with legend + 4 clear tiles */
+const _boardMcrm=boardView;boardView=function(L){const o=_boardMcrm(L);if(!isMob())return o;
+ const st=CM_COL.map(([k,l,,c])=>[k,l,c,L.filter(x=>cmColOf(x)===k).length]).filter(x=>x[3]);
+ const hot=L.filter(c=>(c.tags||[]).some(t=>/hot/i.test(t))).length,un=L.filter(c=>!c.to).length,today=L.filter(c=>c.at===TODAY).length,won=L.filter(c=>cmColOf(c)==='done').length;
+ const tile=(n,l,c,bg)=>`<div class="mpt" style="--c:${c};--b:${bg}"><b>${n}</b><span>${l}</span></div>`;
+ return `<div class="mpipe"><div class="mpiph"><b>Pipeline</b><span>${L.length} lead${L.length===1?'':'s'}</span></div>
+ <div class="mfunb">${st.map(([k,l,c,n])=>`<i style="flex:${n};background:${c}"></i>`).join('')||'<i style="flex:1;background:#E4E7EC"></i>'}</div>
+ <div class="mleg">${st.map(([k,l,c,n])=>`<span><i style="background:${c}"></i>${h(l)} <b>${n}</b></span>`).join('')}</div>
+ <div class="mpts">${tile(today,'New today','#2563C9','#EFF4FF')}${tile(hot,'🔥 Hot','#C2410C','#FFF4ED')}${tile(un,'Unassigned',un?'#D92D20':'#667085',un?'#FEF3F2':'#F2F4F7')}${tile(won,'Won','#1F9D55','#ECFDF3')}</div></div>`+o};
 document.head.insertAdjacentHTML('beforeend',`<style>
 @media(max-width:820px){
  html.mob #main[data-v="crm"] .cmwrap{margin-top:0}
- .mcrh{margin:0 0 10px}
+
+ .mcrh{display:flex;flex-direction:column;gap:8px;margin:0 0 10px}
+ .mcrh .ccdd{position:relative}.mcrh .ccbtn{width:100%;display:flex;align-items:center;gap:10px;background:#fff!important;border:1px solid var(--line)!important;border-left:4px solid var(--cc)!important;border-radius:14px!important;padding:8px 12px!important;color:#101828!important;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+ .mcrh .ccav{width:36px!important;height:36px!important;border-radius:10px!important;background:var(--cc)!important;color:#fff!important;font-size:12px!important;flex:none}
+ .mcrh .cctx{flex:1;min-width:0;text-align:left}.mcrh .cctx b{display:block;font-size:15px;color:#101828!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mcrh .cctx small{color:var(--mut)!important;font-size:12px}
+ .mcrh .ccchev{color:#475467!important;font-size:16px}
+ .mcrh .ccmenu{position:absolute!important;left:0;right:0;top:calc(100% + 6px);z-index:60;max-height:60vh;overflow-y:auto;border-radius:16px!important;box-shadow:0 16px 40px rgba(16,24,40,.22)!important}
+ .mtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#E9ECF2;border-radius:14px;padding:4px;flex:1 1 100%}
+ .mtabs button{display:flex;align-items:center;justify-content:center;gap:6px;border:0;background:none;border-radius:11px;padding:9px 4px;font:inherit;font-size:13px;font-weight:700;color:#475467;min-width:0;white-space:nowrap}
+ .mtabs button svg{width:15px;height:15px;flex:none}@media(max-width:420px){.mtabs button svg{display:none}}.mtabs button em{font-style:normal;font-size:10.5px;background:#D0D5DD;color:#344054;border-radius:999px;padding:0 6px}
+ .mtabs button.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(16,24,40,.14)}.mtabs button.on em{background:var(--navy);color:#fff}
+ html.mob .cmbar{display:block!important;margin:0 0 8px!important}html.mob .cmbar .cseg{display:none!important}
+ .mown{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:0 4px 0 10px;margin:0 0 10px}.mown svg{width:15px;height:15px;color:var(--mut)}
+ .mown select{border:0!important;background-color:transparent!important;min-height:34px!important;font-size:13px!important;font-weight:600;padding:0 26px 0 0!important;width:auto!important;box-shadow:none!important}
+ .mpipe{background:#fff;border-radius:16px;padding:12px;margin:0 0 12px;box-shadow:0 1px 2px rgba(16,24,40,.05);width:100%;box-sizing:border-box}
+ .mpiph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}.mpiph b{font-size:15px}.mpiph span{font-size:12px;color:var(--mut);font-weight:600}
+ .mpipe .mfunb{display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px}.mpipe .mfunb i{display:block;min-width:8px}
+ .mleg{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0 10px;font-size:11.5px;color:#475467}.mleg span{display:inline-flex;align-items:center;gap:5px}.mleg i{width:8px;height:8px;border-radius:50%}.mleg b{color:#101828}
+ .mpts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.mpt{background:var(--b);border-radius:12px;padding:8px 4px;text-align:center}.mpt b{display:block;font-size:20px;color:var(--c);line-height:1.1}.mpt span{font-size:10.5px;font-weight:700;color:#475467}
+
  .mcrs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 10px;padding:2px 16px}.mcrs::-webkit-scrollbar{display:none}
  .mcr{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid var(--line);background:#fff;border-radius:14px;padding:8px 12px 8px 14px;font:inherit;text-align:left;position:relative;min-width:118px}
  .mcr:before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--cc)}
