@@ -5910,7 +5910,7 @@ const pmMatch=(k,co)=>(PM_RX[k]||new RegExp(stBrand(k).n.replace(/[.*+?^${}()|[\
 function pmView(){const t=S.pmT||'plan',L=stRows('pmp').filter(stInC),live=L.filter(x=>x.st==='Live');
  if(typeof CAMP!=='undefined'&&!CAMP&&typeof campLoad==='function')campLoad();
  let ads='';if(typeof CAMP!=='undefined'&&CAMP&&!CAMP.err){const ids=new Set(CAMP.c.filter(c=>!S.stC||pmMatch(S.stC,c.company)).map(c=>String(c.id))),f=addD(TODAY,-29);let sp=0,ld=0;CAMP.m.forEach(m=>{if(ids.has(String(m.campaignId))&&m.date>=f)sp+=+m.spend||0});CAMP.l.forEach(l=>{if(ids.has(String(l.campaignId))&&l.date>=f)ld++});ads=`<div><span>Ad spend · 30 days</span><b>${inr(Math.round(sp))}</b></div><div><span>Leads · 30 days</span><b>${ld}</b></div><div><span>Cost per lead</span><b>${ld?inr(Math.round(sp/ld)):'—'}</b></div>`}
- const kp=`<div class="stk"><div><span>Live campaigns</span><b>${live.length}</b></div><div><span>Planned</span><b>${L.filter(x=>x.st==='Planned').length}</b></div><div><span>Live budget / day</span><b>${inr(live.reduce((a,x)=>a+(+x.bud||0),0))}</b></div>${ads}</div>`;
+ const kp=`<div class="stkp"><div><span>Live campaigns</span><b>${live.length}</b></div><div><span>Planned</span><b>${L.filter(x=>x.st==='Planned').length}</b></div><div><span>Live budget / day</span><b>${inr(live.reduce((a,x)=>a+(+x.bud||0),0))}</b></div>${ads}</div>`;
  const sub=`<div class="row" style="margin:12px 0">${chips([['plan','Campaign plan',L.length],['res','Ad results'],['acc','Ad accounts']],t,'pmT')}<span class="sp"></span>${isStT()&&t==='plan'?`<button class="btn sm" data-a="pmNew">${ic('plus')}Plan a campaign</button>`:''}</div>`;
  if(t==='res'){if(typeof CAMP!=='undefined'&&CAMP&&S.stC){const c=CAMP.c.find(x=>pmMatch(S.stC,x.company));S.cpC=c?c.company:''}else S.cpC='';
   const o=typeof V.camp==='function'?V.camp().replace(/<div class="row nw" style="margin-bottom:14px">[\s\S]*?<\/h1>[\s\S]*?<\/div>/,''):'';return kp+sub+o}
@@ -5936,7 +5936,7 @@ A.stDelOk=e=>{const k=e.dataset.k,x=(D.st[k]||[]).find(r=>r.id===e.dataset.id);i
 const IT_ST=['Brief','Design','Build','Testing','Live'];
 function itView(){const L=stRows('itp').filter(stInC);
  const card=x=>{const b=stBrand(x.co),late=x.st!=='Live'&&x.due&&x.due<TODAY;return `<button class="itc" data-a="itOpen" data-id="${x.id}"><div class="row" style="gap:5px"><span class="pill" style="background:${b.c}1a;color:${b.c}">${h(b.n)}</span>${pill(x.kind)}</div><b>${h(x.t)}</b><div class="xs mut">${h(stNm(x.o))}${x.due?' · '+(x.st==='Live'?'live':'due')+' '+fmt(x.due):''}${late?` · <span style="color:var(--r);font-weight:700">${-daysTo(x.due)}d late</span>`:''}</div></button>`};
- return `<div class="stk"><div><span>Projects</span><b>${L.length}</b></div><div><span>In progress</span><b>${L.filter(x=>!['Live','Brief'].includes(x.st)).length}</b></div><div><span>Live</span><b>${L.filter(x=>x.st==='Live').length}</b></div><div><span>Late</span><b style="color:${L.some(x=>x.st!=='Live'&&x.due&&x.due<TODAY)?'var(--r)':''}">${L.filter(x=>x.st!=='Live'&&x.due&&x.due<TODAY).length}</b></div></div>
+ return `<div class="stkp"><div><span>Projects</span><b>${L.length}</b></div><div><span>In progress</span><b>${L.filter(x=>!['Live','Brief'].includes(x.st)).length}</b></div><div><span>Live</span><b>${L.filter(x=>x.st==='Live').length}</b></div><div><span>Late</span><b style="color:${L.some(x=>x.st!=='Live'&&x.due&&x.due<TODAY)?'var(--r)':''}">${L.filter(x=>x.st!=='Live'&&x.due&&x.due<TODAY).length}</b></div></div>
  <div class="row" style="margin:12px 0"><span class="mut sm">Websites, landing pages and apps for every client · Brief → Design → Build → Testing → Live</span><span class="sp"></span>${isStT()?`<button class="btn sm" data-a="itNew">${ic('plus')}New project</button>`:''}</div>
  <div class="itb">${IT_ST.map(s=>{const C=L.filter(x=>x.st===s);return `<div class="itcol"><div class="itch">${s}<span>${C.length}</span></div>${C.map(card).join('')||'<div class="empty xs">—</div>'}</div>`}).join('')}</div>`}
 const itForm=x=>{x=x||{};return `<label for="itt">Project *</label><input id="itt" value="${h(x.t||'')}" placeholder="e.g. Diwali offer landing page">
@@ -6042,20 +6042,20 @@ const _moreST=V.more;V.more=()=>{let o=_moreST().replace(/<button class="tile" d
 
 document.head.insertAdjacentHTML('beforeend',`<style>
 .stbar{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin-top:12px}
-.stbar>i{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font:800 13px inherit;font-style:normal;flex:none}.stbar>i svg{width:20px;height:20px}
+.stbar>i{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;font-family:inherit;font-style:normal;flex:none}.stbar>i svg{width:20px;height:20px}
 .stbar>div{flex:1;min-width:0}.stbar small{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
-.stbar select{border:0;padding:0;margin:0;min-height:0;font:700 16px inherit;background:transparent;width:auto;max-width:100%;cursor:pointer}
-.stk{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px}.stk>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}.stk span{display:block;font-size:12px;color:var(--mut);font-weight:600}.stk b{font:800 22px inherit}
+.stbar select{border:0;padding:0;margin:0;min-height:0;font-weight:700;font-size:16px;font-family:inherit;background:transparent;width:auto;max-width:100%;cursor:pointer}
+.stkp{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px}.stkp>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}.stkp span{display:block;font-size:12px;color:var(--mut);font-weight:600}.stkp b{font-weight:800;font-size:22px;font-family:inherit}
 .sttw{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:auto}.sttbl{width:100%;border-collapse:collapse;font-size:13.5px}.sttbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
 .sttbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}.sttbl tr:last-child td{border-bottom:0}.sttbl tbody tr{cursor:pointer}.sttbl tbody tr:hover{background:var(--bg)}.sttbl td small{display:block;color:var(--mut);font-size:12px;margin-top:2px}.sttbl .n{text-align:right;white-space:nowrap}
 .stdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
-.itb{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}.itcol{background:var(--bg);border-radius:16px;padding:8px;min-height:120px}.itch{display:flex;justify-content:space-between;font:700 13px inherit;padding:6px 6px 10px}.itch span{color:var(--mut)}
+.itb{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}.itcol{background:var(--bg);border-radius:16px;padding:8px;min-height:120px}.itch{display:flex;justify-content:space-between;font-weight:700;font-size:13px;font-family:inherit;padding:6px 6px 10px}.itch span{color:var(--mut)}
 .itc{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px;cursor:pointer;font:inherit}.itc b{display:block;margin:7px 0 4px;font-size:14px}.itc:hover{border-color:var(--o)}
 .crg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}.crt{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:0;text-align:left;cursor:pointer;font:inherit}.crt:hover{box-shadow:0 6px 18px rgba(0,0,0,.08)}
-.crt .im{aspect-ratio:1;position:relative;display:flex;align-items:flex-end;padding:10px;color:#fff;font:700 14px inherit}.crt .im em{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.45);display:grid;place-items:center}.crt .im em svg{width:14px;height:14px}
+.crt .im{aspect-ratio:1;position:relative;display:flex;align-items:flex-end;padding:10px;color:#fff;font-weight:700;font-size:14px;font-family:inherit}.crt .im em{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.45);display:grid;place-items:center}.crt .im em svg{width:14px;height:14px}
 .crt .bd{padding:9px 11px}.crt .bd b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crt .bd small{display:block;font-size:11.5px;color:var(--mut)}.crt .bd small.vis{color:var(--b,#2563C9);font-weight:600}
-.chipx{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:600 13px inherit;display:inline-flex;gap:6px;align-items:center;cursor:pointer}.chipx svg{width:14px;height:14px}.chipx.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.crbig{border-radius:16px;min-height:220px;max-height:62vh;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font:700 18px inherit;padding:0}.crbig img{max-width:100%;max-height:62vh;display:block}
+.chipx{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-weight:600;font-size:13px;font-family:inherit;display:inline-flex;gap:6px;align-items:center;cursor:pointer}.chipx svg{width:14px;height:14px}.chipx.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.crbig{border-radius:16px;min-height:220px;max-height:62vh;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:700;font-size:18px;font-family:inherit;padding:0}.crbig img{max-width:100%;max-height:62vh;display:block}
 .crdrop{border:2px dashed var(--line);border-radius:16px;padding:16px;text-align:center;background:var(--bg)}.crdrop.on{border-color:var(--o);background:#fff7f0}.crdrop b{display:flex;gap:6px;justify-content:center;align-items:center}.crdrop b svg{width:18px;height:18px}.crdrop span{display:block;font-size:12px;color:var(--mut);margin-top:4px}.crdrop label.btn{color:inherit}.crdrop label.btn:not(.sec){color:#fff}
 .crlp{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.crlp{max-height:180px;overflow:auto}.crlp img{height:56px;border-radius:8px;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0/12px 12px}
 </style>`);
@@ -6100,7 +6100,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .crmav{width:46px;height:46px;border-radius:14px;background:var(--cc);color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
 .crmtx{flex:1;min-width:0}.crmtx b{display:block;font-size:16px}.crmtx small{display:block;font-size:12.5px;color:var(--mut)}.crmtx .crmseg{color:var(--cc);font-weight:600;margin-top:2px}
 .crmn{text-align:right}.crmn b{display:block;font-size:22px}.crmn small{font-size:11.5px;color:var(--mut)}.crmn em{display:block;font-style:normal;font-size:11.5px;font-weight:700;color:#fff;background:var(--g,#1F9D55);border-radius:999px;padding:1px 8px;margin-top:4px}
-.crmback{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--navy);font:600 14px inherit;cursor:pointer;margin:0 0 8px;padding:4px 0}.crmback svg{width:16px;height:16px}
+.crmback{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--navy);font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;margin:0 0 8px;padding:4px 0}.crmback svg{width:16px;height:16px}
 </style>`);
 /* ===== Me page: salary slip opens as a pop-up · phone reset & attendance request under "More" · attendance marking last ===== */
 /* Logistics company page: no logo in the header (the JDAC logo is already in the side menu) */
@@ -6201,7 +6201,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .watbl td{vertical-align:top}.wap{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;margin:0 4px 4px 0;background:#E7F6EE;color:#13804B}.wap.view{background:#FFF4E5;color:#8A5300}
 .wasec{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:10px}.wah{display:flex;align-items:center;gap:8px;margin-bottom:6px}.wah .lnk{margin-left:8px}
 .war{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}.war span{flex:1;font-size:14px}
-.waseg{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px}.waseg button{border:0;background:none;padding:5px 12px;border-radius:8px;font:600 13px inherit;cursor:pointer;color:var(--mut)}
+.waseg{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px}.waseg button{border:0;background:none;padding:5px 12px;border-radius:8px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;color:var(--mut)}
 .waseg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}.waseg button.on.edit{color:#13804B}.waseg button.on.view{color:#8A5300}
 </style>`);
 /* ===== CRM: companies with two CRMs show them as two entries in the company picker (no tabs inside the board)
@@ -6254,7 +6254,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .hrcard{display:flex;align-items:center;gap:12px;min-width:220px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 16px;cursor:pointer;font:inherit;text-align:left;transition:box-shadow .15s,border-color .15s}
 .hrcard:hover{box-shadow:0 8px 22px rgba(20,30,50,.08)}.hrcard>i{width:40px;height:40px;border-radius:12px;background:#EEF2FB;color:var(--navy);display:grid;place-items:center;flex:none}.hrcard>i svg{width:20px;height:20px}
 .hrcard b{display:block;font-size:14.5px}.hrcard small{display:block;font-size:12px;color:var(--mut)}.hrcard.on{border-color:var(--navy);box-shadow:0 0 0 2px var(--navy) inset}.hrcard.on>i{background:var(--navy);color:#fff}
-.hrback{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;background:none;color:var(--navy);font:600 13.5px inherit;cursor:pointer}.hrback svg{width:16px;height:16px}
+.hrback{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;background:none;color:var(--navy);font-weight:600;font-size:13.5px;font-family:inherit;cursor:pointer}.hrback svg{width:16px;height:16px}
 .ocard b,.odept{font-family:inherit!important}.ocard b{font-weight:700}
 .xsheet.master td.stk{white-space:nowrap;min-width:230px}.xsheet.master td.stk>div{border:0!important;box-shadow:none!important;background:none!important;padding:0!important;margin:0!important;gap:8px!important}.xsheet.master td.stk b{white-space:nowrap;font-weight:600}
 .xsheet.master .stk{min-width:230px!important}.xsheet.master td{white-space:nowrap}
@@ -6270,4 +6270,35 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 /* JDAC Logistics header: "Dedicated & Committed" on the right */
 const _coHeadHU=coHead;coHead=function(k){const o=_coHeadHU(k);if(k!=='log')return o;const i=o.lastIndexOf('</div>');return o.slice(0,i)+'<div class="cotag">Just Dedicated &amp; Committed</div>'+o.slice(i)};
 document.head.insertAdjacentHTML('beforeend',`<style>.cohead{position:relative}.cotag{margin-left:auto;align-self:center;font:italic 600 18px Georgia,'Times New Roman',serif;letter-spacing:.02em;color:#fff;opacity:.95;padding-left:16px;white-space:nowrap}@media(max-width:700px){.cotag{font-size:13px}}</style>`);
+/* Employee list: spreadsheet look — grid lines, compact rows, grey header, frozen ID + name */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.xsheet.master{border:1px solid #D0D5DD!important;border-radius:10px!important;background:#fff;box-shadow:none!important}
+.xsheet.master table{border-collapse:separate!important;border-spacing:0!important;font-variant-numeric:tabular-nums}
+.xsheet.master th{background:#F3F4F6!important;color:#374151!important;font-weight:600!important;font-size:11.5px!important;font-family:inherit;text-transform:none!important;letter-spacing:0!important;padding:7px 10px!important;border-right:1px solid #E1E4E8!important;border-bottom:1px solid #D0D5DD!important;position:sticky;top:0;z-index:2;white-space:nowrap}
+.xsheet.master td{padding:5px 10px!important;font-size:12.5px!important;border-right:1px solid #ECEEF1!important;border-bottom:1px solid #ECEEF1!important;height:34px;background:#fff}
+.xsheet.master tbody tr:nth-child(even) td{background:#FAFBFC}.xsheet.master tbody tr:hover td{background:#EEF4FF!important}
+.xsheet.master td.stk0,.xsheet.master td.stk{background:#fff}.xsheet.master tbody tr:nth-child(even) td.stk0,.xsheet.master tbody tr:nth-child(even) td.stk{background:#FAFBFC}
+.xsheet.master th.stk0,.xsheet.master th.stk{z-index:4!important;background:#F3F4F6!important}
+.xsheet.master .stk{box-shadow:2px 0 0 #D0D5DD}
+.xsheet.master .eid{font:600 11.5px ui-monospace,Menlo,monospace!important;background:none!important;color:#1F3A93!important;padding:0!important}
+.xsheet.master td.stk .av{width:22px!important;height:22px!important;font-size:9.5px!important}.xsheet.master td.stk b{font-size:12.5px;font-weight:600}
+.xsheet.master .pill,.xsheet.master .dpt{font-size:11px!important;padding:1px 8px!important;min-width:0!important}
+.xsheet.master .tgl{padding:2px 8px!important;font-size:11px!important;min-height:0!important;border-radius:6px!important}
+.xsheet.master .actg button{width:26px!important;height:26px!important}
+.watab td{padding:7px 10px}.watab th{padding:9px 10px}
+</style>`);
+/* premium finish on the spreadsheet: soft lines, one-line cells, aligned name column */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.xsheet.master{border:1px solid #E4E7EC!important;border-radius:14px!important;box-shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.05)!important}
+.xsheet.master th{background:#F8FAFC!important;color:#667085!important;font-weight:600!important;font-size:11px!important;font-family:inherit;text-transform:uppercase!important;letter-spacing:.06em!important;padding:11px 12px!important;border-right:0!important;border-bottom:1px solid #E4E7EC!important}
+.xsheet.master td{padding:0 12px!important;height:44px;border-right:0!important;border-bottom:1px solid #F0F2F5!important;white-space:nowrap!important;vertical-align:middle!important;font-size:13px!important;color:#1D2939}
+.xsheet.master tbody tr:nth-child(even) td{background:#fff}.xsheet.master tbody tr:nth-child(even) td.stk0,.xsheet.master tbody tr:nth-child(even) td.stk{background:#fff}
+.xsheet.master tbody tr:hover td,.xsheet.master tbody tr:hover td.stk0,.xsheet.master tbody tr:hover td.stk{background:#F5F8FF!important}
+.xsheet.master .stk{box-shadow:1px 0 0 #E4E7EC}
+.xsheet.master td.stk>div{display:flex!important;align-items:center!important;height:100%}.xsheet.master td.stk .av{display:inline-grid!important;place-items:center;width:26px!important;height:26px!important;font-size:10px!important;margin:0!important}
+.xsheet.master td.stk span.av{display:inline-grid!important}.xsheet.master td.stk b{font-size:13px;font-weight:600;line-height:1}
+.xsheet.master .eid{color:#475467!important;font-weight:600!important}
+.xsheet.master td:nth-child(5),.xsheet.master th:nth-child(5){min-width:210px}.xsheet.master td{overflow:visible}
+.xsheet.master .pill,.xsheet.master .dpt{font-size:11.5px!important;padding:2px 10px!important;border-radius:999px!important}
+</style>`);
 </script></body></html>

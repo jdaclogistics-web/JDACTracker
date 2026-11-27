@@ -67,6 +67,6 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .watbl td{vertical-align:top}.wap{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;margin:0 4px 4px 0;background:#E7F6EE;color:#13804B}.wap.view{background:#FFF4E5;color:#8A5300}
 .wasec{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:10px}.wah{display:flex;align-items:center;gap:8px;margin-bottom:6px}.wah .lnk{margin-left:8px}
 .war{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}.war span{flex:1;font-size:14px}
-.waseg{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px}.waseg button{border:0;background:none;padding:5px 12px;border-radius:8px;font:600 13px inherit;cursor:pointer;color:var(--mut)}
+.waseg{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px}.waseg button{border:0;background:none;padding:5px 12px;border-radius:8px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;color:var(--mut)}
 .waseg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}.waseg button.on.edit{color:#13804B}.waseg button.on.view{color:#8A5300}
 </style>`);

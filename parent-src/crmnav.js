@@ -34,5 +34,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .crmav{width:46px;height:46px;border-radius:14px;background:var(--cc);color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
 .crmtx{flex:1;min-width:0}.crmtx b{display:block;font-size:16px}.crmtx small{display:block;font-size:12.5px;color:var(--mut)}.crmtx .crmseg{color:var(--cc);font-weight:600;margin-top:2px}
 .crmn{text-align:right}.crmn b{display:block;font-size:22px}.crmn small{font-size:11.5px;color:var(--mut)}.crmn em{display:block;font-style:normal;font-size:11.5px;font-weight:700;color:#fff;background:var(--g,#1F9D55);border-radius:999px;padding:1px 8px;margin-top:4px}
-.crmback{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--navy);font:600 14px inherit;cursor:pointer;margin:0 0 8px;padding:4px 0}.crmback svg{width:16px;height:16px}
+.crmback{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--navy);font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;margin:0 0 8px;padding:4px 0}.crmback svg{width:16px;height:16px}
 </style>`);

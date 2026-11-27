@@ -22,7 +22,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .hrcard{display:flex;align-items:center;gap:12px;min-width:220px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 16px;cursor:pointer;font:inherit;text-align:left;transition:box-shadow .15s,border-color .15s}
 .hrcard:hover{box-shadow:0 8px 22px rgba(20,30,50,.08)}.hrcard>i{width:40px;height:40px;border-radius:12px;background:#EEF2FB;color:var(--navy);display:grid;place-items:center;flex:none}.hrcard>i svg{width:20px;height:20px}
 .hrcard b{display:block;font-size:14.5px}.hrcard small{display:block;font-size:12px;color:var(--mut)}.hrcard.on{border-color:var(--navy);box-shadow:0 0 0 2px var(--navy) inset}.hrcard.on>i{background:var(--navy);color:#fff}
-.hrback{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;background:none;color:var(--navy);font:600 13.5px inherit;cursor:pointer}.hrback svg{width:16px;height:16px}
+.hrback{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;background:none;color:var(--navy);font-weight:600;font-size:13.5px;font-family:inherit;cursor:pointer}.hrback svg{width:16px;height:16px}
 .ocard b,.odept{font-family:inherit!important}.ocard b{font-weight:700}
 .xsheet.master td.stk{white-space:nowrap;min-width:230px}.xsheet.master td.stk>div{border:0!important;box-shadow:none!important;background:none!important;padding:0!important;margin:0!important;gap:8px!important}.xsheet.master td.stk b{white-space:nowrap;font-weight:600}
 .xsheet.master .stk{min-width:230px!important}.xsheet.master td{white-space:nowrap}
@@ -38,3 +38,34 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 /* JDAC Logistics header: "Dedicated & Committed" on the right */
 const _coHeadHU=coHead;coHead=function(k){const o=_coHeadHU(k);if(k!=='log')return o;const i=o.lastIndexOf('</div>');return o.slice(0,i)+'<div class="cotag">Just Dedicated &amp; Committed</div>'+o.slice(i)};
 document.head.insertAdjacentHTML('beforeend',`<style>.cohead{position:relative}.cotag{margin-left:auto;align-self:center;font:italic 600 18px Georgia,'Times New Roman',serif;letter-spacing:.02em;color:#fff;opacity:.95;padding-left:16px;white-space:nowrap}@media(max-width:700px){.cotag{font-size:13px}}</style>`);
+/* Employee list: spreadsheet look — grid lines, compact rows, grey header, frozen ID + name */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.xsheet.master{border:1px solid #D0D5DD!important;border-radius:10px!important;background:#fff;box-shadow:none!important}
+.xsheet.master table{border-collapse:separate!important;border-spacing:0!important;font-variant-numeric:tabular-nums}
+.xsheet.master th{background:#F3F4F6!important;color:#374151!important;font-weight:600!important;font-size:11.5px!important;font-family:inherit;text-transform:none!important;letter-spacing:0!important;padding:7px 10px!important;border-right:1px solid #E1E4E8!important;border-bottom:1px solid #D0D5DD!important;position:sticky;top:0;z-index:2;white-space:nowrap}
+.xsheet.master td{padding:5px 10px!important;font-size:12.5px!important;border-right:1px solid #ECEEF1!important;border-bottom:1px solid #ECEEF1!important;height:34px;background:#fff}
+.xsheet.master tbody tr:nth-child(even) td{background:#FAFBFC}.xsheet.master tbody tr:hover td{background:#EEF4FF!important}
+.xsheet.master td.stk0,.xsheet.master td.stk{background:#fff}.xsheet.master tbody tr:nth-child(even) td.stk0,.xsheet.master tbody tr:nth-child(even) td.stk{background:#FAFBFC}
+.xsheet.master th.stk0,.xsheet.master th.stk{z-index:4!important;background:#F3F4F6!important}
+.xsheet.master .stk{box-shadow:2px 0 0 #D0D5DD}
+.xsheet.master .eid{font:600 11.5px ui-monospace,Menlo,monospace!important;background:none!important;color:#1F3A93!important;padding:0!important}
+.xsheet.master td.stk .av{width:22px!important;height:22px!important;font-size:9.5px!important}.xsheet.master td.stk b{font-size:12.5px;font-weight:600}
+.xsheet.master .pill,.xsheet.master .dpt{font-size:11px!important;padding:1px 8px!important;min-width:0!important}
+.xsheet.master .tgl{padding:2px 8px!important;font-size:11px!important;min-height:0!important;border-radius:6px!important}
+.xsheet.master .actg button{width:26px!important;height:26px!important}
+.watab td{padding:7px 10px}.watab th{padding:9px 10px}
+</style>`);
+/* premium finish on the spreadsheet: soft lines, one-line cells, aligned name column */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.xsheet.master{border:1px solid #E4E7EC!important;border-radius:14px!important;box-shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.05)!important}
+.xsheet.master th{background:#F8FAFC!important;color:#667085!important;font-weight:600!important;font-size:11px!important;font-family:inherit;text-transform:uppercase!important;letter-spacing:.06em!important;padding:11px 12px!important;border-right:0!important;border-bottom:1px solid #E4E7EC!important}
+.xsheet.master td{padding:0 12px!important;height:44px;border-right:0!important;border-bottom:1px solid #F0F2F5!important;white-space:nowrap!important;vertical-align:middle!important;font-size:13px!important;color:#1D2939}
+.xsheet.master tbody tr:nth-child(even) td{background:#fff}.xsheet.master tbody tr:nth-child(even) td.stk0,.xsheet.master tbody tr:nth-child(even) td.stk{background:#fff}
+.xsheet.master tbody tr:hover td,.xsheet.master tbody tr:hover td.stk0,.xsheet.master tbody tr:hover td.stk{background:#F5F8FF!important}
+.xsheet.master .stk{box-shadow:1px 0 0 #E4E7EC}
+.xsheet.master td.stk>div{display:flex!important;align-items:center!important;height:100%}.xsheet.master td.stk .av{display:inline-grid!important;place-items:center;width:26px!important;height:26px!important;font-size:10px!important;margin:0!important}
+.xsheet.master td.stk span.av{display:inline-grid!important}.xsheet.master td.stk b{font-size:13px;font-weight:600;line-height:1}
+.xsheet.master .eid{color:#475467!important;font-weight:600!important}
+.xsheet.master td:nth-child(5),.xsheet.master th:nth-child(5){min-width:210px}.xsheet.master td{overflow:visible}
+.xsheet.master .pill,.xsheet.master .dpt{font-size:11.5px!important;padding:2px 10px!important;border-radius:999px!important}
+</style>`);
