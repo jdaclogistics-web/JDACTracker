@@ -190,7 +190,11 @@ document.head.insertAdjacentHTML('beforeend',`<style>.xsheet.paytbl{overflow-x:h
 
 /* people who are not with us any more: off the employee master, payroll and every list; Tanuja left on 24 Nov 2026 */
 const EMP_GONE=['atul','catherine','jayashree','priyanka','raihan','tejas','zaman','ashish','rahul','sushil'];
-function empClean(){if(!D.emp)return;const before=D.emp.length;
- D.emp=D.emp.filter(e=>{const f=String(e.n||'').trim().split(/\s+/)[0].toLowerCase();if(EMP_GONE.includes(f))return false;if(f==='om'&&!['omadsul','omparvate'].includes(e.k)&&!['JD1006','JD1015'].includes(e.id))return false;return true});
- let ch=D.emp.length!==before;D.emp.forEach(e=>{if(/^tanuja/i.test(e.n||'')&&(e.st!=='Exited'||e.dox!=='2026-11-24')){e.st='Exited';e.dox='2026-11-24';e.login='Closed';ch=true}});if(ch)try{save()}catch(x){}}
+function empClean(){if(!D.emp)return;let ch=false;const isGone=e=>{const f=String(e.n||'').trim().split(/\s+/)[0].toLowerCase();return EMP_GONE.includes(f)||(f==='om'&&!['omadsul','omparvate'].includes(e.k)&&!['JD1006','JD1015'].includes(e.id))};
+ D.emp.forEach(e=>{if(isGone(e)&&e.st!=='Exited'){e.st='Exited';e.login='Closed';ch=true}});
+ /* anyone removed earlier comes back as Exited so the All list stays complete */
+ if(!D.exAdd1){D.exAdd1=1;const have=f=>D.emp.some(e=>String(e.n||'').trim().split(/\s+/)[0].toLowerCase()===f);let n=1;
+  [['atul','Atul'],['catherine','Catherine'],['jayashree','Jayashree'],['om','Om (old ID)'],['priyanka','Priyanka'],['raihan','Raihan'],['tejas','Tejas'],['zaman','Zaman'],['ashish','Ashish'],['rahul','Rahul'],['sushil','Sushil']].forEach(([f,nm])=>{if(f==='om'?D.emp.some(e=>isGone(e)&&/^om/i.test(e.n)):have(f))return;
+   D.emp.push({id:'EX'+String(n++).padStart(3,'0'),k:'',n:nm,unit:'—',st:'Exited',desig:'—',doj:'',dox:'',ph:'—',time:'',city:'',sal:null,login:'Closed',offer:'—',appt:'—',docs:'—'});ch=true})}
+ D.emp.forEach(e=>{if(/^tanuja/i.test(e.n||'')&&(e.st!=='Exited'||e.dox!=='2026-11-24')){e.st='Exited';e.dox='2026-11-24';e.login='Closed';ch=true}});if(ch)try{save()}catch(x){}}
 empClean();const _peopleEC=V.people;V.people=()=>{empClean();return _peopleEC()};
