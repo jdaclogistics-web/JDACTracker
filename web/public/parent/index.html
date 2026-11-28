@@ -8600,7 +8600,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 </style>`);
 /* People no longer working with JDAC: hidden from New task "Who?" and every assign list */
 const GONE2=[...GONE,'jayshree','rehan','raihan'];
-const isGone=k=>{const n=((P[k]&&P[k].n)||k||'').toLowerCase().split(' ')[0];return GONE2.includes(String(k).toLowerCase())||GONE2.includes(n)||(D.emp||[]).some(e=>e.k===k&&e.st==='Exited')};
+let isGone=k=>{const n=((P[k]&&P[k].n)||k||'').toLowerCase().split(' ')[0];return GONE2.includes(String(k).toLowerCase())||GONE2.includes(n)||(D.emp||[]).some(e=>e.k===k&&e.st==='Exited')};
 const _assignableG=assignable;assignable=function(){return _assignableG().filter(k=>!isGone(k))};
 /* server logins load after start-up, so clear ex-staff from STAFF before every screen draw */
 const _renderGone=render;render=function(){try{for(let i=STAFF.length-1;i>=0;i--){const k=STAFF[i];if(!(typeof TOP!=='undefined'&&TOP.includes(k))&&isGone(k))STAFF.splice(i,1)}}catch(e){}return _renderGone.apply(this,arguments)};
@@ -8658,4 +8658,16 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 html.mob .pjmp small{display:none}
 </style>`);
 document.head.insertAdjacentHTML('beforeend',`<style>html.mob .pjmem{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}html.mob .pjml{grid-column:1/-1;grid-row:2;flex-wrap:wrap}html.mob .pjmem .btn{height:32px;font-size:12px!important;padding:0 10px!important}html.mob .pjmp{padding:2px 9px 2px 2px;font-size:12px}html.mob .pjmp .av{width:22px;height:22px;font-size:9px}</style>`);
+/* Exited people: visible only in HR Desk → Employee Master (Exited / All). Everywhere else they are removed. */
+const GONE3=[...new Set([...GONE2,...(typeof EMP_GONE!=='undefined'?EMP_GONE:[]),'tanuja'])];
+const lvN=s=>String(s||'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+isGone=function(k){if(!k||k===S.me||k==='darshan'||k==='nameera'||(typeof TOP!=='undefined'&&TOP.includes(k)))return false;const pn=lvN((P[k]&&P[k].n)||k),f=pn.split(' ')[0],E=D.emp||[];
+ if(E.some(e=>e.k===k&&e.st==='Active'))return false;
+ if(E.some(e=>e.k===k&&e.st==='Exited'))return true;
+ if(GONE3.includes(String(k).toLowerCase())||GONE3.includes(f))return true;
+ if(f==='om'&&!['omadsul','omparvate'].includes(k))return true;
+ return E.some(e=>e.st==='Exited'&&lvN(e.n)===pn)&&!E.some(e=>e.st==='Active'&&lvN(e.n)===pn)};
+const goneSweep=()=>{try{for(let i=STAFF.length-1;i>=0;i--)if(isGone(STAFF[i]))STAFF.splice(i,1);Object.keys(P).forEach(k=>{if(isGone(k))delete P[k]});(D.projects||[]).forEach(p=>{if(p.m)p.m=p.m.filter(k=>!isGone(k)&&(P[k]||k==='darshan'||k==='nameera'))});(D.groups||[]).forEach(g=>{if(g.m)g.m=g.m.filter(k=>!isGone(k)&&P[k])})}catch(e){}};
+const _myTasksG=myTasks;myTasks=function(){return _myTasksG().filter(t=>!t.o||P[t.o]||t.o===S.me)};
+const _renderG2=render;render=function(){goneSweep();return _renderG2.apply(this,arguments)};
 </script></body></html>
