@@ -79,7 +79,7 @@ const dDiff=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/
 function scopeTasks(){S.kp=S.kp||'all';return myTasks().filter(t=>S.kp==='all'||t.proj===S.kp)}
 
 /* People cards: who is doing what in the selected team */
-function peopleBar(){const T=scopeTasks(),ks=[...new Set(T.map(t=>t.o))].filter(Boolean);if(!ks.length)return '';S.kw=S.kw||'all';
+function peopleBar(){S.kw='all';return '';const T=scopeTasks(),ks=[...new Set(T.map(t=>t.o))].filter(Boolean);if(!ks.length)return '';S.kw=S.kw||'all';
  const row=k=>{const L=T.filter(t=>t.o===k),open=L.filter(t=>t.st!=='Done'),td=L.filter(tActive),lt=L.filter(tLate),now=td.sort((a,b)=>a.due.localeCompare(b.due))[0]||open.sort((a,b)=>a.due.localeCompare(b.due))[0];
   return {k,open:open.length,td:td.length,lt:lt.length,now}};
  const R=ks.map(row).sort((a,b)=>b.lt-a.lt||b.td-a.td||b.open-a.open);

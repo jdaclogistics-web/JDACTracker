@@ -115,14 +115,14 @@ const mtProj=t=>(D.projects||[]).find(p=>p.id===t.proj);
 const mtPN=t=>{const p=mtProj(t);return p?p.n:(t.co&&CO[t.co]?coShort(t.co):'')};
 const mtCard=t=>{const late=t.st!=='Done'&&mtDue(t)&&mtDue(t)<TODAY,c=MT_COL[t.st]||'#8A93A3',pn=mtPN(t);
  return `<button class="mtc" data-a="tOpen" data-id="${t.id}" style="--c:${c}"><div class="mtc1"><b>${h(t.t)}</b><span class="mtst">${h(t.st)}</span></div>
- <div class="mtc2">${t.o?`<span class="mtp">${av(nm(t.o),'s')}${h(nmF(t.o).split(' ')[0])}</span>`:''}${pn?`<span class="mtpj">${h(pn)}</span>`:''}${mtDue(t)?`<span class="mtd ${late?'late':mtDue(t)===TODAY?'tdy':''}">${ic('cal')}${mtDue(t)===TODAY?'Today':fmt(mtDue(t))}${late?' · late':''}</span>`:''}${t.pri==='High'?'<span class="mthi">High</span>':''}</div></button>`};
+ <div class="mtc2">${t.o?`<span class="mtp">${av(nm(t.o),'s')}${h(nmF(t.o))}</span>`:''}${pn?`<span class="mtpj">${h(pn)}</span>`:''}${mtDue(t)?`<span class="mtd ${late?'late':mtDue(t)===TODAY?'tdy':''}">${ic('cal')}${mtDue(t)===TODAY?'Today':fmt(mtDue(t))}${late?' · late':''}</span>`:''}${t.pri==='High'?'<span class="mthi">High</span>':''}</div></button>`};
 function mTasks(){const all=myTasks(),who=S.mtw||'all',L0=who==='all'?all:who==='me'?all.filter(t=>t.o===S.me):all.filter(t=>t.o===who);
  const pj=S.mtp||'',L1=pj?L0.filter(t=>t.proj===pj):L0,day=S.mtd||'today',st=S.mts||'open';
  const stOk=t=>st==='open'?t.st!=='Done':t.st===st,late=L1.filter(t=>t.st!=='Done'&&mtDue(t)&&mtDue(t)<TODAY);
  /* people row */
  const ppl=isAdm()?[...new Set(all.map(t=>t.o).filter(Boolean))].sort((a,b)=>all.filter(t=>t.o===b&&t.st!=='Done').length-all.filter(t=>t.o===a&&t.st!=='Done').length):[];
  const pBtn=(k,l,avh,n,lt)=>`<button class="mpp ${who===k?'on':''}" data-a="mtW" data-t="${k}">${avh}<span>${h(l)}</span>${n?`<em class="${lt?'lt':''}">${n}</em>`:''}</button>`;
- const people=isAdm()?`<div class="mppl">${pBtn('all','Everyone',`<i class="mpall">${ic('users')}</i>`,all.filter(t=>t.st!=='Done').length)}${pBtn('me','Me',av(nm(S.me)),all.filter(t=>t.o===S.me&&t.st!=='Done').length)}${ppl.filter(k=>k!==S.me).map(k=>{const o=all.filter(t=>t.o===k&&t.st!=='Done'),lt=o.some(t=>mtDue(t)&&mtDue(t)<TODAY);return pBtn(k,nmF(k).split(' ')[0],av(nm(k)),o.length,lt)}).join('')}</div>`:'';
+ const people=isAdm()?`<div class="mppl">${pBtn('all','Everyone',`<i class="mpall">${ic('users')}</i>`,all.filter(t=>t.st!=='Done').length)}${pBtn('me','Me',av(nm(S.me)),all.filter(t=>t.o===S.me&&t.st!=='Done').length)}${ppl.filter(k=>k!==S.me).map(k=>{const o=all.filter(t=>t.o===k&&t.st!=='Done'),lt=o.some(t=>mtDue(t)&&mtDue(t)<TODAY);return pBtn(k,nmF(k),av(nm(k)),o.length,lt)}).join('')}</div>`:'';
  /* day strip */
  const days=[];for(let i=-3;i<=21;i++)days.push(addD(TODAY,i));
  const dn=d=>L1.filter(t=>mtDue(t)===d&&t.st!=='Done').length;
@@ -138,7 +138,7 @@ function mTasks(){const all=myTasks(),who=S.mtw||'all',L0=who==='all'?all:who===
  const pjL=(D.projects||[]).filter(p=>L0.some(t=>t.proj===p.id));
  const lateNote=day==='today'&&late.length?`<button class="mlate" data-a="mtD" data-t="late">${ic('clock')}<span><b>${late.length} task${late.length===1?'':'s'} overdue</b><small>Tap to see and clear them</small></span>${ic('right')}</button>`:'';
  setTimeout(()=>{const s=document.getElementById('mdsel'),w=document.getElementById('mds');if(s&&w)w.scrollLeft=s.offsetLeft-w.clientWidth/2+s.clientWidth/2},0);
- const whoL=who==='all'?'Everyone':who==='me'?'Me':nmF(who).split(' ')[0];
+ const whoL=who==='all'?'Everyone':who==='me'?'Me':nmF(who);
  return `${mtTabs()}${S.mtMode==='cal'?strip:mtFunnel(L1)}
  <div class="mfl">${isAdm()?`<button class="mpill ${who!=='all'?'on':''}" data-a="mtWho">${who==='all'?ic('users'):av(nm(who==='me'?S.me:who))}${h(whoL)}${ic('down')}</button>`:''}<button class="mpill ${pj?'on':''}" data-a="mtPj">${ic('grid')}${h(pj?((pjL.find(p=>p.id===pj)||{}).n||'Project'):'All projects')}${ic('down')}</button>${isAdm()?`<button class="mpill ic" data-a="projNew" aria-label="New project">${ic('plus')}</button>`:''}</div>
  ${S.mtMode==='cal'?lateNote+chipsSt:''}<div class="msec">${h(title)} · ${list.length}</div>

@@ -23,7 +23,7 @@ const PLAT={Instagram:'ig',Facebook:'fb',YouTube:'yt',LinkedIn:'li',Website:'web
 const CST=['Script','Shoot','Edit','Posted'];
 const BOOKS={gb:'GovaaBazaar',log:'JDAC Logistics',jup:'Jupiter Pune (JDAC side)',hr:'JDAC HR Consultancy',studios:'JDAC Studios'};
 const TEAMS=['CSE','Ops','Warehouse','GovaaBazaar','Marketing','HR','Accounts','Admin'];
-const nmF=k=>k==='omparvate'||k==='omadsul'?nm(k):nm(k).split(' ')[0];
+const nmF=k=>{const f=nm(k),a=f.split(' ')[0];if(k==='omparvate'||k==='omadsul')return f;return Object.keys(P).some(x=>x!==k&&P[x]&&P[x].n&&P[x].n.split(' ')[0]===a)?f:a};
 if(!P.nayan)P.nayan={n:'Nayan',r:'Genmak · jdac.in IT partner',team:'Partner',kind:'partner',work:['meet']};
 
 /* ---------- data migration (adds everything v3 needs) ---------- */

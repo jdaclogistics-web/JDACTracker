@@ -4,7 +4,7 @@ const waFx=()=>{S.waX=S.waX||{col:[],to:[],win:'',fu:''};return S.waX};
 const waFxN=()=>{const x=waFx();return x.col.length+x.to.length+(x.win?1:0)+(x.fu?1:0)};
 const waFuSt=c=>{const f=c.fu;if(!f||f.done)return '';return f.d<TODAY?'late':f.d===TODAY?'today':'later'};
 const waFuTx=c=>{const f=c.fu,s=waFuSt(c);if(!s)return '';const d=f.d===TODAY?'Today':f.d===addD(TODAY,1)?'Tomorrow':fmt(f.d);return (s==='late'?'Overdue · ':'')+d+(f.tm?' '+f.tm:'')};
-const waOwnP=c=>c.to?`<span class="waown"><i>${h(sfIni(nmF(c.to)))}</i>${h(nmF(c.to).split(' ')[0])}</span>`:`<span class="waown no"><i>?</i>Not assigned</span>`;
+const waOwnP=c=>c.to?`<span class="waown"><i>${h(sfIni(nmF(c.to)))}</i>${h(nmF(c.to))}</span>`:`<span class="waown no"><i>?</i>Not assigned</span>`;
 const waFuP=c=>{const s=waFuSt(c);return s?`<span class="wafu ${s}">⏰ ${h(waFuTx(c))}</span>`:''};
 function waFxApply(L){const x=waFx();return L.filter(c=>(!x.col.length||x.col.includes(cmColOf(c)))&&(!x.to.length||x.to.includes(c.to||'_none'))&&(!x.win||(x.win==='open')===(waWin(c)>0))&&(!x.fu||(x.fu==='none'?!waFuSt(c):x.fu==='due'?['late','today'].includes(waFuSt(c)):waFuSt(c)===x.fu)))}
 
@@ -12,7 +12,7 @@ waView=function(L0){const f=S.waf||'all',q=(S.waq||'').toLowerCase(),L=waFxApply
  const F={un:c=>c.unread,wait:c=>waLast(c).f==='c'&&!['done','lost'].includes(cmColOf(c)),open:c=>waWin(c)>0,fu:c=>['late','today'].includes(waFuSt(c))}[f];
  const R=L.filter(c=>(!F||F(c))&&(!q||(c.n+' '+c.ph+' '+nmF(c.to||'')+' '+c.ms.map(m=>m.t).join(' ')).toLowerCase().includes(q))).sort((a,b)=>(b.at>a.at?1:b.at<a.at?-1:(waLast(b).at||'').localeCompare(waLast(a).at||'')));
  let c=S.cmd&&L0.find(x=>x.id===S.cmd);if(!c&&!matchMedia('(max-width:820px)').matches){c=R[0];if(c)S.cmd=c.id}
- const x=waFx(),chipsOn=[...x.col.map(k=>['col',k,(CM_COL.find(y=>y[0]===k)||[0,k])[1]]),...x.to.map(k=>['to',k,k==='_none'?'Not assigned':nmF(k).split(' ')[0]]),...(x.win?[['win',x.win,x.win==='open'?'24h open':'24h closed']]:[]),...(x.fu?[['fu',x.fu,{due:'Follow-up due',late:'Overdue',later:'Follow-up later',none:'No follow-up'}[x.fu]]]:[])];
+ const x=waFx(),chipsOn=[...x.col.map(k=>['col',k,(CM_COL.find(y=>y[0]===k)||[0,k])[1]]),...x.to.map(k=>['to',k,k==='_none'?'Not assigned':nmF(k)]),...(x.win?[['win',x.win,x.win==='open'?'24h open':'24h closed']]:[]),...(x.fu?[['fu',x.fu,{due:'Follow-up due',late:'Overdue',later:'Follow-up later',none:'No follow-up'}[x.fu]]]:[])];
  const list=`<div class="wa3l"><div class="wa4s"><div class="wa3s">${sfi('search',15)}<label class="sr" for="waq3">Search chats</label><input id="waq3" value="${h(S.waq||'')}" placeholder="Search name, number, owner…"></div><button class="wa4fb ${nF?'on':''}" data-a="waFx" aria-label="Filters">${sfi('filter',18)}${nF?`<em>${nF}</em>`:''}</button></div>
   <div class="wa3f">${[['all','All',L.length],['un','Unread',L.filter(x=>x.unread).length],['wait','Waiting',L.filter(x=>waLast(x).f==='c'&&!['done','lost'].includes(cmColOf(x))).length],['open','24h open',L.filter(x=>waWin(x)>0).length],['fu','Follow-up',L.filter(x=>['late','today'].includes(waFuSt(x))).length]].map(([k,l,n])=>`<button class="${f===k?'on':''}" data-a="waF3" data-t="${k}">${l}${n?` <span>${n}</span>`:''}</button>`).join('')}</div>
   ${chipsOn.length?`<div class="wa4on">${chipsOn.map(([g,k,l])=>`<button data-a="waFxRm" data-g="${g}" data-k="${h(k)}">${h(l)} ✕</button>`).join('')}<button class="clr" data-a="waFxClr">Clear all</button></div>`:''}
@@ -65,7 +65,7 @@ A.waFuD=e=>{const i=document.getElementById('wfd');if(i)i.value=e.dataset.d;docu
 A.waTaskGo=e=>{const c=waC(e),t=val('wft').trim(),d=val('wfd')||addD(TODAY,1),tm=val('wftm'),o=(document.getElementById('wfo')||{}).value||c.to||S.me,fu=!!e.dataset.fu;if(!t)return toast('Write what to do');
  const tk={id:nid('k'),t,o,by:S.me,proj:((D.projects||[])[0]||{}).id,due:d,tm,st:'To do',pri:'Normal',type:'One-time',tags:[fu?'Follow-up':'Lead','WhatsApp'],desc:`Lead: ${c.n} · +91 ${c.ph}\nStage: ${c.stg}${fu?'':'\n'+(val('wfn')||'')}`,check:[],lead:c.id};
  if(fu){const old=c.fu&&!c.fu.done&&(D.tasks||[]).find(x=>x.id===c.fu.task);if(old){Object.assign(old,{t,o,due:d,tm});tk.id=old.id}else D.tasks.unshift(tk);c.fu={d,tm,t,by:S.me,o,task:tk.id}}else D.tasks.unshift(tk);
- waLog(c,(fu?'Follow-up set · ':'Task added · ')+t+' · '+(d===TODAY?'today':fmt(d))+(tm?' '+tm:'')+(o!==S.me?' · '+nmF(o):''));save();closeM();render();toast(fu?'Follow-up saved':'Task created for '+nmF(o).split(' ')[0])};
+ waLog(c,(fu?'Follow-up set · ':'Task added · ')+t+' · '+(d===TODAY?'today':fmt(d))+(tm?' '+tm:'')+(o!==S.me?' · '+nmF(o):''));save();closeM();render();toast(fu?'Follow-up saved':'Task created for '+nmF(o))};
 A.waFuDone=e=>{const c=waC(e);if(!c.fu)return;c.fu.done=1;const t=(D.tasks||[]).find(x=>x.id===c.fu.task);if(t)t.st='Done';waLog(c,'Follow-up done · '+c.fu.t);save();closeM();render();toast('Follow-up done')};
 
 /* demo: keep a few chats inside the live 24-hour window so replies can be tested */

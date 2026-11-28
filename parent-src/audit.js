@@ -48,7 +48,7 @@ A.auSave=e=>{const a=D.audits.find(x=>x.id===e.dataset.id);if(Object.keys(a.sc).
 /* ---------- Superfone: import call logs (Excel / CSV export) into the audit queue ---------- */
 if(!D.sfCfg)D.sfCfg={map:{},last:null,n:0};
 const sfNorm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-function sfExecOf(name){const n=sfNorm(name);if(!n)return '';const m=D.sfCfg.map[n];if(m)return m;return Object.keys(P).find(k=>{const a=sfNorm(nmF(k)),f=sfNorm(nmF(k).split(' ')[0]);return a===n||n.startsWith(f)&&f.length>2})||''}
+function sfExecOf(name){const n=sfNorm(name);if(!n)return '';const m=D.sfCfg.map[n];if(m)return m;return Object.keys(P).find(k=>{const a=sfNorm(nmF(k)),f=sfNorm(nmF(k));return a===n||n.startsWith(f)&&f.length>2})||''}
 const sfDur=v=>{v=String(v||'').trim();if(/^\d+$/.test(v))return +v;const p=v.split(':').map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];const m=v.match(/(\d+)\s*m/i),s=v.match(/(\d+)\s*s/i);return (m?+m[1]*60:0)+(s?+s[1]:0)};
 const fmtDur=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 A.sfImport=()=>{const t=S.auT||'cse';sheet(`<h2>Import Superfone calls</h2><p class="mut sm">In Superfone, open <b>Call logs</b> → choose the date range → <b>Export</b> (Excel or CSV). Upload that file here. Answered calls with a recording go into the ${AUDT[t]} audit queue for the right person.</p>

@@ -24,7 +24,7 @@ const _bubF=bubble;bubble=function(m,G){const o=_bubF(m,G);if(m.kind!=='file'&&m
 let FURL=null;
 A.fOpen=async e=>{const m=D.msgs.find(x=>x.id===e.dataset.id);if(!m)return;const blob=await FDB.get(fKey(m)).catch(()=>null);
  if(FURL){URL.revokeObjectURL(FURL);FURL=null}const src=blob?(FURL=URL.createObjectURL(blob)):(m.kind==='img'?m.src:null),x=fExt(m.name),pdf=x==='PDF',phone=isMob();
- const body=!src?`<div class="fvno">${ic('doc')}<b>This file is not on this device</b><span>It was sent before files were saved, or from another phone. Ask ${h(nmF(m.f).split(' ')[0])} to send it again.</span></div>`
+ const body=!src?`<div class="fvno">${ic('doc')}<b>This file is not on this device</b><span>It was sent before files were saved, or from another phone. Ask ${h(nmF(m.f))} to send it again.</span></div>`
   :m.kind==='img'?`<img src="${src}" alt="${h(m.name||'Photo')}" class="fvimg">`
   :pdf&&!phone?`<iframe src="${src}" title="${h(m.name)}" class="fvpdf"></iframe>`
   :`<div class="fvcard"><span class="fic big" style="--c:${fCol(x)}">${h(x.slice(0,4))}</span><b>${h(m.name)}</b><small>${[x,fKB(m.size)].filter(Boolean).join(' · ')}</small><button class="btn" data-a="fOpenExt" data-id="${m.id}">${ic('doc')}Open ${pdf?'PDF':'file'}</button></div>`;
