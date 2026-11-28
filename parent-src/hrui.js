@@ -144,3 +144,5 @@ html.mob #main .hrcard>i{width:30px;height:30px;border-radius:9px}html.mob #main
 html.mob #main .hrcard b{font-size:12.5px;line-height:1.2}html.mob #main .hrcard small{display:none}
 html.mob #main .hrback{grid-column:1/-1;margin-left:0;font-size:12.5px}
 </style>`);
+/* "Just Dedicated & Committed": soft fade in / fade out, no zoom */
+document.head.insertAdjacentHTML('beforeend',`<style>@keyframes cotagFade{0%,100%{opacity:0}18%,72%{opacity:1}}.cotag{animation:cotagFade 4.5s ease-in-out infinite!important;transform:none!important}html.mob .cotag{animation:cotagFade 4.5s ease-in-out infinite!important}@media (prefers-reduced-motion:reduce){.cotag{animation:none!important;opacity:1}}</style>`);

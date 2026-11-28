@@ -1759,6 +1759,8 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 html:not(.mob) .greet.greetR+.dgoal,html:not(.mob) .greet.greetR~.dgoal{margin-top:-98px;width:calc(100% - 300px);position:relative;z-index:1}
 html.mob .search.dsearch{max-width:none}
 </style>`);
+/* Phone home follows the web order: greeting → Goal → search → quick buttons → Needs you … */
+document.head.insertAdjacentHTML('beforeend',`<style>html.mob #main:has(>.mhero){display:flex;flex-direction:column}html.mob #main:has(>.mhero)>*{flex:none}html.mob #main>.mhero{order:-3}html.mob #main>.dgoal{order:-2;margin-bottom:12px}html.mob #main>.dgoal .goal{margin-top:0}html.mob #main>.search.dsearch{order:-1}</style>`);
 
 /* =================== HR CONSULTANCY · employer & job-seeker portals + login IDs =================== */
 const CHK=[1,7,15,30];
@@ -6394,6 +6396,8 @@ html.mob #main .hrcard>i{width:30px;height:30px;border-radius:9px}html.mob #main
 html.mob #main .hrcard b{font-size:12.5px;line-height:1.2}html.mob #main .hrcard small{display:none}
 html.mob #main .hrback{grid-column:1/-1;margin-left:0;font-size:12.5px}
 </style>`);
+/* "Just Dedicated & Committed": soft fade in / fade out, no zoom */
+document.head.insertAdjacentHTML('beforeend',`<style>@keyframes cotagFade{0%,100%{opacity:0}18%,72%{opacity:1}}.cotag{animation:cotagFade 4.5s ease-in-out infinite!important;transform:none!important}html.mob .cotag{animation:cotagFade 4.5s ease-in-out infinite!important}@media (prefers-reduced-motion:reduce){.cotag{animation:none!important;opacity:1}}</style>`);
 /* ===================== MOBILE VIEW (phones only — the web view is untouched) =====================
    Below 820px wide the app switches to a phone layout, in the spirit of Swiggy / Zomato:
    · bottom bar: Home · Tasks · [Chat, raised in the middle] · CRM · More

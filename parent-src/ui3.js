@@ -614,3 +614,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 html:not(.mob) .greet.greetR+.dgoal,html:not(.mob) .greet.greetR~.dgoal{margin-top:-98px;width:calc(100% - 300px);position:relative;z-index:1}
 html.mob .search.dsearch{max-width:none}
 </style>`);
+/* Phone home follows the web order: greeting → Goal → search → quick buttons → Needs you … */
+document.head.insertAdjacentHTML('beforeend',`<style>html.mob #main:has(>.mhero){display:flex;flex-direction:column}html.mob #main:has(>.mhero)>*{flex:none}html.mob #main>.mhero{order:-3}html.mob #main>.dgoal{order:-2;margin-bottom:12px}html.mob #main>.dgoal .goal{margin-top:0}html.mob #main>.search.dsearch{order:-1}</style>`);
