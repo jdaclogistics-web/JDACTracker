@@ -159,10 +159,11 @@ V.home=()=>{if(!isAdm()&&K()!=='acc')return staffHome();
  const N=needs().map((x,i)=>[...x,i]).filter(x=>allowed(x[0]));
  const q=S.q.toLowerCase(),present=D.att.filter(a=>['In','Late'].includes(a.st)).length;
  return `<div class="greet"><h1>${g}, ${h(nmF(S.me))}</h1><p>${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})} · focus today: <b style="color:var(--o2)">${FOCUS[new Date().getDay()]||'Sunday'}</b></p></div>
- <div class="search"><span aria-hidden="true">${ic('search')}</span><label class="sr" for="q">Search</label><input id="q" data-in="q" value="${h(S.q)}" placeholder="Search tasks, orders, shops, people, entries…"></div>
+ ${K()!=='acc'&&!S.q?`<div class="dgoal">${goalCards()}</div>`:''}
+ <div class="search dsearch"><span aria-hidden="true">${ic('search')}</span><label class="sr" for="q">Search</label><input id="q" data-in="q" value="${h(S.q)}" placeholder="Search tasks, orders, shops, people, entries…"></div>
  ${q?searchResults(q):`${st('Needs you')}<div class="car">${N.map(x=>`<button class="need ${x[1]?x[3]:'zero'}" data-a="need" data-i="${x[5]}"><span class="n">${x[1]||'✓'}</span><span class="l">${x[1]?x[2]:'All clear: '+x[2]}</span><span class="go">${x[1]?'Open →':''}</span></button>`).join('')}</div>
  ${K()==='acc'?accHome():`
- ${milestone()}${isAdm()?`${st('This month',`<button class="lnk" data-a="go" data-v="money">Accounts →</button>`)}<div class="stats">${COK.map(k=>`<div><b>₹${Math.round((D.pl[k][0]-D.pl[k][1])/1000)}k</b><span>${coShort(k)} profit</span></div>`).join('')}</div>`:''}${goalCards()}
+ ${milestone()}${isAdm()?`${st('This month',`<button class="lnk" data-a="go" data-v="money">Accounts →</button>`)}<div class="stats">${COK.map(k=>`<div><b>₹${Math.round((D.pl[k][0]-D.pl[k][1])/1000)}k</b><span>${coShort(k)} profit</span></div>`).join('')}</div>`:''}
  ${st('Team today',`<button class="lnk" data-a="go" data-v="people">All people</button>`)}<div class="card"><div class="row nw"><div class="num" style="font-size:30px;font-weight:800">${present}<span class="mut" style="font-size:16px">/${D.att.length}</span></div><div class="mut sm">in today · ${D.att.filter(a=>a.st==='Late').length} late · ${D.att.filter(a=>/live/i.test(a.gps)).length} live on map</div></div>
  <div class="row" style="margin-top:12px;gap:8px">${D.att.map(a=>`<button data-a="person" data-k="${a.k}" title="${h(nm(a.k))} · ${h(a.st)}" style="position:relative;border:0;background:none;padding:0" aria-label="${h(nm(a.k))}, ${h(a.st)}">${av(nm(a.k))}<i class="cdot" style="position:absolute;right:0;bottom:0;border:2px solid #fff;width:11px;height:11px;background:${a.st==='In'?'var(--g)':a.st==='Late'?'#E6A23C':'#C9CBD1'}"></i></button>`).join('')}</div></div>
  ${teamInsights()}
@@ -606,3 +607,10 @@ document.addEventListener('change',e=>{const k=e.target.dataset.ch;if(!k)return;
  if(k==='gotfile'){const f=e.target.files&&e.target.files[0],o=document.getElementById(e.target.dataset.t+'-f');if(o)o.textContent=f?'📎 '+f.name:'No file'}
  if(k==='stmt'){const b=e.target.dataset.b,f=e.target.files&&e.target.files[0];if(!f)return;const nl=[{d:TODAY,desc:'UPI/RETAIL PAYMENT',amt:2160,m:null},{d:TODAY,desc:'ATM/CASH DEP',amt:1000,m:null}];nl.forEach(l=>{const c=D.vch.find(v=>v.amt===l.amt&&!Object.values(D.stmt).flat().some(x=>x.m===v.id));if(c)l.m=c.id});D.stmt[b]=(D.stmt[b]||[]).concat(nl);logA('Uploaded statement '+f.name);save();render();toast(f.name+' read · '+nl.filter(l=>l.m).length+' of '+nl.length+' lines matched automatically')}});
 document.addEventListener('input',e=>{const k=e.target.dataset.in;if(k!=='q'&&k!=='lq')return;S[k]=e.target.value;const p=e.target.selectionStart;render();const i=document.getElementById(k);if(i){i.focus();i.setSelectionRange(p,p)}});
+/* Dashboard order: Goal banner first, then a compact search, then Needs you, Milestones + Company progress, This month, Team */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.dgoal{margin:0 0 12px}.dgoal .sthd,.dgoal>h2,.dgoal>.st{display:none!important}.dgoal .goal{margin:0}
+.search.dsearch{max-width:440px;margin:0 0 16px}
+html:not(.mob) .greet.greetR+.dgoal,html:not(.mob) .greet.greetR~.dgoal{margin-top:-98px;width:calc(100% - 300px);position:relative;z-index:1}
+html.mob .search.dsearch{max-width:none}
+</style>`);
