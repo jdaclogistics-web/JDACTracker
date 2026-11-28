@@ -134,3 +134,37 @@ isGone=function(k){if(!k||k===S.me||k==='darshan'||k==='nameera'||(typeof TOP!==
 const goneSweep=()=>{try{for(let i=STAFF.length-1;i>=0;i--)if(isGone(STAFF[i]))STAFF.splice(i,1);Object.keys(P).forEach(k=>{if(isGone(k))delete P[k]});(D.projects||[]).forEach(p=>{if(p.m)p.m=p.m.filter(k=>!isGone(k)&&(P[k]||k==='darshan'||k==='nameera'))});(D.groups||[]).forEach(g=>{if(g.m)g.m=g.m.filter(k=>!isGone(k)&&P[k])})}catch(e){}};
 const _myTasksG=myTasks;myTasks=function(){return _myTasksG().filter(t=>!t.o||P[t.o]||t.o===S.me)};
 const _renderG2=render;render=function(){goneSweep();return _renderG2.apply(this,arguments)};
+/* ===== CRM board: stage headings as coloured title bars, cleaner lead cards ===== */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.cmcol{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 7%,#fff),#F7F9FC 120px)!important;border:1px solid color-mix(in srgb,var(--c) 18%,#E5E9F2)!important;border-radius:16px!important}
+.cmh{background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,#fff))!important;color:#fff!important;border-radius:12px!important;padding:10px 12px!important;margin:-2px -2px 10px!important;box-shadow:0 6px 14px color-mix(in srgb,var(--c) 28%,transparent);align-items:center}
+.cmh i{display:none!important}.cmh b{color:#fff!important;font:800 13.5px Inter,sans-serif!important;letter-spacing:.02em;text-transform:uppercase}
+.cmh span{background:rgba(255,255,255,.25)!important;color:#fff!important;font-weight:800!important;border-radius:999px!important;min-width:24px;text-align:center;padding:1px 8px!important}
+.cmc{border-radius:14px!important;border:1px solid #E6EAF2!important;border-left:4px solid var(--c)!important;box-shadow:0 2px 8px rgba(15,23,42,.05)!important;transition:transform .12s,box-shadow .12s}
+.cmc:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(15,23,42,.10)!important}
+.cmc .cmn b{font-size:14px!important}.cmc .sfav{box-shadow:0 0 0 2px #fff,0 0 0 3px color-mix(in srgb,var(--c) 45%,#fff)}
+.cmdrop{border:1.5px dashed color-mix(in srgb,var(--c) 40%,#CBD5E1)!important;border-radius:12px!important;color:color-mix(in srgb,var(--c) 70%,#64748B)!important}
+</style>`);
+/* ===== Elegant pop-ups: New task and New WhatsApp chat / seller ===== */
+function premiumSheet(title,sub,col){const sh=document.querySelector('#ov .sheet');if(!sh||sh.dataset.prem)return;sh.dataset.prem=1;const h2=sh.querySelector('h2');if(!h2)return;
+ const hd=document.createElement('div');hd.className='pmh';hd.style.setProperty('--fc',col);hd.innerHTML=`<div><h2>${h(title||h2.textContent)}</h2><small>${h(sub)}</small></div>`;h2.replaceWith(hd);
+ const card=document.createElement('div');card.className='pmc';const kids=[...sh.children].filter(x=>x!==hd&&!x.classList.contains('x'));let btn=null;kids.forEach(k=>{if(k.matches('button.btn.w')&&!btn){btn=k;return}card.appendChild(k)});hd.after(card);if(btn){btn.classList.add('pmgo');btn.style.setProperty('--fc',col);card.after(btn)}sh.classList.add('pms');sh.style.setProperty('--fc',col)}
+const _tNewP=A.tNew;A.tNew=e=>{_tNewP(e);premiumSheet('New task','Give it to someone · they get notified with the details','#1E3A8A')};
+const _waNewP=A.waNew;A.waNew=e=>{_waNewP(e);const seg=typeof cmSeg==='function'?cmSeg():'';premiumSheet((S.cmco==='log'||!S.cmco)&&seg!=='tr'?'New seller · WhatsApp chat':'New WhatsApp chat','Starts the chat with an approved WhatsApp template','#128C7E')};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.sheet.pms{max-width:620px}
+.pmh{margin:-6px -6px 14px;padding:16px 18px;border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--fc) 75%,#000),var(--fc) 60%,color-mix(in srgb,var(--fc) 70%,#fff));color:#fff;box-shadow:0 10px 24px color-mix(in srgb,var(--fc) 28%,transparent)}
+.pmh h2{margin:0;color:#fff!important;font-size:19px}.pmh small{opacity:.85;font-size:12.5px}
+.pmc{background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--fc) 4%,#F8FAFD));border:1px solid color-mix(in srgb,var(--fc) 14%,#E5E9F2);border-radius:16px;padding:6px 14px 14px}
+.pms label{font-weight:600;color:#334155}.pms input,.pms select,.pms textarea{border-radius:11px!important;border:1px solid #D5DEE8!important;background:#fff!important}
+.pms input:focus,.pms select:focus,.pms textarea:focus{border-color:var(--fc)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--fc) 15%,transparent)!important;outline:0}
+.pms .chips button.on{background:var(--fc)!important;border-color:var(--fc)!important;color:#fff!important}
+.pmgo{margin-top:12px!important;height:48px;border:0!important;border-radius:13px!important;background:linear-gradient(135deg,color-mix(in srgb,var(--fc) 80%,#000),var(--fc))!important;font-size:15px!important;box-shadow:0 10px 22px color-mix(in srgb,var(--fc) 30%,transparent)}
+</style>`);
+/* ===== Add employee: picking a designation fills the usual settings automatically ===== */
+const EF_RULES=[[/warehouse|delivery|rider|picker|loader|packer/i,{u:'Warehouse · Pune',c:'Pune Camp',t:'camp',loc:'Anywhere',hol:'No public holidays (weekly off only)'}],[/goa|govaa/i,{u:'Goa Team',c:'Goa',t:'goa',loc:'Anywhere',hol:'No public holidays (weekly off only)'}],[/customer success|cse|support|tele/i,{u:'Customer Success',c:'Pune Camp',t:'ho',loc:'Office only',hol:'Gets public holidays'}],[/market|design|video|social|content|seo/i,{u:'Marketing',c:'Pune Camp',t:'ho',loc:'Office only',hol:'Gets public holidays'}],[/account/i,{u:'Accounts',c:'Pune Camp',t:'ho',loc:'Office only',hol:'Gets public holidays'}],[/\bhr\b|human|recruit/i,{u:'HR',c:'Pune Camp',t:'ho',loc:'Office only',hol:'Gets public holidays'}],[/operation|ops|coordinator/i,{u:'Operations',c:'Pune Camp',t:'ho',loc:'Office only',hol:'Gets public holidays'}]];
+const efSetChip=(id,val)=>{const b=document.getElementById(id);if(!b)return;b.querySelectorAll('button[data-k]').forEach(x=>{const on=x.dataset.k===val;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)})};
+document.addEventListener('change',e=>{if(e.target.id!=='ef-d')return;const v=e.target.value,r=EF_RULES.find(([re])=>re.test(v));if(!r)return;const o=r[1];
+ const u=document.getElementById('ef-u');if(u)u.value=o.u;const c=document.getElementById('ef-c2');if(c)c.value=o.c;efSetChip('ef-t',SHIFT[o.t]);efSetChip('ef-loc',o.loc);efSetChip('ef-hol',o.hol);
+ const n=document.querySelector('.pef .efauto-note');const msg=`Filled for ${v}: ${o.u} · ${o.c} · ${SHIFT[o.t]} · attendance ${o.loc.toLowerCase()} · ${/No public/.test(o.hol)?'no public holidays':'public holidays'} — change anything if needed`;if(n)n.textContent=msg;else e.target.closest('.pefs').insertAdjacentHTML('beforeend',`<p class="efauto-note">${h(msg)}</p>`)});
+document.head.insertAdjacentHTML('beforeend',`<style>.efauto-note{margin:10px 0 0;background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;border-radius:10px;padding:8px 10px;font-size:12.5px}</style>`);
