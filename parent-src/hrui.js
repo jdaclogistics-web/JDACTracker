@@ -99,3 +99,48 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .omdp .av{width:30px;height:30px;font-size:11px}.omdp span{flex:1;min-width:0}.omdp b{display:block;font-size:13px}.omdp small{font-size:11.5px;color:var(--mut)}.omdp em{font-style:normal;font-size:10.5px;color:var(--mut)}
 .omdp.lead{background:#F6F8FD}.omdp.lead small{color:var(--oc);font-weight:700}
 </style>`);
+/* ===== HR Desk premium colours: every section and sub-tab has its own colour ===== */
+document.head.insertAdjacentHTML('beforeend',`<style>
+#main .hrg{gap:10px;background:none!important;padding:0!important}
+#main .hrg button{--c1:#0F766E;--c2:#14B8A6;--t:#E6F7F4;border-radius:14px!important;border:1px solid color-mix(in srgb,var(--c2) 35%,#fff)!important;background:var(--t)!important;color:var(--c1)!important;font-weight:700!important;transition:transform .12s,box-shadow .15s}
+#main .hrg button[data-t="ge"]{--c1:#1E3A8A;--c2:#6366F1;--t:#EEF0FF}
+#main .hrg button[data-t="gp"]{--c1:#92400E;--c2:#D4A017;--t:#FFF7E6}
+#main .hrg button:hover{transform:translateY(-1px);box-shadow:0 6px 16px color-mix(in srgb,var(--c2) 25%,transparent)}
+#main .hrg button.on{background:linear-gradient(135deg,var(--c1),var(--c2))!important;color:#fff!important;border-color:transparent!important;box-shadow:0 8px 20px color-mix(in srgb,var(--c1) 35%,transparent)}
+#main .hrsub{gap:8px!important}
+#main .hrsub button{--c1:#0F766E;--c2:#14B8A6;--t:#E9F8F5;background:var(--t)!important;color:var(--c1)!important;border:1px solid color-mix(in srgb,var(--c2) 35%,#fff)!important;font-weight:600!important}
+#main .hrsub button[data-t="att"]{--c1:#3730A3;--c2:#6366F1;--t:#EEEFFE}
+#main .hrsub button[data-t="leave"]{--c1:#9F1239;--c2:#E11D48;--t:#FFF0F3}
+#main .hrsub button[data-t="hol"]{--c1:#92400E;--c2:#F59E0B;--t:#FFF6E5}
+#main .hrsub button[data-t="pay"]{--c1:#065F46;--c2:#10B981;--t:#E8F8F1}
+#main .hrsub button[data-t="inc"]{--c1:#7C2D12;--c2:#EA580C;--t:#FFF1E8}
+#main .hrsub button[data-t="appr"]{--c1:#6B21A8;--c2:#A855F7;--t:#F6EEFF}
+#main .hrsub button.on{background:linear-gradient(135deg,var(--c1),var(--c2))!important;color:#fff!important;border-color:transparent!important;box-shadow:0 6px 14px color-mix(in srgb,var(--c1) 30%,transparent)}
+#main .hrcard{--c1:#5B21B6;--c2:#8B5CF6;--t:#F5F0FF;background:linear-gradient(135deg,#fff 40%,var(--t))!important;border-color:color-mix(in srgb,var(--c2) 30%,#fff)!important}
+#main .hrcard[data-t="login"]{--c1:#92400E;--c2:#D4A017;--t:#FFF7E3}
+#main .hrcard[data-t="wacc"]{--c1:#065F46;--c2:#10B981;--t:#E9F9F2}
+#main .hrcard>i{background:linear-gradient(135deg,var(--c1),var(--c2))!important;color:#fff!important;box-shadow:0 4px 10px color-mix(in srgb,var(--c1) 30%,transparent)}
+#main .hrcard b{color:var(--c1)}
+#main .hrcard.on{border-color:var(--c1)!important;box-shadow:0 0 0 2px var(--c1) inset,0 8px 20px color-mix(in srgb,var(--c1) 20%,transparent)!important;background:linear-gradient(135deg,var(--t),#fff)!important}
+#main .stats>*{border-top:3px solid #CBD5E1}
+#main .stats>*:nth-child(5n+1){border-top-color:#10B981;background:linear-gradient(180deg,#F0FBF6,#fff)}
+#main .stats>*:nth-child(5n+2){border-top-color:#E11D48;background:linear-gradient(180deg,#FFF3F5,#fff)}
+#main .stats>*:nth-child(5n+3){border-top-color:#6366F1;background:linear-gradient(180deg,#F2F3FF,#fff)}
+#main .stats>*:nth-child(5n+4){border-top-color:#D4A017;background:linear-gradient(180deg,#FFF9EC,#fff)}
+#main .stats>*:nth-child(5n+5){border-top-color:#1E3A8A;background:linear-gradient(180deg,#F1F4FB,#fff)}
+.watab th{background:linear-gradient(135deg,#0F2A5F,#1E3A8A)!important;color:#E7ECF8!important}
+.watab th .stdot{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+.watab tbody tr:nth-child(even) td{background:#FAFBFF}
+.watab tbody tr:hover td{background:#EEF2FF!important}
+.watab .wan b{color:#1E3A8A}
+.wk.edit{background:linear-gradient(135deg,#D1FAE5,#A7F3D0)!important;color:#065F46!important}
+.wk.view{background:linear-gradient(135deg,#FEF3C7,#FDE68A)!important;color:#92400E!important}
+.wawrap{border-color:#C7D2FE!important;box-shadow:0 6px 18px rgba(30,58,138,.07)}
+</style>`);
+document.head.insertAdjacentHTML('beforeend',`<style>
+html.mob #main .hrcards{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+html.mob #main .hrcard{min-width:0;flex-direction:column;align-items:flex-start;gap:6px;padding:9px 10px;border-radius:13px}
+html.mob #main .hrcard>i{width:30px;height:30px;border-radius:9px}html.mob #main .hrcard>i svg{width:16px;height:16px}
+html.mob #main .hrcard b{font-size:12.5px;line-height:1.2}html.mob #main .hrcard small{display:none}
+html.mob #main .hrback{grid-column:1/-1;margin-left:0;font-size:12.5px}
+</style>`);
