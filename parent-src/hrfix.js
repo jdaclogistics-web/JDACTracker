@@ -103,3 +103,11 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .cmwa:hover{transform:translateY(-1px);filter:brightness(1.05)}
 .cmd .cmdl{margin-top:14px!important;font-size:10.5px;letter-spacing:.07em;color:#64748B}
 </style>`);
+/* Dashboard: faint JDAC "The Logistics Aggregator" logo watermark in the background */
+document.documentElement.style.setProperty('--jdwm',`url("${JLOGO}")`);
+const _renderWM=render;render=function(){const r=_renderWM.apply(this,arguments);try{document.body.classList.toggle('jdwm',S.v==='home')}catch(e){}return r};
+document.head.insertAdjacentHTML('beforeend',`<style>
+body.jdwm #main{position:relative;isolation:isolate}
+body.jdwm #main::before{content:'';position:fixed;z-index:30;mix-blend-mode:multiply;pointer-events:none;left:calc(50% + 125px);top:52%;width:min(620px,56vw);aspect-ratio:480/144;transform:translate(-50%,-50%) rotate(-12deg);background:var(--jdwm) center/contain no-repeat;opacity:.05;filter:grayscale(.2)}
+html.mob body.jdwm #main::before{left:50%;width:82vw;opacity:.06}
+</style>`);
