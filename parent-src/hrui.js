@@ -146,3 +146,45 @@ html.mob #main .hrback{grid-column:1/-1;margin-left:0;font-size:12.5px}
 </style>`);
 /* "Just Dedicated & Committed": soft fade in / fade out, no zoom */
 document.head.insertAdjacentHTML('beforeend',`<style>@keyframes cotagFade{0%,100%{opacity:0}18%,72%{opacity:1}}.cotag{animation:cotagFade 4.5s ease-in-out infinite!important;transform:none!important}html.mob .cotag{animation:cotagFade 4.5s ease-in-out infinite!important}@media (prefers-reduced-motion:reduce){.cotag{animation:none!important;opacity:1}}</style>`);
+/* ===== HR Consultancy → Add client: premium pop-up with designation + login details ===== */
+const pcfPw=()=>{const a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<10;i++)s+=a[Math.floor(Math.random()*a.length)];return s};
+A.hrCoNew=()=>sheet(`<div class="pcf">
+ <div class="pcfh"><i>${ic('users')}</i><div><h2>Add client</h2><small>Creates the client company and their own login</small></div></div>
+ <div class="pcfs"><div class="pcft"><span>1</span>Company</div>
+  <label for="hcn">Company name *</label><input id="hcn" placeholder="e.g. Gupta Freight Movers">
+  <div class="grid g2"><div><label for="hcc">City *</label><input id="hcc" placeholder="Pune"></div><div><label for="hci">Industry</label><input id="hci" placeholder="Logistics, Retail…"></div></div></div>
+ <div class="pcfs"><div class="pcft"><span>2</span>Contact person</div>
+  <div class="grid g2"><div><label for="hcp">Full name *</label><input id="hcp" placeholder="Name"></div><div><label for="hcd">Designation *</label><input id="hcd" list="hcdl" placeholder="HR Manager"><datalist id="hcdl">${['HR Manager','HR Executive','Talent Acquisition','Owner / Director','Operations Manager','Admin Manager','Accounts Manager'].map(x=>`<option value="${x}">`).join('')}</datalist></div></div>
+  <label for="hcm">Mobile</label><input id="hcm" inputmode="tel" placeholder="+91"></div>
+ <div class="pcfs pcfl"><div class="pcft"><span>3</span>Login details</div>
+  <label for="hce">Login ID (email) *</label><input id="hce" type="email" placeholder="hr@company.com" autocomplete="off">
+  <label for="hcw">Password *</label><div class="pcfpw"><input id="hcw" type="password" value="${pcfPw()}" autocomplete="new-password"><button type="button" data-a="pcfEye" title="Show / hide">${ic('eye')}</button><button type="button" data-a="pcfGen" title="New password">↻</button></div>
+  <div class="pcfchk"><label><input type="checkbox" id="hcx" checked> Ask them to change the password at first login</label><label><input type="checkbox" id="hcy" checked> Email the login details to them</label></div></div>
+ <div class="pcfs"><div class="pcft"><span>4</span>Billing</div>
+  <label>Hiring fee (% of one month's salary)</label>${opts('hcf',['50','75','100'],'100')}
+  <div class="grid g2"><div><label for="hca1">1st payment day</label><input id="hca1" type="number" value="7"></div><div><label for="hcb1">2nd payment day</label><input id="hcb1" type="number" value="45"></div></div></div>
+ <button class="btn w pcfgo" data-a="hrCoSave">${ic('check')}Create client & login</button></div>`);
+A.pcfEye=()=>{const i=document.getElementById('hcw');if(i)i.type=i.type==='password'?'text':'password'};
+A.pcfGen=()=>{const i=document.getElementById('hcw');if(i){i.value=pcfPw();i.type='text'}};
+const _hrCoSave2=A.hrCoSave;A.hrCoSave=()=>{const g=id=>{const x=document.getElementById(id);return x?x.value.trim():''},pw=g('hcw'),ds=g('hcd'),nm0=g('hcp');
+ if(document.getElementById('hcw')){if(!nm0||!ds)return toast('Contact name and designation are needed');if(pw.length<6)return toast('Password needs at least 6 characters')}
+ const n0=HR.C.length,mail=document.getElementById('hcy')&&document.getElementById('hcy').checked,chg=document.getElementById('hcx')&&document.getElementById('hcx').checked,em=g('hce').toLowerCase();
+ _hrCoSave2();if(HR.C.length===n0)return;const c=HR.C[HR.C.length-1];
+ Object.assign(c,{desig:ds||'—',pass:pw,mustChange:!!chg,login:mail?'Invite sent':'Active'});save();render();toast(`Login created for ${em}${mail?' · details emailed':''}`)};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.pcf{margin:-4px -2px 0}
+.pcfh{display:flex;align-items:center;gap:12px;margin:-6px -6px 14px;padding:16px;border-radius:18px;background:linear-gradient(135deg,#0B2E4F,#0B4F6C 55%,#0E8C9A);color:#fff;box-shadow:0 10px 24px rgba(11,79,108,.25)}
+.pcfh>i{width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.16);display:grid;place-items:center;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}.pcfh>i svg{width:22px;height:22px}
+.pcfh h2{margin:0;color:#fff;font-size:19px}.pcfh small{opacity:.85;font-size:12.5px}
+.pcfs{background:linear-gradient(180deg,#FFFFFF,#F7FAFC);border:1px solid #E2E8F0;border-radius:16px;padding:12px 14px 14px;margin-bottom:10px}
+.pcfl{background:linear-gradient(180deg,#F3FBFC,#EAF6F8);border-color:#BFE3EA}
+.pcft{display:flex;align-items:center;gap:8px;font:700 12px Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#0B4F6C;margin-bottom:2px}
+.pcft span{width:20px;height:20px;border-radius:999px;background:linear-gradient(135deg,#0B4F6C,#0E8C9A);color:#fff;display:grid;place-items:center;font-size:11px;letter-spacing:0}
+.pcf label{font-weight:600;color:#334155}
+.pcf input:not([type=checkbox]),.pcf select{border-radius:11px!important;border:1px solid #D5DEE8!important;background:#fff!important;transition:border-color .15s,box-shadow .15s}
+.pcf input:focus{border-color:#0E8C9A!important;box-shadow:0 0 0 3px rgba(14,140,154,.15)!important;outline:0}
+.pcfpw{display:flex;gap:6px;align-items:center}.pcfpw input{flex:1;font-family:ui-monospace,Menlo,monospace!important;letter-spacing:.04em}
+.pcfpw button{width:40px;height:40px;flex:none;border:1px solid #D5DEE8;background:#fff;border-radius:11px;display:grid;place-items:center;cursor:pointer;color:#0B4F6C;font-size:16px}.pcfpw button svg{width:17px;height:17px}
+.pcfchk{display:flex;flex-direction:column;gap:6px;margin-top:10px}.pcfchk input{width:17px!important;height:17px!important;min-height:0!important;flex:none;margin:0!important;padding:0!important;accent-color:#0E8C9A}.pcfchk label{justify-content:flex-start;text-align:left;width:100%}.pcfchk label{display:flex;gap:8px;align-items:center;font-weight:500!important;font-size:12.5px;margin:0}
+.pcfgo{background:linear-gradient(135deg,#0B2E4F,#0B4F6C 50%,#0E8C9A)!important;border:0!important;height:48px;font-size:15px!important;box-shadow:0 10px 22px rgba(11,79,108,.3);display:flex;align-items:center;justify-content:center;gap:8px}.pcfgo svg{width:18px;height:18px}
+</style>`);
