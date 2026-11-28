@@ -111,3 +111,14 @@ body.jdwm #main{position:relative;isolation:isolate}
 body.jdwm #main::before{content:'';position:fixed;z-index:30;mix-blend-mode:multiply;pointer-events:none;left:calc(50% + 125px);top:52%;width:min(620px,56vw);aspect-ratio:480/144;transform:translate(-50%,-50%) rotate(-12deg);background:var(--jdwm) center/contain no-repeat;opacity:.05;filter:grayscale(.2)}
 html.mob body.jdwm #main::before{left:50%;width:82vw;opacity:.06}
 </style>`);
+/* Tasks: picking a team/project chip (e.g. SMM) shows who is in it, with Manage members for admins */
+const _renderPM=render;render=function(){const r=_renderPM.apply(this,arguments);try{if(S.v==='tasks'&&S.kp&&S.kp!=='all'){const p=D.projects.find(x=>x.id===S.kp),ch0=document.querySelector('#main .kchips'),ch=ch0&&(ch0.closest('.tteam')||ch0);if(p&&ch&&!document.querySelector('#main .pjmem')){const M=(p.m||[]).filter(k=>P[k]&&!isGone(k));
+ ch.insertAdjacentHTML('afterend',`<div class="pjmem" style="--pc:${projCol(p.id)}"><b>${h(p.n)} team · ${M.length}</b><div class="pjml">${M.map(k=>`<span class="pjmp">${av(nm(k),'s')}${h(nmF(k))}<small>${h((P[k].r||'').split('·')[0].trim())}</small></span>`).join('')}</div>${isAdm()?`<button class="btn sm sec" data-a="projMem" data-id="${p.id}">${ic('users')}Manage members</button>`:''}</div>`)}}}catch(e){}return r};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.pjmem{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 12px;padding:10px 12px;border-radius:14px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--pc)}
+.pjmem>b{font-size:13px;white-space:nowrap}.pjml{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.pjmp{display:inline-flex;align-items:center;gap:6px;background:#F6F8FC;border:1px solid #E6EAF2;border-radius:999px;padding:3px 10px 3px 3px;font-size:12.5px;font-weight:600}
+.pjmp small{font-weight:500;color:var(--mut);font-size:11px}
+html.mob .pjmp small{display:none}
+</style>`);
+document.head.insertAdjacentHTML('beforeend',`<style>html.mob .pjmem{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}html.mob .pjml{grid-column:1/-1;grid-row:2;flex-wrap:wrap}html.mob .pjmem .btn{height:32px;font-size:12px!important;padding:0 10px!important}html.mob .pjmp{padding:2px 9px 2px 2px;font-size:12px}html.mob .pjmp .av{width:22px;height:22px;font-size:9px}</style>`);
