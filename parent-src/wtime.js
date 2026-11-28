@@ -120,3 +120,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .wylb{position:absolute;top:15px;font-size:11px;color:#5B6478;white-space:nowrap;pointer-events:none;max-width:220px;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:1200px){.wyc{grid-template-columns:repeat(4,1fr)}}
 </style>`);
+/* Hide every scrollbar (pages and tables still scroll by swipe, wheel or trackpad) */
+document.head.insertAdjacentHTML('beforeend',`<style>*,*::before,*::after{scrollbar-width:none!important}*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}</style>`);
