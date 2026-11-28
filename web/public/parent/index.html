@@ -8490,4 +8490,6 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .tcal2 .tcx.past .tcc{background:linear-gradient(135deg,#5B74C9,#8FA3E6)!important}
 html.mob .tcal2{gap:4px!important;padding:6px}html.mob .tcal2 .tcx{min-height:64px;border-radius:10px!important}html.mob .tcal2 .tcc{padding:4px 4px 4px 13px!important;font-size:10px;border-radius:7px!important}html.mob .tcal2 .tcc::before{left:4px;width:5px;height:5px}
 </style>`);
+/* Company dashboards: Money KPIs (revenue, collected, to collect, purchase, profit) first, then the business panel, then the money details */
+for(const k of cpCos())CP[k+':dash']=()=>{const f=cpFinance(k),ops=(CP_OPS[k]||(()=>''))(),i=f.indexOf('<div class="ldg2">');return `<div class="cpdash">${i<0?f+ops:f.slice(0,i)+ops+f.slice(i)}</div>`};
 </script></body></html>
