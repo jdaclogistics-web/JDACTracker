@@ -5629,10 +5629,10 @@ const _myIncC2=myIncCard;myIncCard=function(k){return incOk(k)?_myIncC2(k):''};
 /* ===== Tasks → Scoreboard: every person's task score in one place ===== */
 const _tHeadSB=taskHead;taskHead=function(me){return _tHeadSB(me).replace(/(<button[^>]*data-t="time"[\s\S]*?<\/button>)/,`$1<button class="${S.ttab==='score'?'on':''}" data-a="ttab" data-t="score" ${S.ttab==='score'?'aria-current="page"':''}>${ic('star')}<span>Scoreboard</span></button>`)};
 function sbRows(p){const m=TODAY.slice(0,7),inP=t=>!t.due?p==='all':p==='all'?true:p==='week'?t.due>=addD(TODAY,-6)&&t.due<=addD(TODAY,7):t.due.slice(0,7)===m;
- const who=STAFF.filter(k=>k!=='darshan'&&!isZen(k)&&(P[k]||{}).kind!=='boss');
+ const act=(D.emp||[]).filter(e=>e.st==='Active'&&e.k).map(e=>e.k),who=[...new Set([...STAFF,...act])].filter(k=>k!=='darshan'&&P[k]&&!isZen(k)&&(P[k]||{}).kind!=='boss'&&(!(D.emp||[]).some(e=>e.k===k)||act.includes(k)));
  return who.map(k=>{const T=D.tasks.filter(t=>t.o===k&&inP(t)),done=T.filter(t=>t.st==='Done'),dueNow=T.filter(t=>t.due&&t.due<=TODAY),late=T.filter(t=>t.st!=='Done'&&t.due&&t.due<TODAY),
   onTime=done.filter(t=>!t.doneAt||!t.due||t.doneAt.slice(0,10)<=t.due).length,base=Math.max(1,dueNow.length);
-  const s=T.length?Math.round(Math.min(100,(onTime/base)*70+(done.length/T.length)*30)):null;return {k,n:T.length,done:done.length,open:T.length-done.length,late:late.length,onTime,s}}).filter(r=>r.n).sort((a,b)=>(b.s??-1)-(a.s??-1))}
+  const s=T.length?Math.round(Math.min(100,(onTime/base)*70+(done.length/T.length)*30)):null;return {k,n:T.length,done:done.length,open:T.length-done.length,late:late.length,onTime,s}}).sort((a,b)=>(b.s??-1)-(a.s??-1)||b.n-a.n||nmF(a.k).localeCompare(nmF(b.k)))}
 const _vtSB=V.tasks;V.tasks=()=>{if(S.ttab!=='score')return _vtSB();const me=ME()||{n:''},p=S.sbp||'month';let R=sbRows(p);const adm=['darshan','nameera'].includes(S.me);if(!adm)R=R.filter(r=>r.k===S.me);
  const team=k=>(P[k]||{}).r||'';
  return taskHead(me)+`<div class="sbbar">${chips([['week','This week'],['month','This month'],['all','All time']],p,'sbP')}<span class="sp"></span><span class="xs mut">${adm?'Everyone':'Only you can see your score'} · Score = 70% tasks done by their due date + 30% tasks finished</span></div>
@@ -8420,5 +8420,70 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .tkband{width:100%;display:flex;align-items:center;gap:10px;border:0;background:#FFF4E5;border-radius:14px;padding:10px 12px;margin-bottom:10px;cursor:pointer;text-align:left}.tkband b{flex:1;font-size:13.5px;color:#93370D}.tkband i{font-style:normal;font-weight:700;color:#B54708;font-size:12.5px}
 .tkpin .chav{background:#C2410C!important}
 @media(min-width:821px){.tklist{max-height:360px}.tkc{position:static;margin:0;border:1px solid var(--line);border-radius:14px}}
+</style>`);
+/* ===== Tasks: delete completed tasks → Recovery bin (next to Add task) · restore or delete forever ===== */
+Object.assign(I,{rbin:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M9.5 13.5l2.5-2.5 2.5 2.5M12 11v6"/>'});
+D.trash=D.trash||[];
+const tbCan=t=>t&&t.st==='Done'&&(isAdm()||t.by===S.me||t.o===S.me);
+const tbMine=()=>(D.trash||[]).filter(x=>isAdm()||x.delBy===S.me||x.t.o===S.me||x.t.by===S.me).sort((a,b)=>String(b.at).localeCompare(a.at));
+const tbBtn=t=>`<button class="tbdel" data-a="tbDel" data-id="${t.id}" title="Delete this completed task (goes to Recovery)" aria-label="Delete task">${ic('trash')}</button>`;
+/* web board: dustbin on Completed cards */
+const _kCardTB=kCard;kCard=function(t,c){const o=_kCardTB(t,c);if(!tbCan(t))return o;return o.replace(/<\/div>$/,tbBtn(t)+'</div>')};
+/* list / phone table rows: dustbin on Completed rows; Recovery button right after Add task */
+const _vTasksTB=V.tasks;V.tasks=()=>{let o=_vTasksTB();
+ o=o.replace(/(<tr class="tap" data-a="tOpen" data-id="([^"]+)"[\s\S]*?)(<\/td><\/tr>)/g,(m,a,id,z)=>{const t=D.tasks.find(x=>x.id===id);return tbCan(t)?a+tbBtn(t)+z:m});
+ const n=tbMine().length;
+ o=o.replace(/(<button class="btn sm" data-a="tNew">[\s\S]*?Add task<\/button>)/,`$1<button class="btn sm tbrec" data-a="tbOpen" title="Deleted tasks">${ic('rbin')}Recovery${n?`<span>${n}</span>`:''}</button>`);
+ return o};
+A.tbDel=e=>{const t=D.tasks.find(x=>x.id===e.dataset.id);if(!tbCan(t))return;D.tasks=D.tasks.filter(x=>x!==t);D.trash.push({t,at:new Date().toISOString(),delBy:S.me});save();render();
+ toast(`Moved to Recovery: ${t.t.length>34?t.t.slice(0,34)+'…':t.t}`)};
+const tbWhen=s=>{const d=s.slice(0,10);return (d===TODAY?'Today':fmt(d))+' '+new Date(s).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
+A.tbOpen=()=>{const L=tbMine();sheet(`<div class="tbh"><h2>Recovery</h2><span class="xs mut">${L.length} deleted task${L.length===1?'':'s'}</span></div>
+ <p class="xs mut" style="margin:2px 0 10px">Completed tasks you delete wait here. Restore puts them back in Completed.</p>
+ <div class="tbl">${L.map(x=>`<div class="tbi"><div class="tx"><b>${h(x.t.t)}</b><span>${h(projN(x.t.proj)||'')}${x.t.o?' · '+h(nmF(x.t.o)):''} · deleted ${tbWhen(x.at)} by ${h(nmF(x.delBy))}</span></div><button class="btn sm sec" data-a="tbRes" data-id="${x.t.id}">Restore</button><button class="tbx" data-a="tbKill" data-id="${x.t.id}" title="Delete forever" aria-label="Delete forever">${ic('trash')}</button></div>`).join('')||'<div class="tbe">Nothing in Recovery</div>'}</div>
+ ${L.length?`<div class="tbf"><button class="btn sec" data-a="tbResAll">Restore all</button><button class="btn tbkill" data-a="tbKillAsk">${ic('trash')}Delete all permanently</button></div>`:''}`)};
+const tbTake=id=>{const x=(D.trash||[]).find(y=>y.t.id===id);if(x)D.trash=D.trash.filter(y=>y!==x);return x};
+A.tbRes=e=>{const x=tbTake(e.dataset.id);if(x){D.tasks.push(x.t);save();toast('Restored to Completed')}render();A.tbOpen()};
+A.tbResAll=()=>{tbMine().forEach(x=>{tbTake(x.t.id);D.tasks.push(x.t)});save();closeM();render();toast('All tasks restored')};
+A.tbKill=e=>{tbTake(e.dataset.id);save();render();A.tbOpen();toast('Deleted forever')};
+A.tbKillAsk=()=>{const n=tbMine().length;sheet(`<h2>Delete ${n} task${n===1?'':'s'} forever?</h2><p class="mut" style="margin:6px 0 14px">They can't be recovered after this.</p><div class="tbf"><button class="btn sec" data-a="tbOpen">Cancel</button><button class="btn tbkill" data-a="tbKillAll">${ic('trash')}Yes, delete forever</button></div>`)};
+A.tbKillAll=()=>{const n=tbMine().length;tbMine().forEach(x=>tbTake(x.t.id));save();closeM();render();toast(`${n} task${n===1?'':'s'} deleted forever`)};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.kc{position:relative}
+.tbdel{border:0;background:#FEF2F2;color:#DC2626;width:28px;height:28px;border-radius:8px;display:inline-grid;place-items:center;cursor:pointer;flex:none;vertical-align:middle;margin-left:6px}
+.tbdel:hover{background:#DC2626;color:#fff}.tbdel svg{width:15px;height:15px}
+.kc .tbdel{position:absolute;right:8px;bottom:8px;margin:0}
+.tbrec{background:#fff!important;color:#B91C1C!important;border:1px solid #FECACA!important;display:inline-flex;align-items:center;gap:6px}
+.tbrec svg{width:15px;height:15px}.tbrec span{background:#DC2626;color:#fff;border-radius:999px;font-size:11px;padding:0 6px;line-height:17px}
+.tbh{display:flex;align-items:baseline;gap:10px}
+.tbl{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow:auto}
+.tbi{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.tbi .tx{flex:1;min-width:0}.tbi b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tbi span{font-size:11.5px;color:var(--mut)}
+.tbx{border:0;background:#FEF2F2;color:#DC2626;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;cursor:pointer;flex:none}.tbx svg{width:16px;height:16px}
+.tbe{padding:24px;text-align:center;color:var(--mut)}
+.tbf{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.tbkill{background:#DC2626!important;color:#fff!important;display:inline-flex;align-items:center;gap:6px}.tbkill svg{width:15px;height:15px}
+</style>`);
+document.head.insertAdjacentHTML('beforeend',`<style>html.mob .ktool .btn.sm{padding-left:10px!important;padding-right:10px!important;white-space:nowrap}html.mob .tbrec span{display:none}</style>`);
+/* ===== Tasks → Calendar: one premium navy/indigo look with light and dark effects ===== */
+const _taskCal2=taskCal;taskCal=function(){return _taskCal2().replace(/<div class="tcx ([^"]*)"><div class="tcd">(\d+)<\/div>(?=<button class="tcc")/g,(m,c,d)=>`<div class="tcx ${c} has"><div class="tcd">${d}</div>`).replace(/<div class="tcal">/,'<div class="tcal tcal2">').replace(/<span class="sp"><\/span>[\s\S]*?<\/div>\s*<div class="tcal/,'<span class="sp"></span></div><div class="tcal')};
+document.head.insertAdjacentHTML('beforeend',`<style>
+.tcal2{gap:8px!important;background:linear-gradient(180deg,#F7F9FE,#EEF2FB);padding:10px;border-radius:18px;border:1px solid #DFE5F3;box-shadow:0 10px 30px rgba(30,58,138,.06)}
+.tcal2 .tch{background:linear-gradient(135deg,#0F2A5F,#1E3A8A);color:#E6ECFA!important;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:11px!important;padding:9px 0!important;border-radius:10px;text-align:center}
+.tcal2 .tcx{background:linear-gradient(180deg,#FFFFFF,#F8FAFF)!important;border:1px solid #E3E8F4!important;border-radius:14px!important;transition:transform .15s,box-shadow .15s;min-height:104px}
+.tcal2 .tcx.out{background:transparent!important;border:0!important}
+.tcal2 .tcx.past:not(.has){opacity:.6}
+.tcal2 .tcx:nth-child(7n+6):not(.out),.tcal2 .tcx:nth-child(7n+7):not(.out){background:linear-gradient(180deg,#FBFCFF,#F2F5FC)!important}
+.tcal2 .tcx.has{background:linear-gradient(160deg,#FFFFFF 30%,#EAF0FF)!important;border-color:#C9D5F2!important;box-shadow:0 4px 14px rgba(30,58,138,.08)}
+.tcal2 .tcx:not(.out):hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(30,58,138,.14)}
+.tcal2 .tcd{font-weight:700;color:#64748B}
+.tcal2 .tcx.has .tcd{color:#1E3A8A}
+.tcal2 .tcx.td{border:0!important;background:linear-gradient(160deg,#EEF3FF,#DCE6FF)!important;box-shadow:0 0 0 2px #1E3A8A,0 10px 24px rgba(30,58,138,.22)}
+.tcal2 .tcx.td .tcd{display:inline-grid;width:fit-content;padding:0 7px;justify-self:start;align-self:start;place-items:center;min-width:26px;height:26px;border-radius:999px;background:linear-gradient(135deg,#0F2A5F,#3B5BDB);color:#fff;font-size:12.5px}
+.tcal2 .tcc{position:relative;display:block;width:100%;margin-top:5px;border:0!important;border-radius:9px!important;padding:6px 8px 6px 18px!important;text-align:left;font:600 11.5px Inter,sans-serif;color:#fff!important;background:linear-gradient(135deg,#1E3A8A,#3B5BDB 60%,#6D83F2)!important;box-shadow:0 3px 8px rgba(30,58,138,.25),inset 0 1px 0 rgba(255,255,255,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:filter .15s,transform .15s}
+.tcal2 .tcc::before{content:'';position:absolute;left:7px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#fff;opacity:.9}
+.tcal2 .tcc:hover{filter:brightness(1.12);transform:translateX(1px)}
+.tcal2 .tcx.past .tcc{background:linear-gradient(135deg,#5B74C9,#8FA3E6)!important}
+html.mob .tcal2{gap:4px!important;padding:6px}html.mob .tcal2 .tcx{min-height:64px;border-radius:10px!important}html.mob .tcal2 .tcc{padding:4px 4px 4px 13px!important;font-size:10px;border-radius:7px!important}html.mob .tcal2 .tcc::before{left:4px;width:5px;height:5px}
 </style>`);
 </script></body></html>

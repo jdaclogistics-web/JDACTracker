@@ -37,10 +37,10 @@ const _myIncC2=myIncCard;myIncCard=function(k){return incOk(k)?_myIncC2(k):''};
 /* ===== Tasks → Scoreboard: every person's task score in one place ===== */
 const _tHeadSB=taskHead;taskHead=function(me){return _tHeadSB(me).replace(/(<button[^>]*data-t="time"[\s\S]*?<\/button>)/,`$1<button class="${S.ttab==='score'?'on':''}" data-a="ttab" data-t="score" ${S.ttab==='score'?'aria-current="page"':''}>${ic('star')}<span>Scoreboard</span></button>`)};
 function sbRows(p){const m=TODAY.slice(0,7),inP=t=>!t.due?p==='all':p==='all'?true:p==='week'?t.due>=addD(TODAY,-6)&&t.due<=addD(TODAY,7):t.due.slice(0,7)===m;
- const who=STAFF.filter(k=>k!=='darshan'&&!isZen(k)&&(P[k]||{}).kind!=='boss');
+ const act=(D.emp||[]).filter(e=>e.st==='Active'&&e.k).map(e=>e.k),who=[...new Set([...STAFF,...act])].filter(k=>k!=='darshan'&&P[k]&&!isZen(k)&&(P[k]||{}).kind!=='boss'&&(!(D.emp||[]).some(e=>e.k===k)||act.includes(k)));
  return who.map(k=>{const T=D.tasks.filter(t=>t.o===k&&inP(t)),done=T.filter(t=>t.st==='Done'),dueNow=T.filter(t=>t.due&&t.due<=TODAY),late=T.filter(t=>t.st!=='Done'&&t.due&&t.due<TODAY),
   onTime=done.filter(t=>!t.doneAt||!t.due||t.doneAt.slice(0,10)<=t.due).length,base=Math.max(1,dueNow.length);
-  const s=T.length?Math.round(Math.min(100,(onTime/base)*70+(done.length/T.length)*30)):null;return {k,n:T.length,done:done.length,open:T.length-done.length,late:late.length,onTime,s}}).filter(r=>r.n).sort((a,b)=>(b.s??-1)-(a.s??-1))}
+  const s=T.length?Math.round(Math.min(100,(onTime/base)*70+(done.length/T.length)*30)):null;return {k,n:T.length,done:done.length,open:T.length-done.length,late:late.length,onTime,s}}).sort((a,b)=>(b.s??-1)-(a.s??-1)||b.n-a.n||nmF(a.k).localeCompare(nmF(b.k)))}
 const _vtSB=V.tasks;V.tasks=()=>{if(S.ttab!=='score')return _vtSB();const me=ME()||{n:''},p=S.sbp||'month';let R=sbRows(p);const adm=['darshan','nameera'].includes(S.me);if(!adm)R=R.filter(r=>r.k===S.me);
  const team=k=>(P[k]||{}).r||'';
  return taskHead(me)+`<div class="sbbar">${chips([['week','This week'],['month','This month'],['all','All time']],p,'sbP')}<span class="sp"></span><span class="xs mut">${adm?'Everyone':'Only you can see your score'} · Score = 70% tasks done by their due date + 30% tasks finished</span></div>
